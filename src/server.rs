@@ -37,14 +37,20 @@ async fn upload(
     mut payload: Multipart,
     config: web::Data<Config>,
 ) -> Result<HttpResponse, Error> {
+    let connection = request.connection_info();
+    let host = connection.remote_addr().unwrap_or("unknown host");
     if let Some(token) = &config.server.auth_token {
-        if request
+        let auth_header = request
             .headers()
             .get(AUTHORIZATION)
             .map(|v| v.to_str().unwrap_or_default())
-            .map(|v| v.split_whitespace().last().unwrap_or_default())
-            != Some(token)
-        {
+            .map(|v| v.split_whitespace().last().unwrap_or_default());
+        if auth_header != Some(token) {
+            log::warn!(
+                "authorization failure for {} (header: {})",
+                host,
+                auth_header.unwrap_or("none"),
+            );
             return Err(error::ErrorUnauthorized("unauthorized"));
         }
     }
@@ -57,17 +63,13 @@ async fn upload(
             while let Some(chunk) = field.next().await {
                 bytes.append(&mut chunk?.to_vec());
             }
+            let bytes_unit = Byte::from_bytes(bytes.len() as u128).get_appropriate_unit(false);
             if bytes.len() as u128 > config.server.max_content_length.get_bytes() {
+                log::warn!("upload rejected for {} ({})", host, bytes_unit);
                 return Err(error::ErrorPayloadTooLarge("upload limit exceeded"));
             }
             let file_name = &file::save(content.get_file_name()?, &bytes, &config)?;
-            let connection = request.connection_info();
-            log::info!(
-                "{} ({}) is uploaded from {}",
-                file_name,
-                Byte::from_bytes(bytes.len() as u128).get_appropriate_unit(false),
-                connection.remote_addr().unwrap_or("unknown host")
-            );
+            log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);
             urls.push(format!(
                 "{}://{}/{}\n",
                 connection.scheme(),
@@ -75,7 +77,8 @@ async fn upload(
                 file_name
             ));
         } else {
-            return Err(error::ErrorUnprocessableEntity("invalid form parameters"));
+            log::warn!("{} sent an invalid form field", host);
+            return Err(error::ErrorBadRequest("invalid form field"));
         }
     }
     Ok(HttpResponse::Ok().body(urls.join("")))
