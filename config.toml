@@ -7,4 +7,5 @@ upload_path="./upload"
 
 [paste]
 pet_names = true
+random = { enabled = false, length = 8 }
 default_extension = "txt"

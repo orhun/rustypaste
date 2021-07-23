@@ -1,4 +1,5 @@
 use crate::config::Config;
+use rand::{distributions::Alphanumeric, Rng};
 use std::fs::File;
 use std::io::{Result as IoResult, Write};
 
@@ -7,9 +8,11 @@ use std::io::{Result as IoResult, Write};
 /// - If `file_name` does not have an extension, it is replaced with [`default_extension`].
 /// - If `file_name` is "-", it is replaced with "stdin".
 /// - If [`pet_names`] is `true`, `file_name` is replaced with a pet name.
+/// - If [`random.enabled`] is `true`, `file_name` is replaced with a random string.
 ///
 /// [`default_extension`]: crate::config::PasteConfig::default_extension
 /// [`pet_names`]: crate::config::PasteConfig::pet_names
+/// [`random.enabled`]: crate::config::RandomConfig::enabled
 pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<String> {
     if file_name == "-" {
         file_name = "stdin";
@@ -20,11 +23,28 @@ pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<Stri
             if config.paste.pet_names {
                 path.set_file_name(petname::petname(2, "-"));
                 path.set_extension(extension);
+            } else if config.paste.random.enabled {
+                path.set_file_name(
+                    rand::thread_rng()
+                        .sample_iter(&Alphanumeric)
+                        .take(config.paste.random.length.unwrap_or(8))
+                        .map(char::from)
+                        .collect::<String>(),
+                );
+                path.set_extension(extension);
             }
         }
         None => {
             if config.paste.pet_names {
                 path.set_file_name(petname::petname(2, "-"));
+            } else if config.paste.random.enabled {
+                path.set_file_name(
+                    rand::thread_rng()
+                        .sample_iter(&Alphanumeric)
+                        .take(config.paste.random.length.unwrap_or(8))
+                        .map(char::from)
+                        .collect::<String>(),
+                );
             }
             path.set_extension(&config.paste.default_extension);
         }

@@ -1177,6 +1177,7 @@ dependencies = [
  "futures-util",
  "log",
  "petname",
+ "rand 0.8.4",
  "serde 1.0.126",
 ]
 
