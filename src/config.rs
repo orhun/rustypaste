@@ -29,12 +29,23 @@ pub struct ServerConfig {
 /// Paste configuration.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PasteConfig {
-    /// Use pet names instead of original file names.
-    pub pet_names: bool,
+    /// Pet names configuration.
+    pub pet_names: PetNamesConfig,
     /// Random string configuration.
     pub random: RandomConfig,
     /// Default file extension.
     pub default_extension: String,
+}
+
+/// Pet names configuration.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PetNamesConfig {
+    /// Use pet names instead of original file names.
+    pub enabled: bool,
+    /// Count of words that pet name will include.
+    pub words: u8,
+    /// Separator between the words.
+    pub separator: String,
 }
 
 /// Random string configuration.
@@ -43,7 +54,7 @@ pub struct RandomConfig {
     /// Use random strings instead of original file names.
     pub enabled: bool,
     /// Length of the random string to generate.
-    pub length: Option<usize>,
+    pub length: usize,
 }
 
 impl Config {

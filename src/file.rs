@@ -7,11 +7,11 @@ use std::io::{Result as IoResult, Write};
 ///
 /// - If `file_name` does not have an extension, it is replaced with [`default_extension`].
 /// - If `file_name` is "-", it is replaced with "stdin".
-/// - If [`pet_names`] is `true`, `file_name` is replaced with a pet name.
+/// - If [`pet_names.enabled`] is `true`, `file_name` is replaced with a pet name.
 /// - If [`random.enabled`] is `true`, `file_name` is replaced with a random string.
 ///
 /// [`default_extension`]: crate::config::PasteConfig::default_extension
-/// [`pet_names`]: crate::config::PasteConfig::pet_names
+/// [`pet_names.enabled`]: crate::config::PetNamesConfig::enabled
 /// [`random.enabled`]: crate::config::RandomConfig::enabled
 pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<String> {
     if file_name == "-" {
@@ -20,14 +20,17 @@ pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<Stri
     let mut path = config.server.upload_path.join(file_name);
     match path.clone().extension() {
         Some(extension) => {
-            if config.paste.pet_names {
-                path.set_file_name(petname::petname(2, "-"));
+            if config.paste.pet_names.enabled {
+                path.set_file_name(petname::petname(
+                    config.paste.pet_names.words,
+                    &config.paste.pet_names.separator,
+                ));
                 path.set_extension(extension);
             } else if config.paste.random.enabled {
                 path.set_file_name(
                     rand::thread_rng()
                         .sample_iter(&Alphanumeric)
-                        .take(config.paste.random.length.unwrap_or(8))
+                        .take(config.paste.random.length)
                         .map(char::from)
                         .collect::<String>(),
                 );
@@ -35,13 +38,16 @@ pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<Stri
             }
         }
         None => {
-            if config.paste.pet_names {
-                path.set_file_name(petname::petname(2, "-"));
+            if config.paste.pet_names.enabled {
+                path.set_file_name(petname::petname(
+                    config.paste.pet_names.words,
+                    &config.paste.pet_names.separator,
+                ));
             } else if config.paste.random.enabled {
                 path.set_file_name(
                     rand::thread_rng()
                         .sample_iter(&Alphanumeric)
-                        .take(config.paste.random.length.unwrap_or(8))
+                        .take(config.paste.random.length)
                         .map(char::from)
                         .collect::<String>(),
                 );

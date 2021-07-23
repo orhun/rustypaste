@@ -6,6 +6,6 @@ upload_path="./upload"
 #auth_token="" # OOPS_SERVER__AUTH_TOKEN=
 
 [paste]
-pet_names = true
+pet_names = { enabled = true, words = 2, separator = "-" }
 random = { enabled = false, length = 8 }
 default_extension = "txt"
