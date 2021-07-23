@@ -18,9 +18,7 @@ impl TryFrom<Option<ActixContentDisposition>> for ContentDisposition {
     fn try_from(content_disposition: Option<ActixContentDisposition>) -> Result<Self, Self::Error> {
         match content_disposition {
             Some(inner) => Ok(Self { inner }),
-            None => Err(error::ErrorUnprocessableEntity(
-                "content disposition does not exist",
-            )),
+            None => Err(error::ErrorBadRequest("content disposition does not exist")),
         }
     }
 }
@@ -44,6 +42,6 @@ impl ContentDisposition {
             .find(|param| param.is_filename())
             .map(|param| param.as_filename())
             .flatten()
-            .ok_or_else(|| error::ErrorUnprocessableEntity("file data not present"))
+            .ok_or_else(|| error::ErrorBadRequest("file data not present"))
     }
 }
