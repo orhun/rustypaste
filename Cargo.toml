@@ -2,13 +2,23 @@
 name = "oops"
 version = "0.1.0"
 edition = "2018"
-description = "Orhun's obscure pastebin server"
+description = "An obscure pastebin server"
 authors = ["Orhun Parmaksız <orhunparmaksiz@gmail.com>"]
 
 [dependencies]
 actix-web = "3.3.2"
+actix-multipart = "0.3.0"
+actix-files = "0.5.0"
 env_logger = "0.9.0"
 log = "0.4.14"
+serde = "1.0.126"
+futures-util = "0.3.15"
+config = "0.11.0"
+petname = "1.1.0"
+
+[dependencies.byte-unit]
+version = "4.0.12"
+features = ["serde"]
 
 [profile.dev]
 opt-level = 0

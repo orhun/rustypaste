@@ -1,0 +1,10 @@
+[server]
+address="127.0.0.1:8000"
+#workers=4
+max_content_length="10MB"
+upload_path="./upload"
+#auth_token="" # OOPS_SERVER__AUTH_TOKEN=
+
+[paste]
+pet_names = true
+default_extension = "txt"
