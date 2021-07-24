@@ -22,8 +22,6 @@ pub struct ServerConfig {
     pub max_content_length: Byte,
     /// Storage path.
     pub upload_path: PathBuf,
-    /// Authentication token.
-    pub auth_token: Option<String>,
 }
 
 /// Paste configuration.

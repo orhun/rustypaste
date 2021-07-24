@@ -8,6 +8,7 @@ use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Respond
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use std::convert::TryFrom;
+use std::env;
 
 /// Shows the landing page.
 #[get("/")]
@@ -39,13 +40,13 @@ async fn upload(
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info();
     let host = connection.remote_addr().unwrap_or("unknown host");
-    if let Some(token) = &config.server.auth_token {
+    if let Ok(token) = env::var("AUTH_TOKEN") {
         let auth_header = request
             .headers()
             .get(AUTHORIZATION)
             .map(|v| v.to_str().unwrap_or_default())
             .map(|v| v.split_whitespace().last().unwrap_or_default());
-        if auth_header != Some(token) {
+        if auth_header.unwrap_or_default() != token {
             log::warn!(
                 "authorization failure for {} (header: {})",
                 host,
