@@ -52,7 +52,11 @@ pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<Stri
                         .collect::<String>(),
                 );
             }
-            path.set_extension(&config.paste.default_extension);
+            path.set_extension(
+                infer::get(bytes)
+                    .map(|t| t.extension())
+                    .unwrap_or(&config.paste.default_extension),
+            );
         }
     }
     let mut buffer = File::create(&path)?;
