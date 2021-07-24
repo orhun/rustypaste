@@ -91,3 +91,27 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         .service(upload)
         .route("", web::head().to(HttpResponse::MethodNotAllowed));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{http, test, App};
+
+    #[actix_rt::test]
+    async fn test_index() {
+        let mut app = test::init_service(App::new().service(index)).await;
+        let req = test::TestRequest::with_header("content-type", "text/plain").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_rt::test]
+    async fn test_serve() {
+        let mut app = test::init_service(App::new().service(serve)).await;
+        let req = test::TestRequest::default().to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert_eq!(http::StatusCode::NOT_FOUND, resp.status());
+    }
+
+    // TODO: add test for upload
+}

@@ -45,3 +45,34 @@ impl ContentDisposition {
             .ok_or_else(|| error::ErrorBadRequest("file data not present"))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_content_disposition() -> Result<(), ActixError> {
+        assert!(ContentDisposition::try_from(None).is_err());
+
+        let actix_content_disposition = Some(ActixContentDisposition {
+            disposition: DispositionType::FormData,
+            parameters: vec![
+                DispositionParam::Name(String::from("file")),
+                DispositionParam::Filename(String::from("x.txt")),
+            ],
+        });
+        let content_disposition = ContentDisposition::try_from(actix_content_disposition)?;
+        assert!(content_disposition.has_form_field("file"));
+        assert!(!content_disposition.has_form_field("test"));
+        assert_eq!("x.txt", content_disposition.get_file_name()?);
+
+        let actix_content_disposition = Some(ActixContentDisposition {
+            disposition: DispositionType::Attachment,
+            parameters: vec![DispositionParam::Name(String::from("file"))],
+        });
+        let content_disposition = ContentDisposition::try_from(actix_content_disposition)?;
+        assert!(!content_disposition.has_form_field("file"));
+        assert!(content_disposition.get_file_name().is_err());
+        Ok(())
+    }
+}

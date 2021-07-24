@@ -3,7 +3,7 @@ use config::{self, ConfigError};
 use std::path::PathBuf;
 
 /// Configuration values.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     /// Server configuration.
     pub server: ServerConfig,
@@ -12,7 +12,7 @@ pub struct Config {
 }
 
 /// Server configuration.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ServerConfig {
     /// The socket address to bind.
     pub address: String,
@@ -27,7 +27,7 @@ pub struct ServerConfig {
 }
 
 /// Paste configuration.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct PasteConfig {
     /// Pet names configuration.
     pub pet_names: PetNamesConfig,
@@ -38,7 +38,7 @@ pub struct PasteConfig {
 }
 
 /// Pet names configuration.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct PetNamesConfig {
     /// Use pet names instead of original file names.
     pub enabled: bool,
@@ -49,7 +49,7 @@ pub struct PetNamesConfig {
 }
 
 /// Random string configuration.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct RandomConfig {
     /// Use random strings instead of original file names.
     pub enabled: bool,
@@ -65,5 +65,27 @@ impl Config {
             .merge(config::File::with_name(file_name))?
             .merge(config::Environment::with_prefix(env!("CARGO_PKG_NAME")).separator("__"))?;
         config.try_into()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_parse_config() -> Result<(), ConfigError> {
+        let file_name = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("config.toml")
+            .to_str()
+            .unwrap()
+            .to_string();
+        env::set_var(
+            format!("{}_SERVER__ADDRESS", env!("CARGO_PKG_NAME")),
+            "0.0.1.1",
+        );
+        let config = Config::parse(&file_name)?;
+        assert_eq!("0.0.1.1", config.server.address);
+        Ok(())
     }
 }

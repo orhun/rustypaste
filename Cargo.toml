@@ -21,6 +21,9 @@ rand = "0.8.4"
 version = "4.0.12"
 features = ["serde"]
 
+[dev-dependencies]
+actix-rt = "2.2.0"
+
 [profile.dev]
 opt-level = 0
 debug = true

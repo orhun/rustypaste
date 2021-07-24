@@ -63,3 +63,58 @@ pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<Stri
         .unwrap_or_default()
         .to_string())
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::config::{PetNamesConfig, RandomConfig};
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_save_file() -> IoResult<()> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.paste.pet_names = PetNamesConfig {
+            enabled: true,
+            words: 3,
+            separator: String::from("_"),
+        };
+        let file_name = save("test.txt", &[65, 66, 67], &config)?;
+        assert_eq!("ABC", fs::read_to_string(&file_name)?);
+        assert_eq!(
+            Some("txt"),
+            PathBuf::from(&file_name)
+                .extension()
+                .map(|v| v.to_str())
+                .flatten()
+        );
+        fs::remove_file(file_name)?;
+
+        config.paste.default_extension = String::from("bin");
+        config.paste.pet_names.enabled = false;
+        config.paste.random = RandomConfig {
+            enabled: true,
+            length: 10,
+        };
+        let file_name = save("random", &[120, 121, 122], &config)?;
+        assert_eq!("xyz", fs::read_to_string(&file_name)?);
+        assert_eq!(
+            Some("bin"),
+            PathBuf::from(&file_name)
+                .extension()
+                .map(|v| v.to_str())
+                .flatten()
+        );
+        fs::remove_file(file_name)?;
+
+        config.paste.random.enabled = false;
+        let file_name = save("test.file", &[116, 101, 115, 116], &config)?;
+        assert_eq!("test.file", &file_name);
+        assert_eq!("test", fs::read_to_string(&file_name)?);
+        fs::remove_file(file_name)?;
+
+        Ok(())
+    }
+}
