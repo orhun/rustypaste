@@ -61,7 +61,7 @@ impl Config {
         let mut config = config::Config::default();
         config
             .merge(config::File::with_name(file_name))?
-            .merge(config::Environment::with_prefix(env!("CARGO_PKG_NAME")).separator("__"))?;
+            .merge(config::Environment::new().separator("__"))?;
         config.try_into()
     }
 }
@@ -78,10 +78,7 @@ mod test {
             .to_str()
             .unwrap()
             .to_string();
-        env::set_var(
-            format!("{}_SERVER__ADDRESS", env!("CARGO_PKG_NAME")),
-            "0.0.1.1",
-        );
+        env::set_var("SERVER__ADDRESS", "0.0.1.1");
         let config = Config::parse(&file_name)?;
         assert_eq!("0.0.1.1", config.server.address);
         Ok(())
