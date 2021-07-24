@@ -7,8 +7,11 @@ pub mod config;
 /// Server routes.
 pub mod server;
 
+/// HTTP headers.
+pub mod header;
+
 /// File handler.
 pub mod file;
 
-/// HTTP headers.
-pub mod header;
+/// Auth handler.
+pub mod auth;
