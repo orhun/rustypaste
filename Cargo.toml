@@ -13,10 +13,14 @@ env_logger = "0.9.0"
 log = "0.4.14"
 serde = "1.0.126"
 futures-util = "0.3.15"
-config = "0.11.0"
 petname = "1.1.0"
 rand = "0.8.4"
 dotenv = "0.15.0"
+
+[dependencies.config]
+version = "0.11.0"
+default-features = false
+features = ["toml", "yaml"]
 
 [dependencies.byte-unit]
 version = "4.0.12"
