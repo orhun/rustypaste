@@ -1,7 +1,7 @@
 use actix_web::middleware::Logger;
 use actix_web::{App, HttpServer};
-use oops::config::Config;
-use oops::server;
+use rustypaste::config::Config;
+use rustypaste::server;
 use std::fs;
 use std::io::Result as IoResult;
 

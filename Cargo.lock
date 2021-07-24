@@ -1235,26 +1235,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
-name = "oops"
-version = "0.1.0"
-dependencies = [
- "actix-files",
- "actix-multipart",
- "actix-rt 2.2.0",
- "actix-web",
- "byte-unit",
- "config",
- "dotenv",
- "env_logger",
- "futures-util",
- "infer",
- "log",
- "petname",
- "rand 0.8.4",
- "serde 1.0.126",
-]
-
-[[package]]
 name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1550,6 +1530,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0dfe2087c51c460008730de8b57e6a320782fbfb312e1f4d520e6c6fae155ee"
 dependencies = [
  "semver 0.11.0",
+]
+
+[[package]]
+name = "rustypaste"
+version = "0.1.0"
+dependencies = [
+ "actix-files",
+ "actix-multipart",
+ "actix-rt 2.2.0",
+ "actix-web",
+ "byte-unit",
+ "config",
+ "dotenv",
+ "env_logger",
+ "futures-util",
+ "infer",
+ "log",
+ "petname",
+ "rand 0.8.4",
+ "serde 1.0.126",
 ]
 
 [[package]]

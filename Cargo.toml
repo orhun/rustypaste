@@ -1,8 +1,8 @@
 [package]
-name = "oops"
+name = "rustypaste"
 version = "0.1.0"
 edition = "2018"
-description = "An obscure pastebin server"
+description = "A minimal file upload/pastebin service"
 authors = ["Orhun Parmaksız <orhunparmaksiz@gmail.com>"]
 
 [dependencies]
