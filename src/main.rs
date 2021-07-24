@@ -2,6 +2,7 @@ use actix_web::middleware::Logger;
 use actix_web::{App, HttpServer};
 use rustypaste::config::Config;
 use rustypaste::server;
+use std::env;
 use std::fs;
 use std::io::Result as IoResult;
 
@@ -9,7 +10,8 @@ use std::io::Result as IoResult;
 async fn main() -> IoResult<()> {
     dotenv::dotenv().ok();
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
-    let config = Config::parse("config").expect("failed to parse config");
+    let config = Config::parse(env::var("CONFIG").as_deref().unwrap_or("config"))
+        .expect("failed to parse config");
     let server_config = config.server.clone();
     fs::create_dir_all(server_config.upload_path)?;
     let mut http_server = HttpServer::new(move || {
