@@ -1,0 +1,10 @@
+# Directories
+/.git/
+/.github/
+/target/
+/upload/
+
+# Files
+.gitignore
+*.md
+LICENSE
