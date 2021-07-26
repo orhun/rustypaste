@@ -1,3 +1,4 @@
+use crate::random::RandomURLConfig;
 use byte_unit::Byte;
 use config::{self, ConfigError};
 use std::path::PathBuf;
@@ -27,32 +28,10 @@ pub struct ServerConfig {
 /// Paste configuration.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct PasteConfig {
-    /// Pet names configuration.
-    pub pet_names: PetNamesConfig,
-    /// Random string configuration.
-    pub random: RandomConfig,
+    /// Random URL configuration.
+    pub random_url: RandomURLConfig,
     /// Default file extension.
     pub default_extension: String,
-}
-
-/// Pet names configuration.
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct PetNamesConfig {
-    /// Use pet names instead of original file names.
-    pub enabled: bool,
-    /// Count of words that pet name will include.
-    pub words: u8,
-    /// Separator between the words.
-    pub separator: String,
-}
-
-/// Random string configuration.
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct RandomConfig {
-    /// Use random strings instead of original file names.
-    pub enabled: bool,
-    /// Length of the random string to generate.
-    pub length: usize,
 }
 
 impl Config {

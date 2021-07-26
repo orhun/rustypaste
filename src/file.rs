@@ -1,5 +1,4 @@
 use crate::config::Config;
-use rand::{distributions::Alphanumeric, Rng};
 use std::fs::File;
 use std::io::{Result as IoResult, Write};
 
@@ -7,12 +6,10 @@ use std::io::{Result as IoResult, Write};
 ///
 /// - If `file_name` does not have an extension, it is replaced with [`default_extension`].
 /// - If `file_name` is "-", it is replaced with "stdin".
-/// - If [`pet_names.enabled`] is `true`, `file_name` is replaced with a pet name.
-/// - If [`random.enabled`] is `true`, `file_name` is replaced with a random string.
+/// - If [`random_url.enabled`] is `true`, `file_name` is replaced with a pet name or random string.
 ///
 /// [`default_extension`]: crate::config::PasteConfig::default_extension
-/// [`pet_names.enabled`]: crate::config::PetNamesConfig::enabled
-/// [`random.enabled`]: crate::config::RandomConfig::enabled
+/// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
 pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<String> {
     if file_name == "-" {
         file_name = "stdin";
@@ -20,37 +17,14 @@ pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<Stri
     let mut path = config.server.upload_path.join(file_name);
     match path.clone().extension() {
         Some(extension) => {
-            if config.paste.pet_names.enabled {
-                path.set_file_name(petname::petname(
-                    config.paste.pet_names.words,
-                    &config.paste.pet_names.separator,
-                ));
-                path.set_extension(extension);
-            } else if config.paste.random.enabled {
-                path.set_file_name(
-                    rand::thread_rng()
-                        .sample_iter(&Alphanumeric)
-                        .take(config.paste.random.length)
-                        .map(char::from)
-                        .collect::<String>(),
-                );
+            if let Some(url) = config.paste.random_url.generate() {
+                path.set_file_name(url);
                 path.set_extension(extension);
             }
         }
         None => {
-            if config.paste.pet_names.enabled {
-                path.set_file_name(petname::petname(
-                    config.paste.pet_names.words,
-                    &config.paste.pet_names.separator,
-                ));
-            } else if config.paste.random.enabled {
-                path.set_file_name(
-                    rand::thread_rng()
-                        .sample_iter(&Alphanumeric)
-                        .take(config.paste.random.length)
-                        .map(char::from)
-                        .collect::<String>(),
-                );
+            if let Some(url) = config.paste.random_url.generate() {
+                path.set_file_name(url);
             }
             path.set_extension(
                 infer::get(bytes)
@@ -71,7 +45,7 @@ pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<Stri
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::{PetNamesConfig, RandomConfig};
+    use crate::random::{RandomURLConfig, RandomURLType};
     use std::env;
     use std::fs;
     use std::path::PathBuf;
@@ -80,10 +54,12 @@ mod test {
     fn test_save_file() -> IoResult<()> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.paste.pet_names = PetNamesConfig {
+        config.paste.random_url = RandomURLConfig {
             enabled: true,
-            words: 3,
-            separator: String::from("_"),
+            words: Some(3),
+            separator: Some(String::from("_")),
+            type_: RandomURLType::PetName,
+            ..RandomURLConfig::default()
         };
         let file_name = save("test.txt", &[65, 66, 67], &config)?;
         assert_eq!("ABC", fs::read_to_string(&file_name)?);
@@ -97,10 +73,12 @@ mod test {
         fs::remove_file(file_name)?;
 
         config.paste.default_extension = String::from("bin");
-        config.paste.pet_names.enabled = false;
-        config.paste.random = RandomConfig {
+        config.paste.random_url.enabled = false;
+        config.paste.random_url = RandomURLConfig {
             enabled: true,
-            length: 10,
+            length: Some(10),
+            type_: RandomURLType::Alphanumeric,
+            ..RandomURLConfig::default()
         };
         let file_name = save("random", &[120, 121, 122], &config)?;
         assert_eq!("xyz", fs::read_to_string(&file_name)?);
@@ -113,7 +91,7 @@ mod test {
         );
         fs::remove_file(file_name)?;
 
-        config.paste.random.enabled = false;
+        config.paste.random_url.enabled = false;
         let file_name = save("test.file", &[116, 101, 115, 116], &config)?;
         assert_eq!("test.file", &file_name);
         assert_eq!("test", fs::read_to_string(&file_name)?);
