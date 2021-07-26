@@ -1,4 +1,4 @@
-//! rustypaste is a minimal file upload/pastebin service.
+//! **Rustypaste** is a minimal file upload/pastebin service.
 #![warn(missing_docs, clippy::unwrap_used)]
 
 /// Configuration file parser.
