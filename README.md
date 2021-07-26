@@ -137,3 +137,9 @@ Consider submitting your ideas via issues first. Also, see the [roadmap](#roadma
 ```sh
 $ grep -nr "TODO:" src/
 ```
+
+#### License
+
+<sup>
+All code is licensed under <a href="LICENSE">The MIT License</a>.
+</sup>
