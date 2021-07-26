@@ -8,6 +8,9 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/orhun/rustypaste"
 repository = "https://github.com/orhun/rustypaste"
+keywords = ["paste", "pastebin", "upload"]
+categories = ["web-programming::http-server"]
+include = ["src/**/*", "Cargo.*", "LICENSE", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 actix-web = "3.3.2"
