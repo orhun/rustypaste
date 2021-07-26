@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2018"
 description = "A minimal file upload/pastebin service"
 authors = ["Orhun Parmaksız <orhunparmaksiz@gmail.com>"]
+readme = "README.md"
 homepage = "https://github.com/orhun/rustypaste"
 repository = "https://github.com/orhun/rustypaste"
 
