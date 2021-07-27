@@ -68,7 +68,7 @@ $ CONFIG="$HOME/.rustypaste.toml" rustypaste
 To enable basic HTTP auth, set the `AUTH_TOKEN` environment variable (via `.env`):
 
 ```sh
-$ echo "AUTH_TOKEN=rustjerk" > .env
+$ echo "AUTH_TOKEN=$(openssl rand -base64 16)" > .env
 $ rustypaste
 ```
 
