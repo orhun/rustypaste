@@ -56,6 +56,10 @@ async fn upload(
                     return Err(error::ErrorPayloadTooLarge("upload limit exceeded"));
                 }
             }
+            if bytes.is_empty() {
+                log::warn!("{} sent zero bytes", host);
+                return Err(error::ErrorBadRequest("invalid file size"));
+            }
             let bytes_unit = Byte::from_bytes(bytes.len() as u128).get_appropriate_unit(false);
             let file_name = &file::save(content.get_file_name()?, &bytes, &config)?;
             log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);
