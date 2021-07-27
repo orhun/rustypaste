@@ -103,6 +103,6 @@ jobs:
       - name: Check the links
         uses: lycheeverse/lychee-action@v1
         with:
-          args: --exclude "example|localhost|awesome.txt" -v *.md
+          args: --exclude "example.com|site.com|localhost|awesome.txt" -v *.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
