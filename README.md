@@ -21,7 +21,7 @@ some text
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
   - guesses MIME types
 - Single binary
-  - [binary releases](https://github.com/orhun/zps/releases)
+  - [binary releases](https://github.com/orhun/rustypaste/releases)
 - Easy to deploy
   - [docker images](https://hub.docker.com/r/orhunp/rustypaste)
 - No database
