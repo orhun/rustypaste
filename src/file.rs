@@ -1,6 +1,7 @@
 use crate::config::Config;
 use std::fs::File;
 use std::io::{Result as IoResult, Write};
+use std::path::PathBuf;
 
 /// Writes the bytes to a file in upload directory.
 ///
@@ -10,10 +11,16 @@ use std::io::{Result as IoResult, Write};
 ///
 /// [`default_extension`]: crate::config::PasteConfig::default_extension
 /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
-pub fn save(mut file_name: &str, bytes: &[u8], config: &Config) -> IoResult<String> {
-    if file_name == "-" {
-        file_name = "stdin";
-    }
+pub fn save(file_name: &str, bytes: &[u8], config: &Config) -> IoResult<String> {
+    let file_name = match PathBuf::from(file_name)
+        .file_name()
+        .map(|v| v.to_str())
+        .flatten()
+    {
+        Some("-") => String::from("stdin"),
+        Some(v) => v.to_string(),
+        None => String::from("file"),
+    };
     let mut path = config.server.upload_path.join(file_name);
     match path.clone().extension() {
         Some(extension) => {
