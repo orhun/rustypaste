@@ -42,6 +42,7 @@ impl ContentDisposition {
             .find(|param| param.is_filename())
             .map(|param| param.as_filename())
             .flatten()
+            .filter(|file_name| !file_name.is_empty())
             .ok_or_else(|| error::ErrorBadRequest("file data not present"))
     }
 }
