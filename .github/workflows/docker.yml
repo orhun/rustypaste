@@ -1,0 +1,30 @@
+name: Docker Automated Builds
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  docker:
+    name: Docker
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Build
+        run: docker build -t rustypaste .
+      - name: Tag
+        run: |
+          docker tag rustypaste orhunp/rustypaste:latest
+          docker tag rustypaste docker.pkg.github.com/orhun/rustypaste/rustypaste:latest
+      - name: Login (Docker Hub)
+        run: echo ${{ secrets.DOCKER_TOKEN }} |
+          docker login -u orhunp --password-stdin
+      - name: Push (Docker Hub)
+        run: docker push orhunp/rustypaste:latest
+      - name: Login (Package Registry)
+        run: echo ${{ secrets.GITHUB_TOKEN }} |
+          docker login -u orhun docker.pkg.github.com --password-stdin
+      - name: Push (Package Registry)
+        run: docker push docker.pkg.github.com/orhun/rustypaste/rustypaste:latest
