@@ -1,6 +1,6 @@
 [package]
 name = "rustypaste"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 description = "A minimal file upload/pastebin service"
 authors = ["Orhun Parmaksız <orhunparmaksiz@gmail.com>"]
