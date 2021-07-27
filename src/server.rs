@@ -51,12 +51,12 @@ async fn upload(
             let mut bytes = Vec::<u8>::new();
             while let Some(chunk) = field.next().await {
                 bytes.append(&mut chunk?.to_vec());
+                if bytes.len() as u128 > config.server.max_content_length.get_bytes() {
+                    log::warn!("upload rejected for {}", host);
+                    return Err(error::ErrorPayloadTooLarge("upload limit exceeded"));
+                }
             }
             let bytes_unit = Byte::from_bytes(bytes.len() as u128).get_appropriate_unit(false);
-            if bytes.len() as u128 > config.server.max_content_length.get_bytes() {
-                log::warn!("upload rejected for {} ({})", host, bytes_unit);
-                return Err(error::ErrorPayloadTooLarge("upload limit exceeded"));
-            }
             let file_name = &file::save(content.get_file_name()?, &bytes, &config)?;
             log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);
             urls.push(format!(
