@@ -5,6 +5,6 @@ max_content_length="10MB"
 upload_path="./upload"
 
 [paste]
-random_url = { enabled = true, words = 2, separator = "-", type = "petname" }
-#random_url = { enabled = true, length = 8, type = "alphanumeric" }
+random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
+#random_url = { enabled = true, type = "alphanumeric", length = 8 }
 default_extension = "txt"
