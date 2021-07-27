@@ -5,10 +5,10 @@
 ```sh
 $ echo "some text" > awesome.txt
 
-$ curl -F "file=@awesome.txt" paste.example.com
-http://paste.example.com/safe-toad.txt
+$ curl -F "file=@awesome.txt" https://paste.site.com
+https://paste.site.com/safe-toad.txt
 
-$ curl http://paste.example.com/safe-toad.txt
+$ curl https://paste.site.com/safe-toad.txt
 some text
 ```
 
