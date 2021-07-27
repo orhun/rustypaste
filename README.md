@@ -103,12 +103,13 @@ Example server configuration with reverse proxy:
 server {
     listen 80;
     location / {
-        proxy_pass                        http://localhost:8000/;
-        proxy_set_header Host             $host;
-        proxy_set_header X-Forwarded-For  $remote_addr;
-        add_header X-XSS-Protection       "1; mode=block";
-        add_header X-Frame-Options        "sameorigin";
-        add_header X-Content-Type-Options "nosniff";
+        proxy_pass                         http://localhost:8000/;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header X-XSS-Protection        "1; mode=block";
+        add_header X-Frame-Options         "sameorigin";
+        add_header X-Content-Type-Options  "nosniff";
     }
 }
 ```
