@@ -64,3 +64,29 @@ jobs:
         with:
           command: publish
           args: --locked --token ${{ secrets.CARGO_TOKEN }}
+
+  publish-docker:
+    name: Publish the Docker image
+    needs: publish-github
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+      - name: Set the release version
+        run: echo "RELEASE_VERSION=${GITHUB_REF:11}" >> $GITHUB_ENV
+      - name: Build
+        run: docker build -t rustypaste .
+      - name: Tag
+        run: |
+          docker tag rustypaste orhunp/rustypaste:${{ env.RELEASE_VERSION }}
+          docker tag rustypaste docker.pkg.github.com/orhun/rustypaste/rustypaste:${{ env.RELEASE_VERSION }}
+      - name: Login (Docker Hub)
+        run: echo ${{ secrets.DOCKER_TOKEN }} |
+          docker login -u orhunp --password-stdin
+      - name: Push (Docker Hub)
+        run: docker push orhunp/rustypaste:${{ env.RELEASE_VERSION }}
+      - name: Login (Package Registry)
+        run: echo ${{ secrets.GITHUB_TOKEN }} |
+          docker login -u orhun docker.pkg.github.com --password-stdin
+      - name: Push (Package Registry)
+        run: docker push docker.pkg.github.com/orhun/rustypaste/rustypaste:${{ env.RELEASE_VERSION }}
