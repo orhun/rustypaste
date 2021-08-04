@@ -1523,6 +1523,7 @@ dependencies = [
  "petname",
  "rand 0.8.4",
  "serde",
+ "url",
 ]
 
 [[package]]

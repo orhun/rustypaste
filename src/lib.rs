@@ -13,8 +13,8 @@ pub mod server;
 /// HTTP headers.
 pub mod header;
 
-/// File handler.
-pub mod file;
-
 /// Auth handler.
 pub mod auth;
+
+/// Storage handler.
+pub mod paste;

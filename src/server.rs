@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::config::Config;
-use crate::file;
 use crate::header::ContentDisposition;
+use crate::paste::{Paste, PasteType};
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Responder};
@@ -9,6 +9,7 @@ use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use std::convert::TryFrom;
 use std::env;
+use std::fs;
 
 /// Shows the landing page.
 #[get("/")]
@@ -22,15 +23,27 @@ async fn index() -> impl Responder {
 #[get("/{file}")]
 async fn serve(
     request: HttpRequest,
-    path: web::Path<String>,
+    file: web::Path<String>,
     config: web::Data<Config>,
 ) -> Result<HttpResponse, Error> {
-    let path = config.server.upload_path.join(&*path);
-    let file = NamedFile::open(&path)?
-        .disable_content_disposition()
-        .prefer_utf8(true);
-    let response = file.into_response(&request)?;
-    Ok(response)
+    let mut path = config.server.upload_path.join(&*file);
+    let mut paste_type = PasteType::File;
+    for (type_, alt_path) in &[(PasteType::Url, "url")] {
+        if !path.exists() || path.file_name().map(|v| v.to_str()).flatten() == Some(alt_path) {
+            path = config.server.upload_path.join(alt_path).join(&*file);
+            paste_type = *type_;
+            break;
+        }
+    }
+    match paste_type {
+        PasteType::File => Ok(NamedFile::open(&path)?
+            .disable_content_disposition()
+            .prefer_utf8(true)
+            .into_response(&request)?),
+        PasteType::Url => Ok(HttpResponse::Found()
+            .header("Location", fs::read_to_string(&path)?)
+            .finish()),
+    }
 }
 
 /// Handles file upload by processing `multipart/form-data`.
@@ -47,7 +60,7 @@ async fn upload(
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let content = ContentDisposition::try_from(field.content_disposition())?;
-        if content.has_form_field("file") {
+        if let Ok(paste_type) = PasteType::try_from(&content) {
             let mut bytes = Vec::<u8>::new();
             while let Some(chunk) = field.next().await {
                 bytes.append(&mut chunk?.to_vec());
@@ -61,7 +74,14 @@ async fn upload(
                 return Err(error::ErrorBadRequest("invalid file size"));
             }
             let bytes_unit = Byte::from_bytes(bytes.len() as u128).get_appropriate_unit(false);
-            let file_name = &file::save(content.get_file_name()?, &bytes, &config)?;
+            let paste = Paste {
+                data: bytes.to_vec(),
+                type_: paste_type,
+            };
+            let file_name = match paste_type {
+                PasteType::File => paste.store_file(content.get_file_name()?, &config)?,
+                PasteType::Url => paste.store_url(&config)?,
+            };
             log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);
             urls.push(format!(
                 "{}://{}/{}\n",

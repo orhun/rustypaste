@@ -13,7 +13,8 @@ async fn main() -> IoResult<()> {
     let config = Config::parse(env::var("CONFIG").as_deref().unwrap_or("config"))
         .expect("failed to parse config");
     let server_config = config.server.clone();
-    fs::create_dir_all(server_config.upload_path)?;
+    fs::create_dir_all(&server_config.upload_path)?;
+    fs::create_dir_all(&server_config.upload_path.join("url"))?;
     let mut http_server = HttpServer::new(move || {
         App::new()
             .data(config.clone())
