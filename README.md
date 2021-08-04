@@ -14,7 +14,7 @@ some text
 
 ## Features
 
-- File upload
+- File upload & URL shortening
   - supports basic HTTP authentication
   - random file names (optional)
     - pet name (e.g. `capital-mosquito.txt`)
@@ -49,6 +49,12 @@ $ rpaste x.txt
 
 # paste from stdin
 $ rpaste -
+```
+
+#### URL Shortening
+
+```sh
+curl -F "url=https://example.com/some/long/url" "<server_address>"
 ```
 
 ### Server
