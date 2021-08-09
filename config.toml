@@ -17,3 +17,8 @@ mime_override = [
     { mime = "application/octet-stream", regex = "^.*\\.bin$" },
     { mime = "text/plain", regex = "^.*\\.(log|txt|diff)$" },
 ]
+mime_blacklist = [
+    "application/x-dosexec",
+    "application/java-archive",
+    "application/java-vm"
+]

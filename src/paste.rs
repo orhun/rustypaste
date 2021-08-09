@@ -48,6 +48,17 @@ impl Paste {
     /// [`default_extension`]: crate::config::PasteConfig::default_extension
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
     pub fn store_file(&self, file_name: &str, config: &Config) -> IoResult<String> {
+        let file_type = infer::get(&self.data);
+        if let Some(file_type) = file_type {
+            for mime_type in &config.paste.mime_blacklist {
+                if mime_type == file_type.mime_type() {
+                    return Err(IoError::new(
+                        IoErrorKind::Other,
+                        String::from("this file type is not permitted"),
+                    ));
+                }
+            }
+        }
         let file_name = match PathBuf::from(file_name)
             .file_name()
             .map(|v| v.to_str())
@@ -70,7 +81,7 @@ impl Paste {
                     path.set_file_name(file_name);
                 }
                 path.set_extension(
-                    infer::get(&self.data)
+                    file_type
                         .map(|t| t.extension())
                         .unwrap_or(&config.paste.default_extension),
                 );

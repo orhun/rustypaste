@@ -35,6 +35,8 @@ pub struct PasteConfig {
     pub default_extension: String,
     /// Media type override options.
     pub mime_override: Vec<MimeMatcher>,
+    /// Media type blacklist.
+    pub mime_blacklist: Vec<String>,
 }
 
 impl Config {
