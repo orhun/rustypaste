@@ -88,6 +88,7 @@ Following command can be used to run a container which is built from the [Docker
 ```sh
 $ docker run --rm -d \
   -v "$(pwd)/upload/":/app/upload \
+  -v "$(pwd)/config.toml":/app/config.toml \
   --env-file "$(pwd)/.env" \
   -e "RUST_LOG=debug" \
   -p 8000:8000 \

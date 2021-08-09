@@ -13,3 +13,4 @@ services:
       - "8000:8000"
     volumes:
       - ./upload/:/app/upload
+      - ./config.toml:/app/config.toml
