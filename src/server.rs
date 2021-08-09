@@ -1,6 +1,7 @@
 use crate::auth;
 use crate::config::Config;
 use crate::header::ContentDisposition;
+use crate::mime;
 use crate::paste::{Paste, PasteType};
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
@@ -38,6 +39,10 @@ async fn serve(
     match paste_type {
         PasteType::File => Ok(NamedFile::open(&path)?
             .disable_content_disposition()
+            .set_content_type(
+                mime::get_mime_type(&config.paste.mime_override, file.to_string())
+                    .map_err(error::ErrorInternalServerError)?,
+            )
             .prefer_utf8(true)
             .into_response(&request)?),
         PasteType::Url => Ok(HttpResponse::Found()

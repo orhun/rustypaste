@@ -18,3 +18,6 @@ pub mod auth;
 
 /// Storage handler.
 pub mod paste;
+
+/// Media type handler.
+pub mod mime;

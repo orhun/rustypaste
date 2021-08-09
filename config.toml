@@ -8,3 +8,12 @@ upload_path="./upload"
 random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
 #random_url = { enabled = true, type = "alphanumeric", length = 8 }
 default_extension = "txt"
+mime_override = [
+    { mime = "image/jpeg", regex = "^.*\\.jpg$" },
+    { mime = "image/png", regex = "^.*\\.png$" },
+    { mime = "image/svg+xml", regex = "^.*\\.svg$" },
+    { mime = "video/webm", regex = "^.*\\.webm$" },
+    { mime = "video/x-matroska", regex = "^.*\\.mkv$" },
+    { mime = "application/octet-stream", regex = "^.*\\.bin$" },
+    { mime = "text/plain", regex = "^.*\\.(log|txt|diff)$" },
+]

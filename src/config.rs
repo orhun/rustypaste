@@ -1,3 +1,4 @@
+use crate::mime::MimeMatcher;
 use crate::random::RandomURLConfig;
 use byte_unit::Byte;
 use config::{self, ConfigError};
@@ -32,6 +33,8 @@ pub struct PasteConfig {
     pub random_url: RandomURLConfig,
     /// Default file extension.
     pub default_extension: String,
+    /// Media type override options.
+    pub mime_override: Vec<MimeMatcher>,
 }
 
 impl Config {
