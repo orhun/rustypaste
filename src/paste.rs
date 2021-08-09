@@ -118,7 +118,7 @@ impl Paste {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::random::{RandomURLConfig, RandomURLType};
     use std::env;

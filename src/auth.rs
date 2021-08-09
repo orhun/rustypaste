@@ -26,7 +26,7 @@ pub fn check(host: &str, headers: &HeaderMap, token: Option<String>) -> Result<(
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use actix_web::http::HeaderValue;
 
