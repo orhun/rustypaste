@@ -44,13 +44,13 @@ jobs:
           sha512sum rustypaste-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz \
             > rustypaste-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz.sha512
       - name: Upload the release
-        uses: softprops/action-gh-release@v1
+        uses: svenstaro/upload-release-action@v2
         with:
-          files: |
-            rustypaste-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz
-            rustypaste-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz.sha512
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: rustypaste-${{ env.RELEASE_VERSION }}-${{ matrix.TARGET }}.tar.gz*
+          file_glob: true
+          overwrite: true
+          tag: ${{ github.ref }}
 
   publish-crates-io:
     name: Publish on crates.io
