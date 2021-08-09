@@ -20,6 +20,7 @@ some text
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
   - guesses MIME types
+    - supports overriding and blacklisting
 - Single binary
   - [binary releases](https://github.com/orhun/rustypaste/releases)
 - Easy to deploy
