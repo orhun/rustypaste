@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2021-08-10
+### Fixed
+- Switch to [upload-release-action](https://github.com/svenstaro/upload-release-action) for uploading releases
+
 ## [0.3.0] - 2021-08-09
 ### Added
 - Support overriding MIME types (config: `mime_override`)
