@@ -43,7 +43,8 @@ async fn serve(
     }
     match paste_type {
         PasteType::File | PasteType::Oneshot => {
-            let response = NamedFile::open(&path)?
+            let response = NamedFile::open(&path)
+                .map_err(|_| error::ErrorNotFound("file is not found or expired :("))?
                 .disable_content_disposition()
                 .set_content_type(
                     mime::get_mime_type(&config.paste.mime_override, file.to_string())
