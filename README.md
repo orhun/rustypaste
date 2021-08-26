@@ -19,6 +19,7 @@ some text
   - random file names (optional)
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
+  - one shot links (file _disappears_ after accessed)
   - guesses MIME types
     - supports overriding and blacklisting
 - Single binary
@@ -50,6 +51,12 @@ $ rpaste x.txt
 
 # paste from stdin
 $ rpaste -
+```
+
+#### One Shot
+
+```sh
+curl -F "oneshot=@x.txt" "<server_address>"
 ```
 
 #### URL Shortening
@@ -133,7 +140,6 @@ http {
 
 ### Roadmap
 
-- Support "disappearing" files
 - Support setting an expiry date for uploads
 - Write a CLI tool in Rust
 
