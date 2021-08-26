@@ -15,7 +15,9 @@ async fn main() -> IoResult<()> {
         .expect("failed to parse config");
     let server_config = config.server.clone();
     fs::create_dir_all(&server_config.upload_path)?;
-    fs::create_dir_all(PasteType::Url.get_path(&server_config.upload_path))?;
+    for paste_type in &[PasteType::Url, PasteType::Oneshot, PasteType::Trash] {
+        fs::create_dir_all(paste_type.get_path(&server_config.upload_path))?;
+    }
     let mut http_server = HttpServer::new(move || {
         App::new()
             .data(config.clone())

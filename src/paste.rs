@@ -8,12 +8,16 @@ use std::str;
 use url::Url;
 
 /// Type of the data to store.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PasteType {
     /// Any type of file.
     File,
+    /// A file that allowed to be accessed once.
+    Oneshot,
     /// A file that only contains an URL.
     Url,
+    /// A file that is expired or deleted.
+    Trash,
 }
 
 impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
@@ -21,6 +25,8 @@ impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
     fn try_from(content_disposition: &'a ContentDisposition) -> Result<Self, Self::Error> {
         if content_disposition.has_form_field("file") {
             Ok(Self::File)
+        } else if content_disposition.has_form_field("oneshot") {
+            Ok(Self::Oneshot)
         } else if content_disposition.has_form_field("url") {
             Ok(Self::Url)
         } else {
@@ -34,13 +40,25 @@ impl PasteType {
     pub fn get_dir(&self) -> String {
         match self {
             Self::File => String::new(),
+            Self::Oneshot => String::from("oneshot"),
             Self::Url => String::from("url"),
+            Self::Trash => String::from("trash"),
         }
     }
 
     /// Returns the given path with [`directory`](Self::get_dir) adjoined.
     pub fn get_path(&self, path: &Path) -> PathBuf {
-        path.join(self.get_dir())
+        let dir = self.get_dir();
+        if dir.is_empty() {
+            path.to_path_buf()
+        } else {
+            path.join(dir)
+        }
+    }
+
+    /// Returns `true` if the variant is [`Oneshot`](Self::Oneshot).
+    pub fn is_oneshot(&self) -> bool {
+        self == &Self::Oneshot
     }
 }
 
@@ -83,7 +101,10 @@ impl Paste {
             Some(v) => v.to_string(),
             None => String::from("file"),
         };
-        let mut path = config.server.upload_path.join(file_name);
+        let mut path = self
+            .type_
+            .get_path(&config.server.upload_path)
+            .join(file_name);
         match path.clone().extension() {
             Some(extension) => {
                 if let Some(file_name) = config.paste.random_url.generate() {
@@ -189,17 +210,22 @@ mod tests {
         );
         fs::remove_file(file_name)?;
 
+        for paste_type in &[PasteType::Url, PasteType::Oneshot] {
+            fs::create_dir_all(paste_type.get_path(&config.server.upload_path))?;
+        }
+
         config.paste.random_url.enabled = false;
         let paste = Paste {
             data: vec![116, 101, 115, 116],
-            type_: PasteType::File,
+            type_: PasteType::Oneshot,
         };
         let file_name = paste.store_file("test.file", &config)?;
+        let file_path = PasteType::Oneshot
+            .get_path(&config.server.upload_path)
+            .join(&file_name);
         assert_eq!("test.file", &file_name);
-        assert_eq!("test", fs::read_to_string(&file_name)?);
-        fs::remove_file(file_name)?;
-
-        fs::create_dir_all(PasteType::Url.get_path(&config.server.upload_path))?;
+        assert_eq!("test", fs::read_to_string(&file_path)?);
+        fs::remove_file(file_path)?;
 
         config.paste.random_url.enabled = true;
         let url = String::from("https://orhun.dev/");
@@ -221,7 +247,9 @@ mod tests {
         };
         assert!(paste.store_url(&config).is_err());
 
-        fs::remove_dir(PasteType::Url.get_path(&config.server.upload_path))?;
+        for paste_type in &[PasteType::Url, PasteType::Oneshot] {
+            fs::remove_dir(paste_type.get_path(&config.server.upload_path))?;
+        }
 
         Ok(())
     }

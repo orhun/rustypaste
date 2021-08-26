@@ -29,27 +29,42 @@ async fn serve(
 ) -> Result<HttpResponse, Error> {
     let mut path = config.server.upload_path.join(&*file);
     let mut paste_type = PasteType::File;
-    for type_ in &[PasteType::Url] {
-        if !path.exists()
-            || path.file_name().map(|v| v.to_str()).flatten() == Some(&type_.get_dir())
-        {
-            path = config.server.upload_path.join(type_.get_dir()).join(&*file);
-            paste_type = *type_;
-            break;
+    if !path.exists() || path.is_dir() {
+        for type_ in &[PasteType::Url, PasteType::Oneshot] {
+            let alt_path = type_.get_path(&config.server.upload_path).join(&*file);
+            if alt_path.exists()
+                || path.file_name().map(|v| v.to_str()).flatten() == Some(&type_.get_dir())
+            {
+                path = alt_path;
+                paste_type = *type_;
+                break;
+            }
         }
     }
     match paste_type {
-        PasteType::File => Ok(NamedFile::open(&path)?
-            .disable_content_disposition()
-            .set_content_type(
-                mime::get_mime_type(&config.paste.mime_override, file.to_string())
-                    .map_err(error::ErrorInternalServerError)?,
-            )
-            .prefer_utf8(true)
-            .into_response(&request)?),
+        PasteType::File | PasteType::Oneshot => {
+            let response = NamedFile::open(&path)?
+                .disable_content_disposition()
+                .set_content_type(
+                    mime::get_mime_type(&config.paste.mime_override, file.to_string())
+                        .map_err(error::ErrorInternalServerError)?,
+                )
+                .prefer_utf8(true)
+                .into_response(&request)?;
+            if paste_type.is_oneshot() {
+                fs::rename(
+                    path,
+                    PasteType::Trash
+                        .get_path(&config.server.upload_path)
+                        .join(&*file),
+                )?;
+            }
+            Ok(response)
+        }
         PasteType::Url => Ok(HttpResponse::Found()
             .header("Location", fs::read_to_string(&path)?)
             .finish()),
+        PasteType::Trash => unreachable!(),
     }
 }
 
@@ -86,8 +101,11 @@ async fn upload(
                 type_: paste_type,
             };
             let file_name = match paste_type {
-                PasteType::File => paste.store_file(content.get_file_name()?, &config)?,
+                PasteType::File | PasteType::Oneshot => {
+                    paste.store_file(content.get_file_name()?, &config)?
+                }
                 PasteType::Url => paste.store_url(&config)?,
+                PasteType::Trash => unreachable!(),
             };
             log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);
             urls.push(format!(
