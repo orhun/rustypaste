@@ -29,9 +29,11 @@ async fn serve(
 ) -> Result<HttpResponse, Error> {
     let mut path = config.server.upload_path.join(&*file);
     let mut paste_type = PasteType::File;
-    for (type_, alt_path) in &[(PasteType::Url, "url")] {
-        if !path.exists() || path.file_name().map(|v| v.to_str()).flatten() == Some(alt_path) {
-            path = config.server.upload_path.join(alt_path).join(&*file);
+    for type_ in &[PasteType::Url] {
+        if !path.exists()
+            || path.file_name().map(|v| v.to_str()).flatten() == Some(&type_.get_dir())
+        {
+            path = config.server.upload_path.join(type_.get_dir()).join(&*file);
             paste_type = *type_;
             break;
         }

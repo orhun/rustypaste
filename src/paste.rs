@@ -3,7 +3,7 @@ use crate::header::ContentDisposition;
 use std::convert::TryFrom;
 use std::fs::{self, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str;
 use url::Url;
 
@@ -26,6 +26,21 @@ impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
         } else {
             Err(())
         }
+    }
+}
+
+impl PasteType {
+    /// Returns the corresponding directory of the paste type.
+    pub fn get_dir(&self) -> String {
+        match self {
+            Self::File => String::new(),
+            Self::Url => String::from("url"),
+        }
+    }
+
+    /// Returns the given path with [`directory`](Self::get_dir) adjoined.
+    pub fn get_path(&self, path: &Path) -> PathBuf {
+        path.join(self.get_dir())
     }
 }
 
@@ -110,8 +125,10 @@ impl Paste {
             .paste
             .random_url
             .generate()
-            .unwrap_or_else(|| String::from("url"));
-        let path = config.server.upload_path.join("url").join(&file_name);
+            .unwrap_or_else(|| PasteType::Url.get_dir());
+        let path = PasteType::Url
+            .get_path(&config.server.upload_path)
+            .join(&file_name);
         fs::write(&path, url.to_string())?;
         Ok(file_name)
     }
@@ -182,7 +199,7 @@ mod tests {
         assert_eq!("test", fs::read_to_string(&file_name)?);
         fs::remove_file(file_name)?;
 
-        fs::create_dir_all(config.server.upload_path.join("url"))?;
+        fs::create_dir_all(PasteType::Url.get_path(&config.server.upload_path))?;
 
         config.paste.random_url.enabled = true;
         let url = String::from("https://orhun.dev/");
@@ -191,7 +208,9 @@ mod tests {
             type_: PasteType::Url,
         };
         let file_name = paste.store_url(&config)?;
-        let file_path = config.server.upload_path.join("url").join(&file_name);
+        let file_path = PasteType::Url
+            .get_path(&config.server.upload_path)
+            .join(&file_name);
         assert_eq!(url, fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
 
@@ -202,7 +221,7 @@ mod tests {
         };
         assert!(paste.store_url(&config).is_err());
 
-        fs::remove_dir(config.server.upload_path.join("url"))?;
+        fs::remove_dir(PasteType::Url.get_path(&config.server.upload_path))?;
 
         Ok(())
     }

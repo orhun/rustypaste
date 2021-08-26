@@ -1,6 +1,7 @@
 use actix_web::middleware::Logger;
 use actix_web::{App, HttpServer};
 use rustypaste::config::Config;
+use rustypaste::paste::PasteType;
 use rustypaste::server;
 use std::env;
 use std::fs;
@@ -14,7 +15,7 @@ async fn main() -> IoResult<()> {
         .expect("failed to parse config");
     let server_config = config.server.clone();
     fs::create_dir_all(&server_config.upload_path)?;
-    fs::create_dir_all(&server_config.upload_path.join("url"))?;
+    fs::create_dir_all(PasteType::Url.get_path(&server_config.upload_path))?;
     let mut http_server = HttpServer::new(move || {
         App::new()
             .data(config.clone())
