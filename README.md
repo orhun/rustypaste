@@ -19,7 +19,8 @@ some text
   - random file names (optional)
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
-  - one shot links (file _disappears_ after accessed)
+  - supports expiring links
+  - supports one shot links (can only be viewed once)
   - guesses MIME types
     - supports overriding and blacklisting
 - Single binary
@@ -52,6 +53,14 @@ $ rpaste x.txt
 # paste from stdin
 $ rpaste -
 ```
+
+#### Expiration
+
+```sh
+curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
+```
+
+(supported units: `ns`, `us`, `ms`, `sec`, `min`, `hours`, `days`, `weeks`, `months`, `years`)
 
 #### One Shot
 
@@ -140,7 +149,6 @@ http {
 
 ### Roadmap
 
-- Support setting an expiry date for uploads
 - Write a CLI tool in Rust
 
 ### Contributing
