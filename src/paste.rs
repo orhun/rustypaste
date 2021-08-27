@@ -16,8 +16,6 @@ pub enum PasteType {
     Oneshot,
     /// A file that only contains an URL.
     Url,
-    /// A file that is expired or deleted.
-    Trash,
 }
 
 impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
@@ -42,7 +40,6 @@ impl PasteType {
             Self::File => String::new(),
             Self::Oneshot => String::from("oneshot"),
             Self::Url => String::from("url"),
-            Self::Trash => String::from("trash"),
         }
     }
 

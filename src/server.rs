@@ -57,10 +57,12 @@ async fn serve(
                 .into_response(&request)?;
             if paste_type.is_oneshot() {
                 fs::rename(
-                    path,
-                    PasteType::Trash
-                        .get_path(&config.server.upload_path)
-                        .join(&*file),
+                    &path,
+                    path.with_file_name(format!(
+                        "{}.{}",
+                        file,
+                        util::get_system_time()?.as_millis()
+                    )),
                 )?;
             }
             Ok(response)
@@ -68,7 +70,6 @@ async fn serve(
         PasteType::Url => Ok(HttpResponse::Found()
             .header("Location", fs::read_to_string(&path)?)
             .finish()),
-        PasteType::Trash => unreachable!(),
     }
 }
 
@@ -110,7 +111,6 @@ async fn upload(
                     paste.store_file(content.get_file_name()?, expiry_date, &config)?
                 }
                 PasteType::Url => paste.store_url(expiry_date, &config)?,
-                PasteType::Trash => unreachable!(),
             };
             log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);
             urls.push(format!(
