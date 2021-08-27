@@ -21,3 +21,6 @@ pub mod paste;
 
 /// Media type handler.
 pub mod mime;
+
+/// Helper functions.
+pub mod util;

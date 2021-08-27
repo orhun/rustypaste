@@ -27,6 +27,8 @@ url = "2.2.2"
 mime = "0.3.16"
 regex = "1.5.4"
 serde_regex = "1.1.0"
+humantime = "2.1.0"
+glob = "0.3.0"
 
 [dependencies.config]
 version = "0.11.0"

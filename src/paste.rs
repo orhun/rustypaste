@@ -80,7 +80,12 @@ impl Paste {
     ///
     /// [`default_extension`]: crate::config::PasteConfig::default_extension
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
-    pub fn store_file(&self, file_name: &str, config: &Config) -> IoResult<String> {
+    pub fn store_file(
+        &self,
+        file_name: &str,
+        expiry_date: Option<u128>,
+        config: &Config,
+    ) -> IoResult<String> {
         let file_type = infer::get(&self.data);
         if let Some(file_type) = file_type {
             for mime_type in &config.paste.mime_blacklist {
@@ -123,13 +128,17 @@ impl Paste {
                 );
             }
         }
-        let mut buffer = File::create(&path)?;
-        buffer.write_all(&self.data)?;
-        Ok(path
+        let file_name = path
             .file_name()
             .map(|v| v.to_string_lossy())
             .unwrap_or_default()
-            .to_string())
+            .to_string();
+        if let Some(timestamp) = expiry_date {
+            path.set_file_name(format!("{}.{}", file_name, timestamp));
+        }
+        let mut buffer = File::create(&path)?;
+        buffer.write_all(&self.data)?;
+        Ok(file_name)
     }
 
     /// Writes an URL to a file in upload directory.
@@ -138,7 +147,7 @@ impl Paste {
     /// - If [`random_url.enabled`] is `true`, file name is set to a pet name or random string.
     ///
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
-    pub fn store_url(&self, config: &Config) -> IoResult<String> {
+    pub fn store_url(&self, expiry_date: Option<u128>, config: &Config) -> IoResult<String> {
         let data = str::from_utf8(&self.data)
             .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
         let url = Url::parse(data).map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
@@ -147,9 +156,12 @@ impl Paste {
             .random_url
             .generate()
             .unwrap_or_else(|| PasteType::Url.get_dir());
-        let path = PasteType::Url
+        let mut path = PasteType::Url
             .get_path(&config.server.upload_path)
             .join(&file_name);
+        if let Some(timestamp) = expiry_date {
+            path.set_file_name(format!("{}.{}", file_name, timestamp));
+        }
         fs::write(&path, url.to_string())?;
         Ok(file_name)
     }
@@ -159,6 +171,7 @@ impl Paste {
 mod tests {
     use super::*;
     use crate::random::{RandomURLConfig, RandomURLType};
+    use crate::util;
     use std::env;
 
     #[test]
@@ -176,7 +189,7 @@ mod tests {
             data: vec![65, 66, 67],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("test.txt", &config)?;
+        let file_name = paste.store_file("test.txt", None, &config)?;
         assert_eq!("ABC", fs::read_to_string(&file_name)?);
         assert_eq!(
             Some("txt"),
@@ -199,7 +212,7 @@ mod tests {
             data: vec![120, 121, 122],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("random", &config)?;
+        let file_name = paste.store_file("random", None, &config)?;
         assert_eq!("xyz", fs::read_to_string(&file_name)?);
         assert_eq!(
             Some("bin"),
@@ -219,11 +232,11 @@ mod tests {
             data: vec![116, 101, 115, 116],
             type_: PasteType::Oneshot,
         };
-        let file_name = paste.store_file("test.file", &config)?;
+        let expiry_date = util::get_system_time().unwrap().as_millis() + 100;
+        let file_name = paste.store_file("test.file", Some(expiry_date), &config)?;
         let file_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
-            .join(&file_name);
-        assert_eq!("test.file", &file_name);
+            .join(format!("{}.{}", file_name, expiry_date));
         assert_eq!("test", fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
 
@@ -233,7 +246,7 @@ mod tests {
             data: url.as_bytes().to_vec(),
             type_: PasteType::Url,
         };
-        let file_name = paste.store_url(&config)?;
+        let file_name = paste.store_url(None, &config)?;
         let file_path = PasteType::Url
             .get_path(&config.server.upload_path)
             .join(&file_name);
@@ -245,7 +258,7 @@ mod tests {
             data: url.as_bytes().to_vec(),
             type_: PasteType::Url,
         };
-        assert!(paste.store_url(&config).is_err());
+        assert!(paste.store_url(None, &config).is_err());
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
             fs::remove_dir(paste_type.get_path(&config.server.upload_path))?;

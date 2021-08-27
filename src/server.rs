@@ -1,8 +1,9 @@
 use crate::auth;
 use crate::config::Config;
-use crate::header::ContentDisposition;
+use crate::header::{self, ContentDisposition};
 use crate::mime;
 use crate::paste::{Paste, PasteType};
+use crate::util;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Responder};
@@ -27,11 +28,13 @@ async fn serve(
     file: web::Path<String>,
     config: web::Data<Config>,
 ) -> Result<HttpResponse, Error> {
-    let mut path = config.server.upload_path.join(&*file);
+    let path = config.server.upload_path.join(&*file);
+    let mut path = util::glob_match_file(path)?;
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
         for type_ in &[PasteType::Url, PasteType::Oneshot] {
             let alt_path = type_.get_path(&config.server.upload_path).join(&*file);
+            let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
                 || path.file_name().map(|v| v.to_str()).flatten() == Some(&type_.get_dir())
             {
@@ -79,6 +82,7 @@ async fn upload(
     let connection = request.connection_info();
     let host = connection.remote_addr().unwrap_or("unknown host");
     auth::check(host, request.headers(), env::var("AUTH_TOKEN").ok())?;
+    let expiry_date = header::parse_expiry_date(request.headers())?;
     let mut urls: Vec<String> = Vec::new();
     while let Some(item) = payload.next().await {
         let mut field = item?;
@@ -103,9 +107,9 @@ async fn upload(
             };
             let file_name = match paste_type {
                 PasteType::File | PasteType::Oneshot => {
-                    paste.store_file(content.get_file_name()?, &config)?
+                    paste.store_file(content.get_file_name()?, expiry_date, &config)?
                 }
-                PasteType::Url => paste.store_url(&config)?,
+                PasteType::Url => paste.store_url(expiry_date, &config)?,
                 PasteType::Trash => unreachable!(),
             };
             log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);

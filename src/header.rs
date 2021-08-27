@@ -1,8 +1,25 @@
+use crate::util;
 use actix_web::http::header::{
     ContentDisposition as ActixContentDisposition, DispositionParam, DispositionType,
 };
+use actix_web::http::HeaderMap;
 use actix_web::{error, Error as ActixError};
 use std::convert::TryFrom;
+
+/// Custom HTTP header for expiry dates.
+pub const EXPIRE: &str = "expire";
+
+/// Parses the expiry date from the [`custom HTTP header`](EXPIRE).
+pub fn parse_expiry_date(headers: &HeaderMap) -> Result<Option<u128>, ActixError> {
+    if let Some(expire_time) = headers.get(EXPIRE).map(|v| v.to_str().ok()).flatten() {
+        let timestamp = util::get_system_time()?;
+        let expire_time =
+            humantime::parse_duration(expire_time).map_err(error::ErrorInternalServerError)?;
+        Ok(timestamp.checked_add(expire_time).map(|t| t.as_millis()))
+    } else {
+        Ok(None)
+    }
+}
 
 /// Wrapper for Actix content disposition header.
 ///
@@ -50,6 +67,9 @@ impl ContentDisposition {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actix_web::http::{HeaderName, HeaderValue};
+    use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn test_content_disposition() -> Result<(), ActixError> {
@@ -74,6 +94,20 @@ mod tests {
         let content_disposition = ContentDisposition::try_from(actix_content_disposition)?;
         assert!(!content_disposition.has_form_field("file"));
         assert!(content_disposition.get_file_name().is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_expiry_date() -> Result<(), ActixError> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            HeaderName::from_static(EXPIRE),
+            HeaderValue::from_static("5ms"),
+        );
+        let expiry_time = parse_expiry_date(&headers)?.unwrap();
+        assert!(expiry_time > util::get_system_time()?.as_millis());
+        thread::sleep(Duration::from_millis(10));
+        assert!(expiry_time < util::get_system_time()?.as_millis());
         Ok(())
     }
 }
