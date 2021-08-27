@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2021-08-27
+### Added
+- Support [expiring links](README.md#expiration) (via `expire:` header)
+  - Timestamps are used as extension for expiring files
+  - Expired files can be cleaned up with [this command](README.md#cleaning-up-expired-files)
+- Support [one shot links](README.md#one-shot) (via `oneshot=` form field)
+  - `{server.upload_path}/oneshot` is used for storage
+
 ## [0.3.1] - 2021-08-10
 ### Fixed
 - Switch to [upload-release-action](https://github.com/svenstaro/upload-release-action) for uploading releases
@@ -15,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2021-08-04
 ### Added
-- Support shortening URLs (via `url=` form parameter)
+- Support shortening URLs (via `url=` form field)
   - `{server.upload_path}/url` is used for storage
 
 ## [0.1.3] - 2021-07-28
