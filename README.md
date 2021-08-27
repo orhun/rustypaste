@@ -68,6 +68,12 @@ curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
 curl -F "oneshot=@x.txt" "<server_address>"
 ```
 
+#### Cleaning Up Expired Files
+
+```sh
+find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" -exec rm -v {} \;
+```
+
 #### URL Shortening
 
 ```sh
