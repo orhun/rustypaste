@@ -34,6 +34,26 @@ some text
 - Written in Rust
   - _blazingly fast!_
 
+## Installation
+
+### From crates.io
+
+```sh
+cargo install rustypaste
+```
+
+### Binary releases
+
+See the available binaries on [releases](https://github.com/orhun/rustypaste/releases/) page.
+
+### Build from source
+
+```sh
+git clone https://github.com/orhun/rustypaste.git
+cd rustypaste/
+cargo build --release
+```
+
 ## Usage
 
 The standalone command line tool (`rpaste`) is available [here](https://github.com/orhun/rustypaste-cli).
