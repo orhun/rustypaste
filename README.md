@@ -57,7 +57,7 @@ $ rpaste -
 #### Expiration
 
 ```sh
-curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
+$ curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
 ```
 
 (supported units: `ns`, `us`, `ms`, `sec`, `min`, `hours`, `days`, `weeks`, `months`, `years`)
@@ -65,19 +65,19 @@ curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
 #### One Shot
 
 ```sh
-curl -F "oneshot=@x.txt" "<server_address>"
+$ curl -F "oneshot=@x.txt" "<server_address>"
 ```
 
 #### Cleaning Up Expired Files
 
 ```sh
-find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" -exec rm -v {} \;
+$ find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" -exec rm -v {} \;
 ```
 
 #### URL Shortening
 
 ```sh
-curl -F "url=https://example.com/some/long/url" "<server_address>"
+$ curl -F "url=https://example.com/some/long/url" "<server_address>"
 ```
 
 ### Server
