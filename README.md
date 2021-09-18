@@ -36,6 +36,8 @@ some text
 
 ## Usage
 
+The standalone command line tool (`rpaste`) is available [here](https://github.com/orhun/rustypaste-cli).
+
 ### CLI
 
 ```sh
@@ -155,7 +157,7 @@ http {
 
 ### Roadmap
 
-- Write a CLI tool in Rust
+- Support uploading files from given URL
 
 ### Contributing
 
