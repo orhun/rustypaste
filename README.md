@@ -179,6 +179,7 @@ http {
 ### Roadmap
 
 - Support uploading files from given URL
+- Hot reload the configuration file
 
 ### Contributing
 
