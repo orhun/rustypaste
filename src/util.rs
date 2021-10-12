@@ -1,5 +1,7 @@
 use actix_web::{error, Error as ActixError};
 use glob::glob;
+use ring::digest::{Context, SHA256};
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -41,6 +43,29 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
     Ok(path)
 }
 
+/// Returns the SHA256 digest of the given input.
+pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
+    let mut reader = BufReader::new(input);
+    let mut context = Context::new(&SHA256);
+    let mut buffer = [0; 1024];
+    loop {
+        let bytes_read = reader.read(&mut buffer)?;
+        if bytes_read != 0 {
+            context.update(&buffer[..bytes_read]);
+        } else {
+            break;
+        }
+    }
+    Ok(context
+        .finish()
+        .as_ref()
+        .iter()
+        .collect::<Vec<&u8>>()
+        .iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect::<String>())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,6 +95,19 @@ mod tests {
         );
         fs::remove_file(path)?;
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_sha256sum() -> Result<(), ActixError> {
+        assert_eq!(
+            "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+            sha256_digest(String::from("test").as_bytes())?
+        );
+        assert_eq!(
+            "2fc36f72540bb9145e95e67c41dccdc440c95173257032e32e111ebd7b6df960",
+            sha256_digest(env!("CARGO_PKG_NAME").as_bytes())?
+        );
         Ok(())
     }
 }

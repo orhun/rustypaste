@@ -23,6 +23,7 @@ some text
   - supports one shot links (can only be viewed once)
   - guesses MIME types
     - supports overriding and blacklisting
+  - no duplicate uploads (optional)
 - Single binary
   - [binary releases](https://github.com/orhun/rustypaste/releases)
 - Easy to deploy

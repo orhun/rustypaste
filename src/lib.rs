@@ -19,6 +19,9 @@ pub mod auth;
 /// Storage handler.
 pub mod paste;
 
+/// File metadata handler.
+pub mod file;
+
 /// Media type handler.
 pub mod mime;
 

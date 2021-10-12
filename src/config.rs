@@ -37,6 +37,8 @@ pub struct PasteConfig {
     pub mime_override: Vec<MimeMatcher>,
     /// Media type blacklist.
     pub mime_blacklist: Vec<String>,
+    /// Allow duplicate uploads
+    pub duplicate_files: Option<bool>,
 }
 
 impl Config {

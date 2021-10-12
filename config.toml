@@ -22,3 +22,4 @@ mime_blacklist = [
     "application/java-archive",
     "application/java-vm"
 ]
+duplicate_files = false

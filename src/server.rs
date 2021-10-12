@@ -1,5 +1,6 @@
 use crate::auth;
 use crate::config::Config;
+use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime;
 use crate::paste::{Paste, PasteType};
@@ -100,6 +101,24 @@ async fn upload(
             if bytes.is_empty() {
                 log::warn!("{} sent zero bytes", host);
                 return Err(error::ErrorBadRequest("invalid file size"));
+            }
+            if paste_type != PasteType::Oneshot && !config.paste.duplicate_files.unwrap_or(true) {
+                let bytes_checksum = util::sha256_digest(&*bytes)?;
+                if let Some(file) = Directory::try_from(config.server.upload_path.as_path())?
+                    .get_file(bytes_checksum)
+                {
+                    urls.push(format!(
+                        "{}://{}/{}\n",
+                        connection.scheme(),
+                        connection.host(),
+                        file.path
+                            .file_name()
+                            .map(|v| v.to_string_lossy())
+                            .unwrap_or_default()
+                            .to_string()
+                    ));
+                    continue;
+                }
             }
             let bytes_unit = Byte::from_bytes(bytes.len() as u128).get_appropriate_unit(false);
             let paste = Paste {
