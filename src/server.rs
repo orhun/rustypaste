@@ -106,6 +106,7 @@ async fn upload(
             }
             if paste_type != PasteType::Oneshot
                 && paste_type != PasteType::RemoteFile
+                && expiry_date.is_none()
                 && !config.paste.duplicate_files.unwrap_or(true)
             {
                 let bytes_checksum = util::sha256_digest(&*bytes)?;

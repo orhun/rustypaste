@@ -1,10 +1,14 @@
 use actix_web::{error, Error as ActixError};
 use glob::glob;
+use lazy_regex::{lazy_regex, Lazy, Regex};
 use ring::digest::{Context, SHA256};
 use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Regex for matching the timestamp extension of a path.
+pub static TIMESTAMP_EXTENSION_REGEX: Lazy<Regex> = lazy_regex!(r#"\.[0-9]{10,}$"#);
 
 /// Returns the system time as [`Duration`](Duration).
 pub fn get_system_time() -> Result<Duration, ActixError> {
@@ -17,15 +21,20 @@ pub fn get_system_time() -> Result<Duration, ActixError> {
 ///
 /// The file extension is accepted as a timestamp that points to the expiry date.
 pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
-    if let Some(glob_path) = glob(&format!(
-        "{}.[0-9]*",
-        path.to_str()
-            .ok_or_else(|| error::ErrorInternalServerError(
-                "file name contains invalid characters"
-            ))?,
-    ))
-    .map_err(error::ErrorInternalServerError)?
-    .next()
+    path = PathBuf::from(
+        TIMESTAMP_EXTENSION_REGEX
+            .replacen(
+                path.to_str().ok_or_else(|| {
+                    error::ErrorInternalServerError("path contains invalid characters")
+                })?,
+                1,
+                "",
+            )
+            .to_string(),
+    );
+    if let Some(glob_path) = glob(&format!("{}.[0-9]*", path.to_string_lossy()))
+        .map_err(error::ErrorInternalServerError)?
+        .next()
     {
         let glob_path = glob_path.map_err(error::ErrorInternalServerError)?;
         if let Some(extension) = glob_path

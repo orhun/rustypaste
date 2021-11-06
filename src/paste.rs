@@ -177,7 +177,7 @@ impl Paste {
         let bytes = response.body().limit(payload_limit).await?.to_vec();
         let bytes_checksum = util::sha256_digest(&*bytes)?;
         self.data = bytes;
-        if !config.paste.duplicate_files.unwrap_or(true) {
+        if !config.paste.duplicate_files.unwrap_or(true) && expiry_date.is_none() {
             if let Some(file) =
                 Directory::try_from(config.server.upload_path.as_path())?.get_file(bytes_checksum)
             {

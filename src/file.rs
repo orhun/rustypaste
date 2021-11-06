@@ -45,9 +45,10 @@ impl<'a> TryFrom<&'a Path> for Directory {
 impl Directory {
     /// Returns the file that matches the given checksum.
     pub fn get_file<S: AsRef<str>>(self, sha256sum: S) -> Option<File> {
-        self.files
-            .into_iter()
-            .find(|file| file.sha256sum == sha256sum.as_ref())
+        self.files.into_iter().find(|file| {
+            file.sha256sum == sha256sum.as_ref()
+                && !util::TIMESTAMP_EXTENSION_REGEX.is_match(&file.path.to_string_lossy())
+        })
     }
 }
 
