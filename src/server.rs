@@ -7,6 +7,7 @@ use crate::paste::{Paste, PasteType};
 use crate::util;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
+use actix_web::client::Client;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Responder};
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
@@ -37,7 +38,7 @@ async fn serve(
             let alt_path = type_.get_path(&config.server.upload_path).join(&*file);
             let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
-                || path.file_name().map(|v| v.to_str()).flatten() == Some(&type_.get_dir())
+                || path.file_name().and_then(|v| v.to_str()) == Some(&type_.get_dir())
             {
                 path = alt_path;
                 paste_type = *type_;
@@ -46,7 +47,7 @@ async fn serve(
         }
     }
     match paste_type {
-        PasteType::File | PasteType::Oneshot => {
+        PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
             let response = NamedFile::open(&path)
                 .map_err(|_| error::ErrorNotFound("file is not found or expired :("))?
                 .disable_content_disposition()
@@ -79,6 +80,7 @@ async fn serve(
 async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
+    client: web::Data<Client>,
     config: web::Data<Config>,
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info();
@@ -102,7 +104,10 @@ async fn upload(
                 log::warn!("{} sent zero bytes", host);
                 return Err(error::ErrorBadRequest("invalid file size"));
             }
-            if paste_type != PasteType::Oneshot && !config.paste.duplicate_files.unwrap_or(true) {
+            if paste_type != PasteType::Oneshot
+                && paste_type != PasteType::RemoteFile
+                && !config.paste.duplicate_files.unwrap_or(true)
+            {
                 let bytes_checksum = util::sha256_digest(&*bytes)?;
                 if let Some(file) = Directory::try_from(config.server.upload_path.as_path())?
                     .get_file(bytes_checksum)
@@ -120,18 +125,27 @@ async fn upload(
                     continue;
                 }
             }
-            let bytes_unit = Byte::from_bytes(bytes.len() as u128).get_appropriate_unit(false);
-            let paste = Paste {
+            let mut paste = Paste {
                 data: bytes.to_vec(),
                 type_: paste_type,
             };
-            let file_name = match paste_type {
+            let file_name = match paste.type_ {
                 PasteType::File | PasteType::Oneshot => {
                     paste.store_file(content.get_file_name()?, expiry_date, &config)?
                 }
+                PasteType::RemoteFile => {
+                    paste
+                        .store_remote_file(expiry_date, &client, &config)
+                        .await?
+                }
                 PasteType::Url => paste.store_url(expiry_date, &config)?,
             };
-            log::info!("{} ({}) is uploaded from {}", file_name, bytes_unit, host);
+            log::info!(
+                "{} ({}) is uploaded from {}",
+                file_name,
+                Byte::from_bytes(paste.data.len() as u128).get_appropriate_unit(false),
+                host
+            );
             urls.push(format!(
                 "{}://{}/{}\n",
                 connection.scheme(),

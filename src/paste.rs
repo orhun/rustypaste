@@ -1,5 +1,9 @@
 use crate::config::Config;
+use crate::file::Directory;
 use crate::header::ContentDisposition;
+use crate::util;
+use actix_web::client::Client;
+use actix_web::{error, Error};
 use std::convert::TryFrom;
 use std::fs::{self, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
@@ -12,6 +16,8 @@ use url::Url;
 pub enum PasteType {
     /// Any type of file.
     File,
+    /// A file that is on a remote URL.
+    RemoteFile,
     /// A file that allowed to be accessed once.
     Oneshot,
     /// A file that only contains an URL.
@@ -23,6 +29,8 @@ impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
     fn try_from(content_disposition: &'a ContentDisposition) -> Result<Self, Self::Error> {
         if content_disposition.has_form_field("file") {
             Ok(Self::File)
+        } else if content_disposition.has_form_field("remote") {
+            Ok(Self::RemoteFile)
         } else if content_disposition.has_form_field("oneshot") {
             Ok(Self::Oneshot)
         } else if content_disposition.has_form_field("url") {
@@ -37,7 +45,7 @@ impl PasteType {
     /// Returns the corresponding directory of the paste type.
     pub fn get_dir(&self) -> String {
         match self {
-            Self::File => String::new(),
+            Self::File | Self::RemoteFile => String::new(),
             Self::Oneshot => String::from("oneshot"),
             Self::Url => String::from("url"),
         }
@@ -138,6 +146,50 @@ impl Paste {
         Ok(file_name)
     }
 
+    /// Downloads a file from URL and stores it with [`store_file`].
+    ///
+    /// - File name is inferred from URL if the last URL segment is a file.
+    /// - Same content length configuration is applied for download limit.
+    /// - Checks SHA256 digest of the downloaded file for preventing duplication.
+    /// - Assumes `self.data` contains a valid URL, otherwise returns an error.
+    pub async fn store_remote_file(
+        &mut self,
+        expiry_date: Option<u128>,
+        client: &Client,
+        config: &Config,
+    ) -> Result<String, Error> {
+        let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
+        let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
+        let file_name = url
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .and_then(|name| if name.is_empty() { None } else { Some(name) })
+            .unwrap_or("file");
+        let mut response = client.get(url.as_str()).send().await?;
+        let payload_limit = config
+            .server
+            .max_content_length
+            .get_bytes()
+            .try_into()
+            .map_err(error::ErrorInternalServerError)?;
+        let bytes = response.body().limit(payload_limit).await?.to_vec();
+        let bytes_checksum = util::sha256_digest(&*bytes)?;
+        self.data = bytes;
+        if !config.paste.duplicate_files.unwrap_or(true) {
+            if let Some(file) =
+                Directory::try_from(config.server.upload_path.as_path())?.get_file(bytes_checksum)
+            {
+                return Ok(file
+                    .path
+                    .file_name()
+                    .map(|v| v.to_string_lossy())
+                    .unwrap_or_default()
+                    .to_string());
+            }
+        }
+        Ok(self.store_file(file_name, expiry_date, config)?)
+    }
+
     /// Writes an URL to a file in upload directory.
     ///
     /// - Checks if the data is a valid URL.
@@ -169,10 +221,13 @@ mod tests {
     use super::*;
     use crate::random::{RandomURLConfig, RandomURLType};
     use crate::util;
+    use actix_web::client::Client;
+    use actix_web::web::Data;
+    use byte_unit::Byte;
     use std::env;
 
-    #[test]
-    fn test_paste_data() -> IoResult<()> {
+    #[actix_rt::test]
+    async fn test_paste_data() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
         config.paste.random_url = RandomURLConfig {
@@ -256,6 +311,23 @@ mod tests {
             type_: PasteType::Url,
         };
         assert!(paste.store_url(None, &config).is_err());
+
+        config.server.max_content_length = Byte::from_str("30k").unwrap();
+        let url = String::from("https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg");
+        let mut paste = Paste {
+            data: url.as_bytes().to_vec(),
+            type_: PasteType::RemoteFile,
+        };
+        let client_data = Data::new(Client::default());
+        let file_name = paste.store_remote_file(None, &client_data, &config).await?;
+        let file_path = PasteType::RemoteFile
+            .get_path(&config.server.upload_path)
+            .join(&file_name);
+        assert_eq!(
+            "8c712905b799905357b8202d0cb7a244cefeeccf7aa5eb79896645ac50158ffa",
+            util::sha256_digest(&*paste.data)?
+        );
+        fs::remove_file(file_path)?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
             fs::remove_dir(paste_type.get_path(&config.server.upload_path))?;

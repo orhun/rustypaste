@@ -1,3 +1,4 @@
+use actix_web::client::ClientBuilder;
 use actix_web::middleware::Logger;
 use actix_web::{App, HttpServer};
 use rustypaste::config::Config;
@@ -6,6 +7,7 @@ use rustypaste::server;
 use std::env;
 use std::fs;
 use std::io::Result as IoResult;
+use std::time::Duration;
 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
@@ -19,8 +21,13 @@ async fn main() -> IoResult<()> {
         fs::create_dir_all(paste_type.get_path(&server_config.upload_path))?;
     }
     let mut http_server = HttpServer::new(move || {
+        let http_client = ClientBuilder::default()
+            .timeout(Duration::from_secs(30))
+            .disable_redirects()
+            .finish();
         App::new()
             .data(config.clone())
+            .data(http_client)
             .wrap(Logger::default())
             .configure(server::configure_routes)
     })

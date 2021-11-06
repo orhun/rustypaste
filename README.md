@@ -85,22 +85,28 @@ $ curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
 
 (supported units: `ns`, `us`, `ms`, `sec`, `min`, `hours`, `days`, `weeks`, `months`, `years`)
 
-#### One Shot
+#### One shot
 
 ```sh
 $ curl -F "oneshot=@x.txt" "<server_address>"
 ```
 
-#### Cleaning Up Expired Files
+#### Cleaning up expired files
 
 ```sh
 $ find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" -exec rm -v {} \;
 ```
 
-#### URL Shortening
+#### URL shortening
 
 ```sh
 $ curl -F "url=https://example.com/some/long/url" "<server_address>"
+```
+
+### Paste file from remote URL
+
+```sh
+$ curl -F "remote=https://example.com/file.png" "<server_address>"
 ```
 
 ### Server
@@ -178,7 +184,6 @@ http {
 
 ### Roadmap
 
-- Support uploading files from given URL
 - Hot reload the configuration file
 
 ### Contributing
