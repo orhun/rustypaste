@@ -152,6 +152,8 @@ impl Paste {
     /// - Same content length configuration is applied for download limit.
     /// - Checks SHA256 digest of the downloaded file for preventing duplication.
     /// - Assumes `self.data` contains a valid URL, otherwise returns an error.
+    ///
+    /// [`store_file`]: Self::store_file
     pub async fn store_remote_file(
         &mut self,
         expiry_date: Option<u128>,
