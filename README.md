@@ -14,7 +14,7 @@ some text
 
 ## Features
 
-- File upload & URL shortening
+- File upload & URL shortening & upload from URL
   - supports basic HTTP authentication
   - random file names (optional)
     - pet name (e.g. `capital-mosquito.txt`)
@@ -26,6 +26,8 @@ some text
   - no duplicate uploads (optional)
 - Single binary
   - [binary releases](https://github.com/orhun/rustypaste/releases)
+- Simple configuration
+  - supports hot reloading
 - Easy to deploy
   - [docker images](https://hub.docker.com/r/orhunp/rustypaste)
 - No database
@@ -184,7 +186,7 @@ http {
 
 ### Roadmap
 
-- Hot reload the configuration file
+_Nothing here yet! 🎉_
 
 ### Contributing
 

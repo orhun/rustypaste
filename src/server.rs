@@ -14,6 +14,7 @@ use futures_util::stream::StreamExt;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
+use std::sync::{Arc, Mutex};
 
 /// Shows the landing page.
 #[get("/")]
@@ -81,13 +82,14 @@ async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
     client: web::Data<Client>,
-    config: web::Data<Config>,
+    config: web::Data<Arc<Mutex<Config>>>,
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info();
     let host = connection.remote_addr().unwrap_or("unknown host");
     auth::check(host, request.headers(), env::var("AUTH_TOKEN").ok())?;
     let expiry_date = header::parse_expiry_date(request.headers())?;
     let mut urls: Vec<String> = Vec::new();
+    let config = config.lock().expect("cannot acquire config");
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let content = ContentDisposition::try_from(field.content_disposition())?;
@@ -96,7 +98,7 @@ async fn upload(
             while let Some(chunk) = field.next().await {
                 bytes.append(&mut chunk?.to_vec());
                 if bytes.len() as u128 > config.server.max_content_length.get_bytes() {
-                    log::warn!("upload rejected for {}", host);
+                    log::warn!("Upload rejected for {}", host);
                     return Err(error::ErrorPayloadTooLarge("upload limit exceeded"));
                 }
             }

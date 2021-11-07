@@ -2,7 +2,7 @@ use crate::mime::MimeMatcher;
 use crate::random::RandomURLConfig;
 use byte_unit::Byte;
 use config::{self, ConfigError};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Configuration values.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -43,10 +43,10 @@ pub struct PasteConfig {
 
 impl Config {
     /// Parses the config file and returns the values.
-    pub fn parse(file_name: &str) -> Result<Config, ConfigError> {
+    pub fn parse(path: &Path) -> Result<Config, ConfigError> {
         let mut config = config::Config::default();
         config
-            .merge(config::File::with_name(file_name))?
+            .merge(config::File::from(path))?
             .merge(config::Environment::new().separator("__"))?;
         config.try_into()
     }
@@ -59,13 +59,9 @@ mod tests {
 
     #[test]
     fn test_parse_config() -> Result<(), ConfigError> {
-        let file_name = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("config.toml")
-            .to_str()
-            .unwrap()
-            .to_string();
+        let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
         env::set_var("SERVER__ADDRESS", "0.0.1.1");
-        let config = Config::parse(&file_name)?;
+        let config = Config::parse(&config_path)?;
         assert_eq!("0.0.1.1", config.server.address);
         Ok(())
     }
