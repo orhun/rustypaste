@@ -105,7 +105,7 @@ $ find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" -exec rm -v {} \;
 $ curl -F "url=https://example.com/some/long/url" "<server_address>"
 ```
 
-### Paste file from remote URL
+#### Paste file from remote URL
 
 ```sh
 $ curl -F "remote=https://example.com/file.png" "<server_address>"
