@@ -4,7 +4,7 @@ use crate::header::ContentDisposition;
 use crate::util;
 use actix_web::client::Client;
 use actix_web::{error, Error};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fs::{self, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
