@@ -29,8 +29,9 @@ async fn index() -> impl Responder {
 async fn serve(
     request: HttpRequest,
     file: web::Path<String>,
-    config: web::Data<Config>,
+    config: web::Data<Arc<Mutex<Config>>>,
 ) -> Result<HttpResponse, Error> {
+    let config = config.lock().expect("cannot acquire config");
     let path = config.server.upload_path.join(&*file);
     let mut path = util::glob_match_file(path)?;
     let mut paste_type = PasteType::File;
