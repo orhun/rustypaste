@@ -31,7 +31,9 @@ async fn serve(
     file: web::Path<String>,
     config: web::Data<Arc<Mutex<Config>>>,
 ) -> Result<HttpResponse, Error> {
-    let config = config.lock().expect("cannot acquire config");
+    let config = config
+        .lock()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let path = config.server.upload_path.join(&*file);
     let mut path = util::glob_match_file(path)?;
     let mut paste_type = PasteType::File;
@@ -90,7 +92,9 @@ async fn upload(
     auth::check(host, request.headers(), env::var("AUTH_TOKEN").ok())?;
     let expiry_date = header::parse_expiry_date(request.headers())?;
     let mut urls: Vec<String> = Vec::new();
-    let config = config.lock().expect("cannot acquire config");
+    let config = config
+        .lock()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let content = ContentDisposition::try_from(field.content_disposition())?;

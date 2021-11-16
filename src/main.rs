@@ -38,20 +38,26 @@ async fn main() -> IoResult<()> {
         .expect("failed to initialize configuration file watcher");
 
     // Hot-reload the configuration file.
-    hotwatch
-        .watch(&config_path, move |event: Event| {
-            if let Event::Write(path) = event {
-                match Config::parse(&path) {
-                    Ok(config) => {
-                        *cloned_config.lock().expect("cannot acquire config") = config;
+    let config_watcher = move |event: Event| {
+        if let Event::Write(path) = event {
+            match Config::parse(&path) {
+                Ok(config) => match cloned_config.lock() {
+                    Ok(mut cloned_config) => {
+                        *cloned_config = config;
                         log::info!("Configuration has been updated.");
                     }
                     Err(e) => {
-                        log::error!("Failed to update configuration: {}", e);
+                        log::error!("Failed to acquire configuration: {}", e);
                     }
+                },
+                Err(e) => {
+                    log::error!("Failed to update configuration: {}", e);
                 }
             }
-        })
+        }
+    };
+    hotwatch
+        .watch(&config_path, config_watcher)
         .unwrap_or_else(|_| panic!("failed to watch {:?}", config_path));
 
     // Create a HTTP server.
