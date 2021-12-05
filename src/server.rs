@@ -14,7 +14,7 @@ use futures_util::stream::StreamExt;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 /// Shows the landing page.
 #[get("/")]
@@ -29,10 +29,10 @@ async fn index() -> impl Responder {
 async fn serve(
     request: HttpRequest,
     file: web::Path<String>,
-    config: web::Data<Arc<Mutex<Config>>>,
+    config: web::Data<Arc<RwLock<Config>>>,
 ) -> Result<HttpResponse, Error> {
     let config = config
-        .lock()
+        .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let path = config.server.upload_path.join(&*file);
     let mut path = util::glob_match_file(path)?;
@@ -85,16 +85,13 @@ async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
     client: web::Data<Client>,
-    config: web::Data<Arc<Mutex<Config>>>,
+    config: web::Data<Arc<RwLock<Config>>>,
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.remote_addr().unwrap_or("unknown host");
     auth::check(host, request.headers(), env::var("AUTH_TOKEN").ok())?;
     let expiry_date = header::parse_expiry_date(request.headers())?;
     let mut urls: Vec<String> = Vec::new();
-    let config = config
-        .lock()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let content = ContentDisposition::try_from(field.content_disposition())?;
@@ -102,6 +99,9 @@ async fn upload(
             let mut bytes = Vec::<u8>::new();
             while let Some(chunk) = field.next().await {
                 bytes.append(&mut chunk?.to_vec());
+                let config = config
+                    .read()
+                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
                 if bytes.len() as u128 > config.server.max_content_length.get_bytes() {
                     log::warn!("Upload rejected for {}", host);
                     return Err(error::ErrorPayloadTooLarge("upload limit exceeded"));
@@ -114,9 +114,17 @@ async fn upload(
             if paste_type != PasteType::Oneshot
                 && paste_type != PasteType::RemoteFile
                 && expiry_date.is_none()
-                && !config.paste.duplicate_files.unwrap_or(true)
+                && !config
+                    .read()
+                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+                    .paste
+                    .duplicate_files
+                    .unwrap_or(true)
             {
                 let bytes_checksum = util::sha256_digest(&*bytes)?;
+                let config = config
+                    .read()
+                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
                 if let Some(file) = Directory::try_from(config.server.upload_path.as_path())?
                     .get_file(bytes_checksum)
                 {
@@ -128,7 +136,6 @@ async fn upload(
                             .file_name()
                             .map(|v| v.to_string_lossy())
                             .unwrap_or_default()
-                            .to_string()
                     ));
                     continue;
                 }
@@ -139,14 +146,26 @@ async fn upload(
             };
             let file_name = match paste.type_ {
                 PasteType::File | PasteType::Oneshot => {
+                    let config = config
+                        .read()
+                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
                     paste.store_file(content.get_file_name()?, expiry_date, &config)?
                 }
                 PasteType::RemoteFile => {
-                    paste
-                        .store_remote_file(expiry_date, &client, &config)
-                        .await?
+                    {
+                        let config = config.read().map_err(|_| {
+                            error::ErrorInternalServerError("cannot acquire config")
+                        })?;
+                        paste.store_remote_file(expiry_date, &client, config.clone())
+                    }
+                    .await?
                 }
-                PasteType::Url => paste.store_url(expiry_date, &config)?,
+                PasteType::Url => {
+                    let config = config
+                        .read()
+                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+                    paste.store_url(expiry_date, &config)?
+                }
             };
             log::info!(
                 "{} ({}) is uploaded from {}",

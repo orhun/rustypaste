@@ -9,7 +9,7 @@ use std::env;
 use std::fs;
 use std::io::Result as IoResult;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 #[actix_web::main]
@@ -21,11 +21,11 @@ async fn main() -> IoResult<()> {
     dotenv::dotenv().ok();
     let config_path =
         PathBuf::from(env::var("CONFIG").unwrap_or_else(|_| String::from("config.toml")));
-    let config = Arc::new(Mutex::new(
+    let config = Arc::new(RwLock::new(
         Config::parse(&config_path).expect("failed to parse config"),
     ));
     let cloned_config = Arc::clone(&config);
-    let server_config = config.lock().expect("cannot acquire config").server.clone();
+    let server_config = config.read().expect("cannot acquire config").server.clone();
 
     // Create necessary directories.
     fs::create_dir_all(&server_config.upload_path)?;
@@ -41,7 +41,7 @@ async fn main() -> IoResult<()> {
     let config_watcher = move |event: Event| {
         if let Event::Write(path) = event {
             match Config::parse(&path) {
-                Ok(config) => match cloned_config.lock() {
+                Ok(config) => match cloned_config.write() {
                     Ok(mut cloned_config) => {
                         *cloned_config = config;
                         log::info!("Configuration has been updated.");

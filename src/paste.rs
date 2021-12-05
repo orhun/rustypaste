@@ -158,7 +158,7 @@ impl Paste {
         &mut self,
         expiry_date: Option<u128>,
         client: &Client,
-        config: &Config,
+        config: Config,
     ) -> Result<String, Error> {
         let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
         let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
@@ -189,7 +189,7 @@ impl Paste {
                     .to_string());
             }
         }
-        Ok(self.store_file(file_name, expiry_date, config)?)
+        Ok(self.store_file(file_name, expiry_date, &config)?)
     }
 
     /// Writes an URL to a file in upload directory.
