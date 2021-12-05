@@ -87,7 +87,7 @@ async fn upload(
     client: web::Data<Client>,
     config: web::Data<Arc<Mutex<Config>>>,
 ) -> Result<HttpResponse, Error> {
-    let connection = request.connection_info();
+    let connection = request.connection_info().clone();
     let host = connection.remote_addr().unwrap_or("unknown host");
     auth::check(host, request.headers(), env::var("AUTH_TOKEN").ok())?;
     let expiry_date = header::parse_expiry_date(request.headers())?;
