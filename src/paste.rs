@@ -321,7 +321,9 @@ mod tests {
             type_: PasteType::RemoteFile,
         };
         let client_data = Data::new(Client::default());
-        let file_name = paste.store_remote_file(None, &client_data, &config).await?;
+        let file_name = paste
+            .store_remote_file(None, &client_data, config.clone())
+            .await?;
         let file_path = PasteType::RemoteFile
             .get_path(&config.server.upload_path)
             .join(&file_name);
