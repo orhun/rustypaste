@@ -89,7 +89,17 @@ async fn upload(
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.remote_addr().unwrap_or("unknown host");
-    auth::check(host, request.headers(), env::var("AUTH_TOKEN").ok())?;
+    auth::check(
+        host,
+        request.headers(),
+        env::var("AUTH_TOKEN").ok().or(config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+            .server
+            .auth_token
+            .as_ref()
+            .cloned()),
+    )?;
     let expiry_date = header::parse_expiry_date(request.headers())?;
     let mut urls: Vec<String> = Vec::new();
     while let Some(item) = payload.next().await {
