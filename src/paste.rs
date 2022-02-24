@@ -104,8 +104,7 @@ impl Paste {
         }
         let file_name = match PathBuf::from(file_name)
             .file_name()
-            .map(|v| v.to_str())
-            .flatten()
+            .and_then(|v| v.to_str())
         {
             Some("-") => String::from("stdin"),
             Some(v) => v.to_string(),

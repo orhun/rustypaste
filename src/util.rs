@@ -39,10 +39,8 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
         let glob_path = glob_path.map_err(error::ErrorInternalServerError)?;
         if let Some(extension) = glob_path
             .extension()
-            .map(|v| v.to_str())
-            .flatten()
-            .map(|v| v.parse().ok())
-            .flatten()
+            .and_then(|v| v.to_str())
+            .and_then(|v| v.parse().ok())
         {
             if get_system_time()? < Duration::from_millis(extension) {
                 path = glob_path;

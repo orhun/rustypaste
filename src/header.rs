@@ -11,7 +11,7 @@ pub const EXPIRE: &str = "expire";
 
 /// Parses the expiry date from the [`custom HTTP header`](EXPIRE).
 pub fn parse_expiry_date(headers: &HeaderMap) -> Result<Option<u128>, ActixError> {
-    if let Some(expire_time) = headers.get(EXPIRE).map(|v| v.to_str().ok()).flatten() {
+    if let Some(expire_time) = headers.get(EXPIRE).and_then(|v| v.to_str().ok()) {
         let timestamp = util::get_system_time()?;
         let expire_time =
             humantime::parse_duration(expire_time).map_err(error::ErrorInternalServerError)?;
@@ -57,8 +57,7 @@ impl ContentDisposition {
             .parameters
             .iter()
             .find(|param| param.is_filename())
-            .map(|param| param.as_filename())
-            .flatten()
+            .and_then(|param| param.as_filename())
             .filter(|file_name| !file_name.is_empty())
             .ok_or_else(|| error::ErrorBadRequest("file data not present"))
     }

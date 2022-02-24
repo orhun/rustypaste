@@ -25,8 +25,7 @@ pub fn get_mime_type(
     let path = PathBuf::from(&file_name);
     let mut mime_type = file_extension_to_mime(
         path.extension()
-            .map(|v| v.to_str())
-            .flatten()
+            .and_then(|v| v.to_str())
             .unwrap_or_default(),
     );
     for matcher in mime_matchers {
