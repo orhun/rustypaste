@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ```toml
 [server]
-auth_token=hunter2
+auth_token="hunter2"
 ```
 
 ## [0.6.2] - 2021-12-05
