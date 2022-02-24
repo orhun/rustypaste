@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2022-02-24
+### Added
+- Support setting the authentication token in the configuration file.
+  - This is an alternative (but not recommended) way of setting up authentication when the use of `AUTH_TOKEN` environment variable is not applicable.
+
+```toml
+[server]
+auth_token=hunter2
+```
+
 ## [0.6.2] - 2021-12-05
 ### Updated
 - Improve the concurrency
