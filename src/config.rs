@@ -46,11 +46,11 @@ pub struct PasteConfig {
 impl Config {
     /// Parses the config file and returns the values.
     pub fn parse(path: &Path) -> Result<Config, ConfigError> {
-        let mut config = config::Config::default();
-        config
-            .merge(config::File::from(path))?
-            .merge(config::Environment::new().separator("__"))?;
-        config.try_into()
+        config::Config::builder()
+            .add_source(config::File::from(path))
+            .add_source(config::Environment::default().separator("__"))
+            .build()?
+            .try_deserialize()
     }
 }
 
