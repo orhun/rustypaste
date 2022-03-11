@@ -1,10 +1,8 @@
 use crate::util;
 use actix_web::http::header::{
-    ContentDisposition as ActixContentDisposition, DispositionParam, DispositionType,
+    ContentDisposition as ActixContentDisposition, DispositionParam, DispositionType, HeaderMap,
 };
-use actix_web::http::HeaderMap;
 use actix_web::{error, Error as ActixError};
-use std::convert::TryFrom;
 
 /// Custom HTTP header for expiry dates.
 pub const EXPIRE: &str = "expire";
@@ -30,12 +28,10 @@ pub struct ContentDisposition {
     inner: ActixContentDisposition,
 }
 
-impl TryFrom<Option<ActixContentDisposition>> for ContentDisposition {
-    type Error = ActixError;
-    fn try_from(content_disposition: Option<ActixContentDisposition>) -> Result<Self, Self::Error> {
-        match content_disposition {
-            Some(inner) => Ok(Self { inner }),
-            None => Err(error::ErrorBadRequest("content disposition does not exist")),
+impl From<ActixContentDisposition> for ContentDisposition {
+    fn from(content_disposition: ActixContentDisposition) -> Self {
+        Self {
+            inner: content_disposition,
         }
     }
 }

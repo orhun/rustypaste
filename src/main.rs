@@ -1,6 +1,6 @@
-use actix_web::client::ClientBuilder;
 use actix_web::middleware::Logger;
 use actix_web::{App, HttpServer};
+use awc::ClientBuilder;
 use hotwatch::{Event, Hotwatch};
 use rustypaste::config::Config;
 use rustypaste::paste::PasteType;
@@ -67,7 +67,7 @@ async fn main() -> IoResult<()> {
 
     // Create a HTTP server.
     let mut http_server = HttpServer::new(move || {
-        let http_client = ClientBuilder::default()
+        let http_client = ClientBuilder::new()
             .timeout(
                 server_config
                     .timeout
@@ -76,8 +76,8 @@ async fn main() -> IoResult<()> {
             .disable_redirects()
             .finish();
         App::new()
-            .data(Arc::clone(&config))
-            .data(http_client)
+            .app_data(Arc::clone(&config))
+            .app_data(http_client)
             .wrap(Logger::default())
             .configure(server::configure_routes)
     })

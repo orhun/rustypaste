@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::file::Directory;
 use crate::header::ContentDisposition;
 use crate::util;
-use actix_web::client::Client;
 use actix_web::{error, Error};
+use awc::Client;
 use std::convert::{TryFrom, TryInto};
 use std::fs::{self, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
@@ -166,14 +166,23 @@ impl Paste {
             .and_then(|segments| segments.last())
             .and_then(|name| if name.is_empty() { None } else { Some(name) })
             .unwrap_or("file");
-        let mut response = client.get(url.as_str()).send().await?;
+        let mut response = client
+            .get(url.as_str())
+            .send()
+            .await
+            .map_err(error::ErrorInternalServerError)?;
         let payload_limit = config
             .server
             .max_content_length
             .get_bytes()
             .try_into()
             .map_err(error::ErrorInternalServerError)?;
-        let bytes = response.body().limit(payload_limit).await?.to_vec();
+        let bytes = response
+            .body()
+            .limit(payload_limit)
+            .await
+            .map_err(error::ErrorInternalServerError)?
+            .to_vec();
         let bytes_checksum = util::sha256_digest(&*bytes)?;
         self.data = bytes;
         if !config.paste.duplicate_files.unwrap_or(true) && expiry_date.is_none() {
@@ -222,8 +231,8 @@ mod tests {
     use super::*;
     use crate::random::{RandomURLConfig, RandomURLType};
     use crate::util;
-    use actix_web::client::Client;
     use actix_web::web::Data;
+    use awc::Client;
     use byte_unit::Byte;
     use std::env;
 
