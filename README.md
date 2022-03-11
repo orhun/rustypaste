@@ -65,7 +65,7 @@ The standalone command line tool (`rpaste`) is available [here](https://github.c
 
 ```sh
 function rpaste() {
-    curl -F "file=@$1" -H "Authorization: <auth_token>" "<server_address>"
+  curl -F "file=@$1" -H "Authorization: <auth_token>" "<server_address>"
 }
 ```
 
