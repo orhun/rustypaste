@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2022-03-11
+### Added
+- Support setting the refresh rate for hot-reloading the configuration file.
+
+```toml
+[config]
+refresh_rate="1s"
+```
+
+- Support setting the timeout for HTTP requests.
+
+```toml
+[server]
+timeout="30s"
+```
+
+### Security
+- Bump [regex crate](https://github.com/rust-lang/regex) to **1.5.5**
+  - Fixes [CVE-2022-24713](https://github.com/advisories/GHSA-m5pq-gvj9-9vr8)
+
 ## [0.6.3] - 2022-02-24
 ### Added
 - Support setting the authentication token in the configuration file.
