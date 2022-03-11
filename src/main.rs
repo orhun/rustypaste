@@ -68,7 +68,11 @@ async fn main() -> IoResult<()> {
     // Create a HTTP server.
     let mut http_server = HttpServer::new(move || {
         let http_client = ClientBuilder::default()
-            .timeout(Duration::from_secs(30))
+            .timeout(
+                server_config
+                    .timeout
+                    .unwrap_or_else(|| Duration::from_secs(30)),
+            )
             .disable_redirects()
             .finish();
         App::new()

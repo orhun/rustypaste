@@ -6,6 +6,7 @@ address="127.0.0.1:8000"
 #workers=4
 max_content_length="10MB"
 upload_path="./upload"
+timeout="30s"
 
 [paste]
 random_url = { enabled = true, type = "petname", words = 2, separator = "-" }

@@ -35,6 +35,9 @@ pub struct ServerConfig {
     pub max_content_length: Byte,
     /// Storage path.
     pub upload_path: PathBuf,
+    /// Request timeout.
+    #[serde(default, with = "humantime_serde")]
+    pub timeout: Option<Duration>,
     /// Authentication token.
     pub auth_token: Option<String>,
 }
