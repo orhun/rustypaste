@@ -25,9 +25,9 @@ rand = "0.8.5"
 dotenv = "0.15.0"
 url = "2.2.2"
 mime = "0.3.16"
-regex = "1.5.4"
+regex = "1.5.5"
 serde_regex = "1.1.0"
-lazy-regex = "2.2.1"
+lazy-regex = "2.3.0"
 humantime = "2.1.0"
 humantime-serde = "1.1.1"
 glob = "0.3.0"
@@ -40,7 +40,7 @@ default-features = false
 features = ["toml", "yaml"]
 
 [dependencies.byte-unit]
-version = "4.0.13"
+version = "4.0.14"
 features = ["serde"]
 
 [dependencies.infer]
