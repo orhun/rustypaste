@@ -21,11 +21,8 @@ async fn main() -> IoResult<()> {
     dotenv::dotenv().ok();
     let config_path =
         PathBuf::from(env::var("CONFIG").unwrap_or_else(|_| String::from("config.toml")));
-    let config = Arc::new(RwLock::new(
-        Config::parse(&config_path).expect("failed to parse config"),
-    ));
-    let cloned_config = Arc::clone(&config);
-    let server_config = config.read().expect("cannot acquire config").server.clone();
+    let config = Config::parse(&config_path).expect("failed to parse config");
+    let server_config = config.server.clone();
 
     // Create necessary directories.
     fs::create_dir_all(&server_config.upload_path)?;
@@ -34,10 +31,18 @@ async fn main() -> IoResult<()> {
     }
 
     // Set up a watcher for the configuration file changes.
-    let mut hotwatch = Hotwatch::new_with_custom_delay(Duration::from_secs(1))
-        .expect("failed to initialize configuration file watcher");
+    let mut hotwatch = Hotwatch::new_with_custom_delay(
+        config
+            .config
+            .as_ref()
+            .map(|v| v.refresh_rate)
+            .unwrap_or_else(|| Duration::from_secs(1)),
+    )
+    .expect("failed to initialize configuration file watcher");
 
     // Hot-reload the configuration file.
+    let config = Arc::new(RwLock::new(config));
+    let cloned_config = Arc::clone(&config);
     let config_watcher = move |event: Event| {
         if let Event::Write(path) = event {
             match Config::parse(&path) {

@@ -3,14 +3,25 @@ use crate::random::RandomURLConfig;
 use byte_unit::Byte;
 use config::{self, ConfigError};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// Configuration values.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
+    /// Configuration settings.
+    pub config: Option<Settings>,
     /// Server configuration.
     pub server: ServerConfig,
     /// Paste configuration.
     pub paste: PasteConfig,
+}
+
+/// General settings for configuration.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct Settings {
+    /// Refresh rate of the configuration file.
+    #[serde(with = "humantime_serde")]
+    pub refresh_rate: Duration,
 }
 
 /// Server configuration.
