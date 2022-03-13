@@ -45,6 +45,12 @@ some text
 cargo install rustypaste
 ```
 
+### Arch Linux
+
+```sh
+pacman -S rustypaste
+```
+
 ### Binary releases
 
 See the available binaries on [releases](https://github.com/orhun/rustypaste/releases/) page.
