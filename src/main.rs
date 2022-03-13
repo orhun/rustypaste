@@ -12,6 +12,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
+/// Environment variable for setting the configuration file path.
+const CONFIG_ENV: &str = "CONFIG";
+
 #[actix_web::main]
 async fn main() -> IoResult<()> {
     // Initialize logger.
@@ -19,8 +22,13 @@ async fn main() -> IoResult<()> {
 
     // Parse configuration.
     dotenv::dotenv().ok();
-    let config_path =
-        PathBuf::from(env::var("CONFIG").unwrap_or_else(|_| String::from("config.toml")));
+    let config_path = match env::var(CONFIG_ENV).ok() {
+        Some(path) => {
+            env::remove_var(CONFIG_ENV);
+            PathBuf::from(path)
+        }
+        None => PathBuf::from("config.toml"),
+    };
     let config = Config::parse(&config_path).expect("failed to parse config");
     let server_config = config.server.clone();
 
@@ -33,7 +41,7 @@ async fn main() -> IoResult<()> {
     // Set up a watcher for the configuration file changes.
     let mut hotwatch = Hotwatch::new_with_custom_delay(
         config
-            .config
+            .settings
             .as_ref()
             .map(|v| v.refresh_rate)
             .unwrap_or_else(|| Duration::from_secs(1)),
