@@ -9,7 +9,8 @@ use std::time::Duration;
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     /// Configuration settings.
-    pub config: Option<Settings>,
+    #[serde(rename = "config")]
+    pub settings: Option<Settings>,
     /// Server configuration.
     pub server: ServerConfig,
     /// Paste configuration.
