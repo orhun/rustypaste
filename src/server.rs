@@ -14,7 +14,7 @@ use futures_util::stream::StreamExt;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 /// Shows the landing page.
 #[get("/")]
@@ -29,7 +29,7 @@ async fn index() -> impl Responder {
 async fn serve(
     request: HttpRequest,
     file: web::Path<String>,
-    config: web::Data<Arc<RwLock<Config>>>,
+    config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
     let config = config
         .read()
@@ -85,7 +85,7 @@ async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
     client: web::Data<Client>,
-    config: web::Data<Arc<RwLock<Config>>>,
+    config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.peer_addr().unwrap_or("unknown host");

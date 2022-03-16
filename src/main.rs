@@ -1,4 +1,5 @@
 use actix_web::middleware::Logger;
+use actix_web::web::Data;
 use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
 use hotwatch::{Event, Hotwatch};
@@ -9,7 +10,7 @@ use std::env;
 use std::fs;
 use std::io::Result as IoResult;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 use std::time::Duration;
 
 /// Environment variable for setting the configuration file path.
@@ -49,8 +50,8 @@ async fn main() -> IoResult<()> {
     .expect("failed to initialize configuration file watcher");
 
     // Hot-reload the configuration file.
-    let config = Arc::new(RwLock::new(config));
-    let cloned_config = Arc::clone(&config);
+    let config = Data::new(RwLock::new(config));
+    let cloned_config = Data::clone(&config);
     let config_watcher = move |event: Event| {
         if let Event::Write(path) = event {
             match Config::parse(&path) {
@@ -84,8 +85,8 @@ async fn main() -> IoResult<()> {
             .disable_redirects()
             .finish();
         App::new()
-            .app_data(Arc::clone(&config))
-            .app_data(http_client)
+            .app_data(Data::clone(&config))
+            .app_data(Data::new(http_client))
             .wrap(Logger::default())
             .configure(server::configure_routes)
     })
