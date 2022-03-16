@@ -50,10 +50,12 @@ async fn serve(
             }
         }
     }
+    if !path.is_file() || !path.exists() {
+        return Err(error::ErrorNotFound("file is not found or expired :("));
+    }
     match paste_type {
         PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
-            let response = NamedFile::open(&path)
-                .map_err(|_| error::ErrorNotFound("file is not found or expired :("))?
+            let response = NamedFile::open(&path)?
                 .disable_content_disposition()
                 .set_content_type(
                     mime::get_mime_type(&config.paste.mime_override, file.to_string())
