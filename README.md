@@ -99,17 +99,6 @@ $ curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
 $ curl -F "oneshot=@x.txt" "<server_address>"
 ```
 
-#### Cleaning up expired files
-
-```sh
-#!/bin/env sh
-now=$(date +%s)
-find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" |
-while read -r filename; do
-	[ "$(( ${filename##*.} / 1000 - "${now}" ))" -lt 0 ] && rm -v "${filename}"
-done
-```
-
 #### URL shortening
 
 ```sh
@@ -120,6 +109,17 @@ $ curl -F "url=https://example.com/some/long/url" "<server_address>"
 
 ```sh
 $ curl -F "remote=https://example.com/file.png" "<server_address>"
+```
+
+#### Cleaning up expired files
+
+```sh
+#!/bin/env sh
+now=$(date +%s)
+find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" |
+while read -r filename; do
+	[ "$(( ${filename##*.} / 1000 - "${now}" ))" -lt 0 ] && rm -v "${filename}"
+done
 ```
 
 ### Server
