@@ -1,10 +1,8 @@
 use crate::util;
 use actix_web::http::header::{
-    ContentDisposition as ActixContentDisposition, DispositionParam, DispositionType,
+    ContentDisposition as ActixContentDisposition, DispositionParam, DispositionType, HeaderMap,
 };
-use actix_web::http::HeaderMap;
 use actix_web::{error, Error as ActixError};
-use std::convert::TryFrom;
 
 /// Custom HTTP header for expiry dates.
 pub const EXPIRE: &str = "expire";
@@ -30,12 +28,10 @@ pub struct ContentDisposition {
     inner: ActixContentDisposition,
 }
 
-impl TryFrom<Option<ActixContentDisposition>> for ContentDisposition {
-    type Error = ActixError;
-    fn try_from(content_disposition: Option<ActixContentDisposition>) -> Result<Self, Self::Error> {
-        match content_disposition {
-            Some(inner) => Ok(Self { inner }),
-            None => Err(error::ErrorBadRequest("content disposition does not exist")),
+impl From<ActixContentDisposition> for ContentDisposition {
+    fn from(content_disposition: ActixContentDisposition) -> Self {
+        Self {
+            inner: content_disposition,
         }
     }
 }
@@ -66,31 +62,29 @@ impl ContentDisposition {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::http::{HeaderName, HeaderValue};
+    use actix_web::http::header::{HeaderName, HeaderValue};
     use std::thread;
     use std::time::Duration;
 
     #[test]
     fn test_content_disposition() -> Result<(), ActixError> {
-        assert!(ContentDisposition::try_from(None).is_err());
-
-        let actix_content_disposition = Some(ActixContentDisposition {
+        let actix_content_disposition = ActixContentDisposition {
             disposition: DispositionType::FormData,
             parameters: vec![
                 DispositionParam::Name(String::from("file")),
                 DispositionParam::Filename(String::from("x.txt")),
             ],
-        });
-        let content_disposition = ContentDisposition::try_from(actix_content_disposition)?;
+        };
+        let content_disposition = ContentDisposition::from(actix_content_disposition);
         assert!(content_disposition.has_form_field("file"));
         assert!(!content_disposition.has_form_field("test"));
         assert_eq!("x.txt", content_disposition.get_file_name()?);
 
-        let actix_content_disposition = Some(ActixContentDisposition {
+        let actix_content_disposition = ActixContentDisposition {
             disposition: DispositionType::Attachment,
             parameters: vec![DispositionParam::Name(String::from("file"))],
-        });
-        let content_disposition = ContentDisposition::try_from(actix_content_disposition)?;
+        };
+        let content_disposition = ContentDisposition::from(actix_content_disposition);
         assert!(!content_disposition.has_form_field("file"));
         assert!(content_disposition.get_file_name().is_err());
         Ok(())

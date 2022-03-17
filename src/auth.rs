@@ -1,5 +1,4 @@
-use actix_web::http::header::AUTHORIZATION;
-use actix_web::http::HeaderMap;
+use actix_web::http::header::{HeaderMap, AUTHORIZATION};
 use actix_web::{error, Error};
 
 /// Checks the authorization header for the specified token.
@@ -28,7 +27,7 @@ pub fn check(host: &str, headers: &HeaderMap, token: Option<String>) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::http::HeaderValue;
+    use actix_web::http::header::HeaderValue;
 
     #[test]
     fn test_check_auth() -> Result<(), Error> {

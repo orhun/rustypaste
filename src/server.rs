@@ -7,20 +7,20 @@ use crate::paste::{Paste, PasteType};
 use crate::util;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
-use actix_web::client::Client;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Responder};
+use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 /// Shows the landing page.
 #[get("/")]
 async fn index() -> impl Responder {
     HttpResponse::Found()
-        .header("Location", env!("CARGO_PKG_HOMEPAGE"))
+        .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
         .finish()
 }
 
@@ -29,7 +29,7 @@ async fn index() -> impl Responder {
 async fn serve(
     request: HttpRequest,
     file: web::Path<String>,
-    config: web::Data<Arc<RwLock<Config>>>,
+    config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
     let config = config
         .read()
@@ -62,7 +62,7 @@ async fn serve(
                         .map_err(error::ErrorInternalServerError)?,
                 )
                 .prefer_utf8(true)
-                .into_response(&request)?;
+                .into_response(&request);
             if paste_type.is_oneshot() {
                 fs::rename(
                     &path,
@@ -76,7 +76,7 @@ async fn serve(
             Ok(response)
         }
         PasteType::Url => Ok(HttpResponse::Found()
-            .header("Location", fs::read_to_string(&path)?)
+            .append_header(("Location", fs::read_to_string(&path)?))
             .finish()),
     }
 }
@@ -87,10 +87,10 @@ async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
     client: web::Data<Client>,
-    config: web::Data<Arc<RwLock<Config>>>,
+    config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
-    let host = connection.remote_addr().unwrap_or("unknown host");
+    let host = connection.peer_addr().unwrap_or("unknown host");
     auth::check(
         host,
         request.headers(),
@@ -106,7 +106,7 @@ async fn upload(
     let mut urls: Vec<String> = Vec::new();
     while let Some(item) = payload.next().await {
         let mut field = item?;
-        let content = ContentDisposition::try_from(field.content_disposition())?;
+        let content = ContentDisposition::from(field.content_disposition().clone());
         if let Ok(paste_type) = PasteType::try_from(&content) {
             let mut bytes = Vec::<u8>::new();
             while let Some(chunk) = field.next().await {
@@ -212,16 +212,18 @@ mod tests {
     use super::*;
     use actix_web::{http, test, App};
 
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_index() {
         let mut app = test::init_service(App::new().service(index)).await;
-        let req = test::TestRequest::with_header("content-type", "text/plain").to_request();
+        let req = test::TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
         let resp = test::call_service(&mut app, req).await;
         assert!(resp.status().is_redirection());
         assert_eq!(http::StatusCode::FOUND, resp.status());
     }
 
-    #[actix_rt::test]
+    #[actix_web::test]
     async fn test_serve() {
         let mut app = test::init_service(App::new().service(serve)).await;
         let req = test::TestRequest::default().to_request();
