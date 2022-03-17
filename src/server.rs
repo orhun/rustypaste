@@ -5,6 +5,7 @@ use crate::header::{self, ContentDisposition};
 use crate::mime;
 use crate::paste::{Paste, PasteType};
 use crate::util;
+use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Responder};
@@ -94,7 +95,7 @@ async fn upload(
     auth::check(
         host,
         request.headers(),
-        env::var("AUTH_TOKEN").ok().or(config
+        env::var(AUTH_TOKEN_ENV).ok().or(config
             .read()
             .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
             .server

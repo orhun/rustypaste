@@ -27,3 +27,9 @@ pub mod mime;
 
 /// Helper functions.
 pub mod util;
+
+/// Environment variable for setting the configuration file path.
+pub const CONFIG_ENV: &str = "CONFIG";
+
+/// Environment variable for setting the authentication token.
+pub const AUTH_TOKEN_ENV: &str = "AUTH_TOKEN";

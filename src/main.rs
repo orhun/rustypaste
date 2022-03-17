@@ -6,15 +6,13 @@ use hotwatch::{Event, Hotwatch};
 use rustypaste::config::Config;
 use rustypaste::paste::PasteType;
 use rustypaste::server;
+use rustypaste::CONFIG_ENV;
 use std::env;
 use std::fs;
 use std::io::Result as IoResult;
 use std::path::PathBuf;
 use std::sync::RwLock;
 use std::time::Duration;
-
-/// Environment variable for setting the configuration file path.
-const CONFIG_ENV: &str = "CONFIG";
 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
