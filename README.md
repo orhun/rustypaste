@@ -100,14 +100,13 @@ $ curl -F "oneshot=@x.txt" "<server_address>"
 ```
 
 #### Cleaning up expired files
-Change `/path/to/rusty` to your rustypaste folder and put this script in the `cron`.
 
 ```sh
 #!/bin/env sh
 now=$(date +%s)
-find /path/to/rusty/ -maxdepth 2 -type f -iname "*.[0-9]*" |
-while read filename; do
-	[ "$(( ${filename##*.} / 1000 - ${now} ))" -lt 0 ] && rm ${filename}
+find upload/ -maxdepth 2 -type f -iname "*.[0-9]*" |
+while read -r filename; do
+	[ "$(( ${filename##*.} / 1000 - "${now}" ))" -lt 0 ] && rm -v "${filename}"
 done
 ```
 
