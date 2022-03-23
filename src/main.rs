@@ -6,12 +6,14 @@ use hotwatch::{Event, Hotwatch};
 use rustypaste::config::Config;
 use rustypaste::paste::PasteType;
 use rustypaste::server;
+use rustypaste::util;
 use rustypaste::CONFIG_ENV;
 use std::env;
 use std::fs;
 use std::io::Result as IoResult;
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::{mpsc, RwLock};
+use std::thread;
 use std::time::Duration;
 
 #[actix_web::main]
@@ -30,6 +32,8 @@ async fn main() -> IoResult<()> {
     };
     let config = Config::parse(&config_path).expect("failed to parse config");
     let server_config = config.server.clone();
+    let paste_config = RwLock::new(config.paste.clone());
+    let (config_sender, config_receiver) = mpsc::channel::<Config>();
 
     // Create necessary directories.
     fs::create_dir_all(&server_config.upload_path)?;
@@ -55,15 +59,18 @@ async fn main() -> IoResult<()> {
             match Config::parse(&path) {
                 Ok(config) => match cloned_config.write() {
                     Ok(mut cloned_config) => {
-                        *cloned_config = config;
+                        *cloned_config = config.clone();
                         log::info!("Configuration has been updated.");
+                        if let Err(e) = config_sender.send(config) {
+                            log::error!("Failed to send config for the cleanup routine: {}", e)
+                        }
                     }
                     Err(e) => {
-                        log::error!("Failed to acquire configuration: {}", e);
+                        log::error!("Failed to acquire config: {}", e);
                     }
                 },
                 Err(e) => {
-                    log::error!("Failed to update configuration: {}", e);
+                    log::error!("Failed to update config: {}", e);
                 }
             }
         }
@@ -72,7 +79,43 @@ async fn main() -> IoResult<()> {
         .watch(&config_path, config_watcher)
         .unwrap_or_else(|_| panic!("failed to watch {:?}", config_path));
 
-    // Create a HTTP server.
+    // Create a thread for cleaning up expired files.
+    thread::spawn(move || loop {
+        let mut enabled = false;
+        if let Some(ref cleanup_config) = paste_config
+            .read()
+            .ok()
+            .and_then(|v| v.delete_expired_files.clone())
+        {
+            if cleanup_config.enabled {
+                log::debug!("Running cleanup...");
+                for file in util::get_expired_files(&server_config.upload_path) {
+                    match fs::remove_file(&file) {
+                        Ok(()) => log::info!("Removed expired file: {:?}", file),
+                        Err(e) => log::error!("Cannot remove expired file: {}", e),
+                    }
+                }
+                thread::sleep(cleanup_config.interval);
+            }
+            enabled = cleanup_config.enabled;
+        }
+        if let Some(new_config) = if enabled {
+            config_receiver.try_recv().ok()
+        } else {
+            config_receiver.recv().ok()
+        } {
+            match paste_config.write() {
+                Ok(mut paste_config) => {
+                    *paste_config = new_config.paste;
+                }
+                Err(e) => {
+                    log::error!("Failed to update config for the cleanup routine: {}", e);
+                }
+            }
+        }
+    });
+
+    // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
         let http_client = ClientBuilder::new()
             .timeout(

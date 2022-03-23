@@ -56,6 +56,18 @@ pub struct PasteConfig {
     pub mime_blacklist: Vec<String>,
     /// Allow duplicate uploads
     pub duplicate_files: Option<bool>,
+    /// Delete expired files.
+    pub delete_expired_files: Option<CleanupConfig>,
+}
+
+/// Cleanup configuration.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct CleanupConfig {
+    /// Enable cleaning up.
+    pub enabled: bool,
+    /// Interval between clean-ups.
+    #[serde(default, with = "humantime_serde")]
+    pub interval: Duration,
 }
 
 impl Config {

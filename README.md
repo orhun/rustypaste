@@ -20,6 +20,7 @@ some text
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
   - supports expiring links
+    - auto-deletion of expired files (optional)
   - supports one shot links (can only be viewed once)
   - guesses MIME types
     - supports overriding and blacklisting
@@ -112,6 +113,10 @@ $ curl -F "remote=https://example.com/file.png" "<server_address>"
 ```
 
 #### Cleaning up expired files
+
+Configure `delete_expired_files` to set an interval for deleting the expired files automatically.
+
+On the other hand, following script can be used as [cron](https://en.wikipedia.org/wiki/Cron) for cleaning up the expired files manually:
 
 ```sh
 #!/bin/env sh

@@ -1,9 +1,10 @@
+use crate::paste::PasteType;
 use actix_web::{error, Error as ActixError};
 use glob::glob;
 use lazy_regex::{lazy_regex, Lazy, Regex};
 use ring::digest::{Context, SHA256};
 use std::io::{BufReader, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -50,6 +51,30 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
     Ok(path)
 }
 
+/// Returns the found expired files in the possible upload locations.
+///
+/// Fail-safe, omits errors.
+pub fn get_expired_files(base_path: &Path) -> Vec<PathBuf> {
+    [PasteType::File, PasteType::Oneshot, PasteType::Url]
+        .into_iter()
+        .filter_map(|v| glob(&v.get_path(base_path).join("*.[0-9]*").to_string_lossy()).ok())
+        .flat_map(|glob| glob.filter_map(|v| v.ok()).collect::<Vec<PathBuf>>())
+        .filter(|path| {
+            if let Some(extension) = path
+                .extension()
+                .and_then(|v| v.to_str())
+                .and_then(|v| v.parse().ok())
+            {
+                get_system_time()
+                    .map(|system_time| system_time > Duration::from_millis(extension))
+                    .unwrap_or(false)
+            } else {
+                false
+            }
+        })
+        .collect()
+}
+
 /// Returns the SHA256 digest of the given input.
 pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
     let mut reader = BufReader::new(input);
@@ -76,6 +101,7 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
     use std::fs;
     use std::thread;
     #[test]
@@ -89,16 +115,16 @@ mod tests {
     #[test]
     fn test_glob_match() -> Result<(), ActixError> {
         let path = PathBuf::from(format!(
-            "expired.file.{}",
+            "expired.file1.{}",
             get_system_time()?.as_millis() + 50
         ));
         fs::write(&path, String::new())?;
-        assert_eq!(path, glob_match_file(PathBuf::from("expired.file"))?);
+        assert_eq!(path, glob_match_file(PathBuf::from("expired.file1"))?);
 
         thread::sleep(Duration::from_millis(75));
         assert_eq!(
-            PathBuf::from("expired.file"),
-            glob_match_file(PathBuf::from("expired.file"))?
+            PathBuf::from("expired.file1"),
+            glob_match_file(PathBuf::from("expired.file1"))?
         );
         fs::remove_file(path)?;
 
@@ -115,6 +141,23 @@ mod tests {
             "2fc36f72540bb9145e95e67c41dccdc440c95173257032e32e111ebd7b6df960",
             sha256_digest(env!("CARGO_PKG_NAME").as_bytes())?
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_expired_files() -> Result<(), ActixError> {
+        let current_dir = env::current_dir()?;
+        let expiration_time = get_system_time()?.as_millis() + 50;
+        let path = PathBuf::from(format!("expired.file2.{}", expiration_time));
+        fs::write(&path, String::new())?;
+        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
+        thread::sleep(Duration::from_millis(75));
+        assert_eq!(
+            vec![current_dir.join(&path)],
+            get_expired_files(&current_dir)
+        );
+        fs::remove_file(path)?;
+        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
         Ok(())
     }
 }
