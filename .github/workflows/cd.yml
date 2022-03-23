@@ -30,7 +30,9 @@ jobs:
           target: ${{ matrix.TARGET }}
           override: true
       - name: Build
-        run: cargo build --release --locked --target ${{ matrix.TARGET }}
+        run: |
+          cargo build --release --locked --target ${{ matrix.TARGET }}
+          strip target/${{ matrix.TARGET }}/release/rustypaste
       - name: Prepare release assets
         run: |
           mkdir release/
