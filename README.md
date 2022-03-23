@@ -64,6 +64,13 @@ cd rustypaste/
 cargo build --release
 ```
 
+#### Testing
+
+```sh
+# run unit tests
+cargo test -- --test-threads 1
+```
+
 ## Usage
 
 The standalone command line tool (`rpaste`) is available [here](https://github.com/orhun/rustypaste-cli).
