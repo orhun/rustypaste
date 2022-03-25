@@ -1,0 +1,31 @@
+[Unit]
+Description=Rustypaste server
+After=network-online.target
+Wants=network-online.target systemd-networkd-wait-online.service
+
+[Service]
+User=rustypaste
+Group=rustypaste
+ExecStart=/usr/bin/rustypaste
+ReadWritePaths=/var/lib/rustypaste
+ReadOnlyPaths=/etc/rustypaste
+
+WorkingDirectory=/var/lib/rustypaste
+Environment="CONFIG=/etc/rustypaste/config.toml"
+EnvironmentFile=/etc/rustypaste/rustypaste.env
+
+# Hardening options
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+PrivateTmp=true
+PrivateDevices=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
