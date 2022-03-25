@@ -18,7 +18,7 @@ actix-multipart = "0.4.0"
 actix-files = "0.6.0"
 awc = { version = "3.0.0", features = ["rustls"] }
 env_logger = "0.9.0"
-log = "0.4.14"
+log = "0.4.16"
 serde = "1.0.136"
 futures-util = "0.3.21"
 petname = "1.1.2"
