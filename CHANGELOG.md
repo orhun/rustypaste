@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2022-03-26
+### Added
+- Support auto-deletion of expired files
+
+`rustypaste` can now delete the expired files by itself. To enable this feature, add the following line to the `[paste]` section in the configuration file:
+
+```toml
+# expired files will be cleaned up hourly
+delete_expired_files = { enabled = true, interval = "1h" }
+```
+
+For users who want to have this feature disabled, there is an alternative [shell script](README.md#cleaning-up-expired-files) recommended in the documentation.
+
+- Add systemd service files
+  - [systemd files](./extra/systemd/) have been added to serve files from `/var/lib/rustypaste`, create `rustypaste` user automatically via `systemd-sysusers` and configure `AUTH_TOKEN` via `rustypaste.env`.
+  - For the installation and usage, see the Arch Linux [PKGBUILD](https://github.com/archlinux/svntogit-community/blob/packages/rustypaste/trunk/PKGBUILD).
+
+### Updated
+- Upgrade Actix dependencies
+  - `actix-web` is updated to [`4.0.*`](https://github.com/actix/actix-web/blob/master/actix-web/CHANGES.md#401---2022-02-25)
+- Strip the binaries during automated builds
+  - Size of the Docker image is reduced by ~20%
+
+### Fixed
+- Prevent invalid attempts of serving directories
+  - This fixes an issue where requesting a directory was possible via e.g. `curl --path-as-is 0.0.0.0:8080/.`
+  - This issue had no security impact (path traversal wasn't possible) since internal server error was returned.
+
 ## [0.6.5] - 2022-03-13
 ### Added
 - Add instructions for installing [rustypaste](https://archlinux.org/packages/community/x86_64/rustypaste/) on Arch Linux
