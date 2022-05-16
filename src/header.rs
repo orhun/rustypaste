@@ -97,7 +97,7 @@ mod tests {
             HeaderName::from_static(EXPIRE),
             HeaderValue::from_static("5ms"),
         );
-        let expiry_time = parse_expiry_date(&headers)?.unwrap();
+        let expiry_time = parse_expiry_date(&headers)?.unwrap_or_default();
         assert!(expiry_time > util::get_system_time()?.as_millis());
         thread::sleep(Duration::from_millis(10));
         assert!(expiry_time < util::get_system_time()?.as_millis());

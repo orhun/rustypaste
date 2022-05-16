@@ -47,7 +47,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_match_mime_type() {
+    fn test_match_mime_type() -> Result<(), FromStrError> {
         assert_eq!(
             mime::TEXT_PLAIN,
             get_mime_type(
@@ -56,8 +56,7 @@ mod tests {
                     regex: Regex::new("^.*\\.test$").ok(),
                 }],
                 String::from("mime.test")
-            )
-            .unwrap()
+            )?
         );
         assert_eq!(
             mime::IMAGE_PNG,
@@ -67,16 +66,16 @@ mod tests {
                     regex: Regex::new("^.*\\.PNG$").ok(),
                 }],
                 String::from("image.PNG")
-            )
-            .unwrap()
+            )?
         );
         assert_eq!(
             mime::APPLICATION_PDF,
-            get_mime_type(&[], String::from("book.pdf")).unwrap()
+            get_mime_type(&[], String::from("book.pdf"))?
         );
         assert_eq!(
             mime::APPLICATION_OCTET_STREAM,
-            get_mime_type(&[], String::from("x.unknown")).unwrap()
+            get_mime_type(&[], String::from("x.unknown"))?
         );
+        Ok(())
     }
 }

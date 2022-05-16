@@ -66,8 +66,10 @@ mod tests {
             type_: RandomURLType::PetName,
             ..RandomURLConfig::default()
         };
-        let random_url = random_config.generate().unwrap();
-        assert_eq!(3, random_url.split("~").collect::<Vec<&str>>().len());
+        let random_url = random_config
+            .generate()
+            .expect("cannot generate random URL");
+        assert_eq!(3, random_url.split('~').count());
 
         let random_config = RandomURLConfig {
             enabled: true,
@@ -75,7 +77,9 @@ mod tests {
             type_: RandomURLType::Alphanumeric,
             ..RandomURLConfig::default()
         };
-        let random_url = random_config.generate().unwrap();
+        let random_url = random_config
+            .generate()
+            .expect("cannot generate random URL");
         assert_eq!(21, random_url.len());
 
         let random_config = RandomURLConfig {

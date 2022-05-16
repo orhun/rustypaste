@@ -220,11 +220,11 @@ mod tests {
 
     #[actix_web::test]
     async fn test_index() {
-        let mut app = test::init_service(App::new().service(index)).await;
+        let app = test::init_service(App::new().service(index)).await;
         let request = TestRequest::default()
             .insert_header(("content-type", "text/plain"))
             .to_request();
-        let resp = test::call_service(&mut app, request).await;
+        let resp = test::call_service(&app, request).await;
         assert!(resp.status().is_redirection());
         assert_eq!(http::StatusCode::FOUND, resp.status());
     }
@@ -249,17 +249,17 @@ mod tests {
             .set_payload(multipart_data)
     }
 
-    async fn assert_body(response: ServiceResponse, expected: &str) {
+    async fn assert_body(response: ServiceResponse, expected: &str) -> Result<(), Error> {
         assert_eq!(http::StatusCode::OK, response.status());
         let body = response.into_body();
-        match body.size() {
-            BodySize::Sized(size) => {
-                assert_eq!(size, expected.as_bytes().len() as u64);
-                let body_bytes = actix_web::body::to_bytes(body).await.unwrap();
-                let body_text = str::from_utf8(&body_bytes).unwrap();
-                assert_eq!(expected, body_text);
-            }
-            _ => {}
+        if let BodySize::Sized(size) = body.size() {
+            assert_eq!(size, expected.as_bytes().len() as u64);
+            let body_bytes = actix_web::body::to_bytes(body).await?;
+            let body_text = str::from_utf8(&body_bytes)?;
+            assert_eq!(expected, body_text);
+            Ok(())
+        } else {
+            Err(error::ErrorInternalServerError("unexpected body type"))
         }
     }
 
@@ -269,7 +269,7 @@ mod tests {
         config.server.upload_path = env::current_dir()?;
         config.server.max_content_length = Byte::from_bytes(100);
 
-        let mut app = test::init_service(
+        let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
                 .app_data(Data::new(Client::default()))
@@ -281,25 +281,25 @@ mod tests {
         let file_name = "upload_test.txt";
         let timestamp = util::get_system_time()?.as_secs().to_string();
         let response = test::call_service(
-            &mut app,
+            &app,
             get_multipart_request(&timestamp, file_name).to_request(),
         )
         .await;
-        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await;
+        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
-        let response = test::call_service(&mut app, serve_request).await;
+        let response = test::call_service(&app, serve_request).await;
         assert_eq!(http::StatusCode::OK, response.status());
-        assert_body(response, &timestamp).await;
+        assert_body(response, &timestamp).await?;
 
         fs::remove_file(file_name)?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
-        let response = test::call_service(&mut app, serve_request).await;
+        let response = test::call_service(&app, serve_request).await;
         assert_eq!(http::StatusCode::NOT_FOUND, response.status());
 
         Ok(())

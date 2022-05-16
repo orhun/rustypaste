@@ -263,8 +263,7 @@ mod tests {
             Some("txt"),
             PathBuf::from(&file_name)
                 .extension()
-                .map(|v| v.to_str())
-                .flatten()
+                .and_then(|v| v.to_str())
         );
         fs::remove_file(file_name)?;
 
@@ -286,8 +285,7 @@ mod tests {
             Some("bin"),
             PathBuf::from(&file_name)
                 .extension()
-                .map(|v| v.to_str())
-                .flatten()
+                .and_then(|v| v.to_str())
         );
         fs::remove_file(file_name)?;
 
@@ -300,7 +298,7 @@ mod tests {
             data: vec![116, 101, 115, 116],
             type_: PasteType::Oneshot,
         };
-        let expiry_date = util::get_system_time().unwrap().as_millis() + 100;
+        let expiry_date = util::get_system_time()?.as_millis() + 100;
         let file_name = paste.store_file("test.file", Some(expiry_date), &config)?;
         let file_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
@@ -328,7 +326,7 @@ mod tests {
         };
         assert!(paste.store_url(None, &config).is_err());
 
-        config.server.max_content_length = Byte::from_str("30k").unwrap();
+        config.server.max_content_length = Byte::from_str("30k").expect("cannot parse byte");
         let url = String::from("https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg");
         let mut paste = Paste {
             data: url.as_bytes().to_vec(),

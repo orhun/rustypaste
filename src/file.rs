@@ -55,21 +55,21 @@ impl Directory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::OsString;
 
     #[test]
     fn test_file_checksum() -> Result<(), ActixError> {
         assert_eq!(
-            "rustypaste_logo.png",
+            Some(OsString::from("rustypaste_logo.png").as_ref()),
             Directory::try_from(
                 PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                     .join("img")
                     .as_path()
             )?
             .get_file("2073f6f567dcba3b468c568d29cf8ed2e9d3f0f7305b9ab1b5a22861f5922e61")
-            .unwrap()
+            .expect("cannot get file with checksum")
             .path
             .file_name()
-            .unwrap()
         );
         Ok(())
     }
