@@ -207,19 +207,11 @@ http {
 }
 ```
 
-### Roadmap
-
-_Nothing here yet! 🎉_
-
 ### Contributing
 
 Pull requests are welcome!
 
-Consider submitting your ideas via issues first. Also, see the [roadmap](#roadmap) and/or run the following command to see what is needed to be done:
-
-```sh
-$ grep -nr "TODO:" src/
-```
+Consider submitting your ideas via [issues](https://github.com/orhun/rustypaste/issues/new) first and check out the [existing issues](https://github.com/orhun/rustypaste/issues).
 
 #### License
 
