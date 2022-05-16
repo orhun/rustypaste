@@ -9,6 +9,7 @@ use std::fs::{self, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::str;
+use std::sync::RwLock;
 use url::Url;
 
 /// Type of the data to store.
@@ -157,7 +158,7 @@ impl Paste {
         &mut self,
         expiry_date: Option<u128>,
         client: &Client,
-        config: Config,
+        config: &RwLock<Config>,
     ) -> Result<String, Error> {
         let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
         let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
@@ -172,6 +173,8 @@ impl Paste {
             .await
             .map_err(error::ErrorInternalServerError)?;
         let payload_limit = config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
             .server
             .max_content_length
             .get_bytes()
@@ -183,6 +186,9 @@ impl Paste {
             .await
             .map_err(error::ErrorInternalServerError)?
             .to_vec();
+        let config = config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
         let bytes_checksum = util::sha256_digest(&*bytes)?;
         self.data = bytes;
         if !config.paste.duplicate_files.unwrap_or(true) && expiry_date.is_none() {
@@ -330,7 +336,7 @@ mod tests {
         };
         let client_data = Data::new(Client::default());
         let file_name = paste
-            .store_remote_file(None, &client_data, config.clone())
+            .store_remote_file(None, &client_data, &RwLock::new(config.clone()))
             .await?;
         let file_path = PasteType::RemoteFile
             .get_path(&config.server.upload_path)

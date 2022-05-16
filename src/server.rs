@@ -165,13 +165,9 @@ async fn upload(
                     paste.store_file(content.get_file_name()?, expiry_date, &config)?
                 }
                 PasteType::RemoteFile => {
-                    {
-                        let config = config.read().map_err(|_| {
-                            error::ErrorInternalServerError("cannot acquire config")
-                        })?;
-                        paste.store_remote_file(expiry_date, &client, config.clone())
-                    }
-                    .await?
+                    paste
+                        .store_remote_file(expiry_date, &client, &config)
+                        .await?
                 }
                 PasteType::Url => {
                     let config = config
