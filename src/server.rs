@@ -215,8 +215,12 @@ mod tests {
     use actix_web::test::{self, TestRequest};
     use actix_web::web::Data;
     use actix_web::{http, App};
+    use awc::ClientBuilder;
     use byte_unit::Byte;
+    use glob::glob;
     use std::str;
+    use std::thread;
+    use std::time::Duration;
 
     #[actix_web::test]
     async fn test_index() {
@@ -229,14 +233,15 @@ mod tests {
         assert_eq!(http::StatusCode::FOUND, resp.status());
     }
 
-    fn get_multipart_request(data: &str, file_name: &str) -> TestRequest {
+    fn get_multipart_request(data: &str, name: &str, file_name: &str) -> TestRequest {
         let multipart_data = format!(
             "\r\n\
              --multipart_bound\r\n\
-             Content-Disposition: form-data; name=\"file\"; filename=\"{}\"\r\n\
+             Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n\
              Content-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\n\r\n\
              {}\r\n\
              --multipart_bound--\r\n",
+            name,
             file_name,
             data.bytes().len(),
             data,
@@ -250,7 +255,6 @@ mod tests {
     }
 
     async fn assert_body(response: ServiceResponse, expected: &str) -> Result<(), Error> {
-        assert_eq!(http::StatusCode::OK, response.status());
         let body = response.into_body();
         if let BodySize::Sized(size) = body.size() {
             assert_eq!(size, expected.as_bytes().len() as u64);
@@ -264,7 +268,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_upload() -> Result<(), Error> {
+    async fn test_upload_file() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
         config.server.max_content_length = Byte::from_bytes(100);
@@ -278,13 +282,14 @@ mod tests {
         )
         .await;
 
-        let file_name = "upload_test.txt";
+        let file_name = "test_file.txt";
         let timestamp = util::get_system_time()?.as_secs().to_string();
         let response = test::call_service(
             &app,
-            get_multipart_request(&timestamp, file_name).to_request(),
+            get_multipart_request(&timestamp, "file", file_name).to_request(),
         )
         .await;
+        assert_eq!(http::StatusCode::OK, response.status());
         assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
 
         let serve_request = TestRequest::get()
@@ -295,12 +300,219 @@ mod tests {
         assert_body(response, &timestamp).await?;
 
         fs::remove_file(file_name)?;
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{}", file_name))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_expiring_file() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.max_content_length = Byte::from_bytes(100);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .service(serve)
+                .service(upload),
+        )
+        .await;
+
+        let file_name = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        let response = test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", file_name)
+                .insert_header((
+                    header::HeaderName::from_static("expire"),
+                    header::HeaderValue::from_static("10ms"),
+                ))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(http::StatusCode::OK, response.status());
+        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{}", file_name))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::OK, response.status());
+        assert_body(response, &timestamp).await?;
+
+        thread::sleep(Duration::from_millis(20));
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+
+        if let Some(glob_path) = glob(&format!("{}.[0-9]*", file_name))
+            .map_err(error::ErrorInternalServerError)?
+            .next()
+        {
+            fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?)?;
+        }
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_remote_file() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.max_content_length = Byte::from_bytes(30000);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(
+                    ClientBuilder::new()
+                        .timeout(Duration::from_secs(30))
+                        .finish(),
+                ))
+                .service(serve)
+                .service(upload),
+        )
+        .await;
+
+        let file_name = "Example.jpg";
+        let response = test::call_service(
+            &app,
+            get_multipart_request(
+                "https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg",
+                "remote",
+                file_name,
+            )
+            .to_request(),
+        )
+        .await;
+        assert_eq!(http::StatusCode::OK, response.status());
+        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{}", file_name))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::OK, response.status());
+
+        let body = response.into_body();
+        let body_bytes = actix_web::body::to_bytes(body).await?;
+        assert_eq!(
+            "8c712905b799905357b8202d0cb7a244cefeeccf7aa5eb79896645ac50158ffa",
+            util::sha256_digest(&*body_bytes)?
+        );
+
+        fs::remove_file(file_name)?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{}", file_name))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_url() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.max_content_length = Byte::from_bytes(100);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config.clone())))
+                .app_data(Data::new(Client::default()))
+                .service(serve)
+                .service(upload),
+        )
+        .await;
+
+        let url_upload_path = PasteType::Url.get_path(&config.server.upload_path);
+        fs::create_dir_all(&url_upload_path)?;
+
+        let response = test::call_service(
+            &app,
+            get_multipart_request(env!("CARGO_PKG_HOMEPAGE"), "url", "").to_request(),
+        )
+        .await;
+        assert_eq!(http::StatusCode::OK, response.status());
+        assert_body(response, "http://localhost:8080/url\n").await?;
+
+        let serve_request = TestRequest::get().uri("/url").to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::FOUND, response.status());
+
+        fs::remove_file(url_upload_path.join("url"))?;
+        fs::remove_dir(url_upload_path)?;
+
+        let serve_request = TestRequest::get().uri("/url").to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_oneshot() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.max_content_length = Byte::from_bytes(100);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config.clone())))
+                .app_data(Data::new(Client::default()))
+                .service(serve)
+                .service(upload),
+        )
+        .await;
+
+        let oneshot_upload_path = PasteType::Oneshot.get_path(&config.server.upload_path);
+        fs::create_dir_all(&oneshot_upload_path)?;
+
+        let file_name = "oneshot.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        let response = test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "oneshot", file_name).to_request(),
+        )
+        .await;
+        assert_eq!(http::StatusCode::OK, response.status());
+        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{}", file_name))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::OK, response.status());
+        assert_body(response, &timestamp).await?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{}", file_name))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+
+        if let Some(glob_path) = glob(
+            &oneshot_upload_path
+                .join(format!("{}.[0-9]*", file_name))
+                .to_string_lossy(),
+        )
+        .map_err(error::ErrorInternalServerError)?
+        .next()
+        {
+            fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?)?;
+        }
+        fs::remove_dir(oneshot_upload_path)?;
 
         Ok(())
     }

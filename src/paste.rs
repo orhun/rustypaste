@@ -238,9 +238,10 @@ mod tests {
     use crate::random::{RandomURLConfig, RandomURLType};
     use crate::util;
     use actix_web::web::Data;
-    use awc::Client;
+    use awc::ClientBuilder;
     use byte_unit::Byte;
     use std::env;
+    use std::time::Duration;
 
     #[actix_rt::test]
     async fn test_paste_data() -> Result<(), Error> {
@@ -332,7 +333,11 @@ mod tests {
             data: url.as_bytes().to_vec(),
             type_: PasteType::RemoteFile,
         };
-        let client_data = Data::new(Client::default());
+        let client_data = Data::new(
+            ClientBuilder::new()
+                .timeout(Duration::from_secs(30))
+                .finish(),
+        );
         let file_name = paste
             .store_remote_file(None, &client_data, &RwLock::new(config.clone()))
             .await?;
