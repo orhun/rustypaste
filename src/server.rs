@@ -222,18 +222,7 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    #[actix_web::test]
-    async fn test_index() {
-        let app = test::init_service(App::new().service(index)).await;
-        let request = TestRequest::default()
-            .insert_header(("content-type", "text/plain"))
-            .to_request();
-        let resp = test::call_service(&app, request).await;
-        assert!(resp.status().is_redirection());
-        assert_eq!(http::StatusCode::FOUND, resp.status());
-    }
-
-    fn get_multipart_request(data: &str, name: &str, file_name: &str) -> TestRequest {
+    fn get_multipart_request(data: &str, name: &str, filename: &str) -> TestRequest {
         let multipart_data = format!(
             "\r\n\
              --multipart_bound\r\n\
@@ -242,7 +231,7 @@ mod tests {
              {}\r\n\
              --multipart_bound--\r\n",
             name,
-            file_name,
+            filename,
             data.bytes().len(),
             data,
         );
@@ -265,6 +254,61 @@ mod tests {
         } else {
             Err(error::ErrorInternalServerError("unexpected body type"))
         }
+    }
+
+    #[actix_web::test]
+    async fn test_index() {
+        let app = test::init_service(App::new().service(index)).await;
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
+        let resp = test::call_service(&app, request).await;
+        assert!(resp.status().is_redirection());
+        assert_eq!(http::StatusCode::FOUND, resp.status());
+    }
+
+    #[actix_web::test]
+    async fn test_auth() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.auth_token = Some(String::from("test"));
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .service(serve)
+                .service(upload),
+        )
+        .await;
+
+        let response =
+            test::call_service(&app, get_multipart_request("", "", "").to_request()).await;
+        assert_eq!(http::StatusCode::UNAUTHORIZED, response.status());
+        assert_body(response, "unauthorized").await?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_payload_limit() -> Result<(), Error> {
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(Config::default())))
+                .app_data(Data::new(Client::default()))
+                .service(serve)
+                .service(upload),
+        )
+        .await;
+
+        let response = test::call_service(
+            &app,
+            get_multipart_request("test", "file", "test").to_request(),
+        )
+        .await;
+        assert_eq!(http::StatusCode::PAYLOAD_TOO_LARGE, response.status());
+        assert_body(response, "upload limit exceeded").await?;
+
+        Ok(())
     }
 
     #[actix_web::test]
@@ -331,7 +375,7 @@ mod tests {
             get_multipart_request(&timestamp, "file", file_name)
                 .insert_header((
                     header::HeaderName::from_static("expire"),
-                    header::HeaderValue::from_static("10ms"),
+                    header::HeaderValue::from_static("20ms"),
                 ))
                 .to_request(),
         )
@@ -346,7 +390,7 @@ mod tests {
         assert_eq!(http::StatusCode::OK, response.status());
         assert_body(response, &timestamp).await?;
 
-        thread::sleep(Duration::from_millis(20));
+        thread::sleep(Duration::from_millis(40));
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
