@@ -207,17 +207,19 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::random::{RandomURLConfig, RandomURLType};
     use actix_web::body::BodySize;
     use actix_web::body::MessageBody;
     use actix_web::dev::ServiceResponse;
     use actix_web::error::Error;
-    use actix_web::http::header;
+    use actix_web::http::{header, StatusCode};
     use actix_web::test::{self, TestRequest};
     use actix_web::web::Data;
-    use actix_web::{http, App};
+    use actix_web::App;
     use awc::ClientBuilder;
     use byte_unit::Byte;
     use glob::glob;
+    use std::path::PathBuf;
     use std::str;
     use std::thread;
     use std::time::Duration;
@@ -262,9 +264,8 @@ mod tests {
         let request = TestRequest::default()
             .insert_header(("content-type", "text/plain"))
             .to_request();
-        let resp = test::call_service(&app, request).await;
-        assert!(resp.status().is_redirection());
-        assert_eq!(http::StatusCode::FOUND, resp.status());
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::FOUND, response.status());
     }
 
     #[actix_web::test]
@@ -276,14 +277,13 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
                 .app_data(Data::new(Client::default()))
-                .service(serve)
-                .service(upload),
+                .configure(configure_routes),
         )
         .await;
 
         let response =
             test::call_service(&app, get_multipart_request("", "", "").to_request()).await;
-        assert_eq!(http::StatusCode::UNAUTHORIZED, response.status());
+        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
         assert_body(response, "unauthorized").await?;
 
         Ok(())
@@ -295,8 +295,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(Config::default())))
                 .app_data(Data::new(Client::default()))
-                .service(serve)
-                .service(upload),
+                .configure(configure_routes),
         )
         .await;
 
@@ -305,7 +304,7 @@ mod tests {
             get_multipart_request("test", "file", "test").to_request(),
         )
         .await;
-        assert_eq!(http::StatusCode::PAYLOAD_TOO_LARGE, response.status());
+        assert_eq!(StatusCode::PAYLOAD_TOO_LARGE, response.status());
         assert_body(response, "upload limit exceeded").await?;
 
         Ok(())
@@ -321,8 +320,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
                 .app_data(Data::new(Client::default()))
-                .service(serve)
-                .service(upload),
+                .configure(configure_routes),
         )
         .await;
 
@@ -333,14 +331,14 @@ mod tests {
             get_multipart_request(&timestamp, "file", file_name).to_request(),
         )
         .await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &timestamp).await?;
 
         fs::remove_file(file_name)?;
@@ -348,7 +346,55 @@ mod tests {
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_duplicate_file() -> Result<(), Error> {
+        let test_upload_dir = "test_upload";
+        fs::create_dir(test_upload_dir)?;
+
+        let mut config = Config::default();
+        config.server.upload_path = PathBuf::from(&test_upload_dir);
+        config.server.max_content_length = Byte::from_bytes(100);
+        config.paste.duplicate_files = Some(false);
+        config.paste.random_url = RandomURLConfig {
+            enabled: true,
+            type_: RandomURLType::Alphanumeric,
+            ..Default::default()
+        };
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let response = test::call_service(
+            &app,
+            get_multipart_request("test", "file", "x").to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        let body = response.into_body();
+        let first_body_bytes = actix_web::body::to_bytes(body).await?;
+
+        let response = test::call_service(
+            &app,
+            get_multipart_request("test", "file", "x").to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        let body = response.into_body();
+        let second_body_bytes = actix_web::body::to_bytes(body).await?;
+
+        assert_eq!(first_body_bytes, second_body_bytes);
+
+        fs::remove_dir_all(test_upload_dir)?;
 
         Ok(())
     }
@@ -363,8 +409,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
                 .app_data(Data::new(Client::default()))
-                .service(serve)
-                .service(upload),
+                .configure(configure_routes),
         )
         .await;
 
@@ -380,14 +425,14 @@ mod tests {
                 .to_request(),
         )
         .await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &timestamp).await?;
 
         thread::sleep(Duration::from_millis(40));
@@ -396,7 +441,7 @@ mod tests {
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         if let Some(glob_path) = glob(&format!("{}.[0-9]*", file_name))
             .map_err(error::ErrorInternalServerError)?
@@ -422,8 +467,7 @@ mod tests {
                         .timeout(Duration::from_secs(30))
                         .finish(),
                 ))
-                .service(serve)
-                .service(upload),
+                .configure(configure_routes),
         )
         .await;
 
@@ -438,14 +482,14 @@ mod tests {
             .to_request(),
         )
         .await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
 
         let body = response.into_body();
         let body_bytes = actix_web::body::to_bytes(body).await?;
@@ -460,7 +504,7 @@ mod tests {
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         Ok(())
     }
@@ -475,8 +519,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(config.clone())))
                 .app_data(Data::new(Client::default()))
-                .service(serve)
-                .service(upload),
+                .configure(configure_routes),
         )
         .await;
 
@@ -488,19 +531,19 @@ mod tests {
             get_multipart_request(env!("CARGO_PKG_HOMEPAGE"), "url", "").to_request(),
         )
         .await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, "http://localhost:8080/url\n").await?;
 
         let serve_request = TestRequest::get().uri("/url").to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::FOUND, response.status());
+        assert_eq!(StatusCode::FOUND, response.status());
 
         fs::remove_file(url_upload_path.join("url"))?;
         fs::remove_dir(url_upload_path)?;
 
         let serve_request = TestRequest::get().uri("/url").to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         Ok(())
     }
@@ -515,8 +558,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(config.clone())))
                 .app_data(Data::new(Client::default()))
-                .service(serve)
-                .service(upload),
+                .configure(configure_routes),
         )
         .await;
 
@@ -530,21 +572,21 @@ mod tests {
             get_multipart_request(&timestamp, "oneshot", file_name).to_request(),
         )
         .await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::OK, response.status());
+        assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &timestamp).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{}", file_name))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
-        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         if let Some(glob_path) = glob(
             &oneshot_upload_path
