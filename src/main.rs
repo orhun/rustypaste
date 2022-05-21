@@ -31,6 +31,7 @@ async fn main() -> IoResult<()> {
         None => PathBuf::from("config.toml"),
     };
     let config = Config::parse(&config_path).expect("failed to parse config");
+    log::trace!("{:#?}", config);
     let server_config = config.server.clone();
     let paste_config = RwLock::new(config.paste.clone());
     let (config_sender, config_receiver) = mpsc::channel::<Config>();
