@@ -7,7 +7,7 @@ setup() {
   truncate -s 11KB bigfile
 }
 
-run_test() {
+run_test() ( set -e;
   result=$(curl -s -F "file=@emptyfile" localhost:8000)
   test "invalid file size" = "$result"
 
@@ -19,7 +19,7 @@ run_test() {
 
   result=$(curl -s -F "file=@smallfile" localhost:8000)
   test "upload limit exceeded" != "$result"
-}
+)
 
 teardown() {
   rm emptyfile smallfile normalfile bigfile

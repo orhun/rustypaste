@@ -29,9 +29,9 @@ setup() {
   # preparation
 }
 
-run_test() {
+run_test() ( set -e;
   # assertions
-}
+)
 
 teardown() {
   # cleanup
