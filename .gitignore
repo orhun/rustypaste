@@ -5,4 +5,4 @@
 **/*.rs.bk
 
 # Default upload directory
-/upload/
+**/upload/
