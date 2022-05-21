@@ -1,0 +1,13 @@
+[server]
+address="127.0.0.1:8000"
+max_content_length="10MB"
+upload_path="./upload"
+
+[paste]
+random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
+default_extension = "txt"
+duplicate_files = true
+mime_blacklist = [
+    "text/html",
+    "text/xml",
+]
