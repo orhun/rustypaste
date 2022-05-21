@@ -9,7 +9,7 @@ setup() {
   date +%s > unique_file2
 }
 
-run_test() ( set -e;
+run_test() {
   first_file_url=$(curl -s -F "file=@file" localhost:8000)
   test "$duplicate_content" = "$(cat upload/file.txt)"
 
@@ -22,7 +22,7 @@ run_test() ( set -e;
   first_file_url=$(curl -s -F "file=@unique_file1" localhost:8000)
   second_file_url=$(curl -s -F "file=@unique_file2" localhost:8000)
   test "$first_file_url" != "$second_file_url"
-)
+}
 
 teardown() {
   rm file unique_file1 unique_file2
