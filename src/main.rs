@@ -18,11 +18,13 @@ use std::time::Duration;
 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
+    // Load the .env file.
+    dotenv::dotenv().ok();
+
     // Initialize logger.
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     // Parse configuration.
-    dotenv::dotenv().ok();
     let config_path = match env::var(CONFIG_ENV).ok() {
         Some(path) => {
             env::remove_var(CONFIG_ENV);
