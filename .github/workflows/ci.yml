@@ -8,7 +8,7 @@ on:
     branches:
       - master
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: '0 0 * * 0'
 
 jobs:
   check:
@@ -57,6 +57,30 @@ jobs:
           fail_ci_if_error: true
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  fixtures:
+    name: Test fixtures
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Checkout the repository
+        uses: actions/checkout@master
+      - name: Build the project
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked --verbose
+      - name: Run test fixtures
+        shell: bash
+        run: ./test-fixtures.sh
+        working-directory: fixtures
+        env:
+          DEBUG: true
 
   clippy:
     name: Lints
