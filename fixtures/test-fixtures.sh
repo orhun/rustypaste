@@ -13,10 +13,12 @@ run_fixture() {
   SERVER_PID=$!
   trap 'kill -9 "$SERVER_PID" && wait "$SERVER_PID" 2> /dev/null' RETURN
   sleep 1
-  ( set -e; setup )
-  ( set -e; run_test )
+  ( set -e;
+    setup
+    run_test
+    teardown
+  )
   result=$?
-  ( set -e; teardown )
   return "$result"
 }
 
