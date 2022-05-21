@@ -51,8 +51,10 @@ pub struct PasteConfig {
     /// Default file extension.
     pub default_extension: String,
     /// Media type override options.
+    #[serde(default)]
     pub mime_override: Vec<MimeMatcher>,
     /// Media type blacklist.
+    #[serde(default)]
     pub mime_blacklist: Vec<String>,
     /// Allow duplicate uploads
     pub duplicate_files: Option<bool>,
