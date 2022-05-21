@@ -4,6 +4,6 @@ max_content_length="10MB"
 upload_path="./upload"
 
 [paste]
-random_url = { enabled = false, type = "petname", words = 2, separator = "-" }
+random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
 default_extension = "txt"
-duplicate_files = true
+duplicate_files = false

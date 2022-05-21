@@ -11,7 +11,7 @@ setup() {
 
 run_test() {
   first_file_url=$(curl -s -F "file=@file" localhost:8000)
-  test "$duplicate_content" = "$(cat upload/file.txt)"
+  test "$duplicate_content" = "$(cat upload/${first_file_url/http:\/\/localhost:8000\//})"
 
   second_file_url=$(curl -s -F "file=@file" localhost:8000)
   test "$first_file_url" = "$second_file_url"
