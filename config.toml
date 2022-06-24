@@ -26,5 +26,5 @@ mime_blacklist = [
     "application/java-archive",
     "application/java-vm"
 ]
-duplicate_files = false
+duplicate_files = true
 delete_expired_files = { enabled = true, interval = "1h" }
