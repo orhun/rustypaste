@@ -13,7 +13,7 @@ use std::sync::RwLock;
 use url::Url;
 
 /// Type of the data to store.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PasteType {
     /// Any type of file.
     File,
