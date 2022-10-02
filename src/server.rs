@@ -35,9 +35,7 @@ changed this."#;
 
 /// Shows the landing page.
 #[get("/")]
-async fn index(
-    config: web::Data<RwLock<Config>>
-) -> Result<HttpResponse, Error> {
+async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
@@ -45,8 +43,7 @@ async fn index(
         Some(page) => page,
         None => LANDING_PAGE.to_string(),
     };
-    Ok(HttpResponse::Ok()
-        .body(landing_page.replace("{REPOSITORY}", env!("CARGO_PKG_HOMEPAGE"))))
+    Ok(HttpResponse::Ok().body(landing_page.replace("{REPOSITORY}", env!("CARGO_PKG_HOMEPAGE"))))
 }
 
 /// Serves a file from the upload directory.
