@@ -25,7 +25,9 @@ The server administrator might remove any pastes that they do not personally
 want to host.
 
 If you are the server administrator and want to change this page, just go
-into your config file and change it!"#;
+into your config file and change it!
+
+Check out the GitHub repository at {REPOSITORY}!"#;
 
 /// Shows the landing page.
 #[get("/")]
@@ -40,7 +42,7 @@ async fn index(
         None => LANDING_PAGE.to_string(),
     };
     Ok(HttpResponse::Ok()
-        .body(landing_page))
+        .body(landing_page.replace("{REPOSITORY}", env!("CARGO_PKG_HOMEPAGE"))))
 }
 
 /// Serves a file from the upload directory.

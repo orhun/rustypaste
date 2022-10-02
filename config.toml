@@ -17,7 +17,8 @@ want to host.
 
 If you are the server administrator and want to change this page, just go
 into your config file and change it!
-a
+
+Check out the GitHub repository at {REPOSITORY}!
 """
 
 [paste]
