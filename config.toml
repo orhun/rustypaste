@@ -7,6 +7,18 @@ address="127.0.0.1:8000"
 max_content_length="10MB"
 upload_path="./upload"
 timeout="30s"
+landing_page = """
+Submit files via HTTP POST here:
+    curl -F 'file=@example.txt' <server>"
+This will return the finished URL.
+
+The server administrator might remove any pastes that they do not personally
+want to host.
+
+If you are the server administrator and want to change this page, just go
+into your config file and change it!
+a
+"""
 
 [paste]
 random_url = { enabled = true, type = "petname", words = 2, separator = "-" }

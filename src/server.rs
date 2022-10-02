@@ -17,12 +17,30 @@ use std::env;
 use std::fs;
 use std::sync::RwLock;
 
+const LANDING_PAGE: &str = r#"Submit files via HTTP POST here:
+    curl -F 'file=@example.txt' <server>"
+This will return the finished URL.
+
+The server administrator might remove any pastes that they do not personally
+want to host.
+
+If you are the server administrator and want to change this page, just go
+into your config file and change it!"#;
+
 /// Shows the landing page.
 #[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Found()
-        .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
-        .finish()
+async fn index(
+    config: web::Data<RwLock<Config>>
+) -> Result<HttpResponse, Error> {
+    let config = config
+        .read()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let landing_page = match config.server.landing_page.clone() {
+        Some(page) => page,
+        None => LANDING_PAGE.to_string(),
+    };
+    Ok(HttpResponse::Ok()
+        .body(landing_page))
 }
 
 /// Serves a file from the upload directory.
