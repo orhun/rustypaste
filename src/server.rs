@@ -8,7 +8,7 @@ use crate::util;
 use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
-use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Responder};
+use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
@@ -25,9 +25,13 @@ The server administrator might remove any pastes that they do not personally
 want to host.
 
 If you are the server administrator and want to change this page, just go
-into your config file and change it!
+into your config file and change it! If you change the expiry time, it is
+recommended that you do.
 
-Check out the GitHub repository at {REPOSITORY}!"#;
+Check out the GitHub repository at {REPOSITORY}!
+
+By default, pastes expire every hour. The server admin may or may not have
+changed this."#;
 
 /// Shows the landing page.
 #[get("/")]
