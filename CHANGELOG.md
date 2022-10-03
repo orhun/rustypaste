@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2022-10-03
+### Added
+- Support adding a landing page
+
+You can now specify a landing page text in the configuration file as follows:
+
+```toml
+[server]
+landing_page = """
+boo 👻
+======
+welcome!
+"""
+```
+
+If the landing page entry is not present in the configuration file, visiting the index page will redirect to the repository.
+
+### Updated
+- Do not check for duplicate files by default
+  - Set `duplicate_files` to `true` to the configuration file
+  - It is an expensive operation to do on slower hardware and can take an unreasonable amount of time for bigger files
+- Enable [GitHub Sponsors](https://github.com/sponsors/orhun) for funding
+  - Consider supporting me for my open-source work 💖
+
 ## [0.7.1] - 2022-05-21
 ### Added
 - Aggressively test everything
