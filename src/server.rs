@@ -8,7 +8,7 @@ use crate::util;
 use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
-use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse, Responder};
+use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
@@ -19,10 +19,16 @@ use std::sync::RwLock;
 
 /// Shows the landing page.
 #[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Found()
-        .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
-        .finish()
+async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
+    let config = config
+        .read()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    match &config.server.landing_page {
+        Some(page) => Ok(HttpResponse::Ok().body(page.clone())),
+        None => Ok(HttpResponse::Found()
+            .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
+            .finish()),
+    }
 }
 
 /// Serves a file from the upload directory.
@@ -260,12 +266,37 @@ mod tests {
 
     #[actix_web::test]
     async fn test_index() {
-        let app = test::init_service(App::new().service(index)).await;
+        let config = Config::default();
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
         let request = TestRequest::default()
             .insert_header(("content-type", "text/plain"))
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::FOUND, response.status());
+    }
+
+    #[actix_web::test]
+    async fn test_index_with_landing_page() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.landing_page = Some(String::from("landing page"));
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response, "landing page").await?;
+        Ok(())
     }
 
     #[actix_web::test]

@@ -41,6 +41,8 @@ pub struct ServerConfig {
     pub timeout: Option<Duration>,
     /// Authentication token.
     pub auth_token: Option<String>,
+    /// Landing page text.
+    pub landing_page: Option<String>,
 }
 
 /// Paste configuration.
