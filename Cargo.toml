@@ -13,20 +13,20 @@ categories = ["web-programming::http-server"]
 include = ["src/**/*", "Cargo.*", "LICENSE", "README.md", "CHANGELOG.md"]
 
 [dependencies]
-actix-web = { version = "4.0.1", features = ["rustls"] }
+actix-web = { version = "4.2.1", features = ["rustls"] }
 actix-multipart = "0.4.0"
-actix-files = "0.6.0"
-awc = { version = "3.0.0", features = ["rustls"] }
-env_logger = "0.9.0"
+actix-files = "0.6.2"
+awc = { version = "3.0.1", features = ["rustls"] }
+env_logger = "0.9.1"
 log = "0.4.17"
-serde = "1.0.137"
-futures-util = "0.3.21"
+serde = "1.0.145"
+futures-util = "0.3.24"
 petname = "1.1.2"
 rand = "0.8.5"
 dotenv = "0.15.0"
-url = "2.2.2"
+url = "2.3.1"
 mime = "0.3.16"
-regex = "1.5.6"
+regex = "1.6.0"
 serde_regex = "1.1.0"
 lazy-regex = "2.3.0"
 humantime = "2.1.0"
@@ -36,7 +36,7 @@ ring = "0.16.20"
 hotwatch = "0.4.5"
 
 [dependencies.config]
-version = "0.13.1"
+version = "0.13.2"
 default-features = false
 features = ["toml", "yaml"]
 
@@ -45,7 +45,7 @@ version = "4.0.14"
 features = ["serde"]
 
 [dependencies.infer]
-version = "0.8.0"
+version = "0.9.0"
 default-features = false
 
 [dev-dependencies]
