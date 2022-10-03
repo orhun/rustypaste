@@ -281,12 +281,18 @@ mod tests {
 
     #[actix_web::test]
     async fn test_index() {
-        let app = test::init_service(App::new().service(index)).await;
+        let config = Config::default();
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
         let request = TestRequest::default()
             .insert_header(("content-type", "text/plain"))
             .to_request();
         let response = test::call_service(&app, request).await;
-        assert_eq!(StatusCode::FOUND, response.status());
+        assert_eq!(StatusCode::OK, response.status());
     }
 
     #[actix_web::test]
