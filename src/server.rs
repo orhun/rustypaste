@@ -17,33 +17,18 @@ use std::env;
 use std::fs;
 use std::sync::RwLock;
 
-const LANDING_PAGE: &str = r#"Submit files via HTTP POST here:
-    curl -F 'file=@example.txt' <server>"
-This will return the finished URL.
-
-The server administrator might remove any pastes that they do not personally
-want to host.
-
-If you are the server administrator and want to change this page, just go
-into your config file and change it! If you change the expiry time, it is
-recommended that you do.
-
-Check out the GitHub repository at {REPOSITORY}!
-
-By default, pastes expire every hour. The server admin may or may not have
-changed this."#;
-
 /// Shows the landing page.
 #[get("/")]
 async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let landing_page = match config.server.landing_page.clone() {
-        Some(page) => page,
-        None => LANDING_PAGE.to_string(),
-    };
-    Ok(HttpResponse::Ok().body(landing_page.replace("{REPOSITORY}", env!("CARGO_PKG_HOMEPAGE"))))
+    match &config.server.landing_page {
+        Some(page) => Ok(HttpResponse::Ok().body(page.clone())),
+        None => Ok(HttpResponse::Found()
+            .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
+            .finish()),
+    }
 }
 
 /// Serves a file from the upload directory.
@@ -292,7 +277,26 @@ mod tests {
             .insert_header(("content-type", "text/plain"))
             .to_request();
         let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::FOUND, response.status());
+    }
+
+    #[actix_web::test]
+    async fn test_index_with_landing_page() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.landing_page = Some(String::from("landing page"));
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
+        assert_body(response, "landing page").await?;
+        Ok(())
     }
 
     #[actix_web::test]

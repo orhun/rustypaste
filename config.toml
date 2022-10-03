@@ -18,7 +18,7 @@ If you are the server administrator and want to change this page, just go
 into your config file and change it! If you change the expiry time, it is
 recommended that you do.
 
-Check out the GitHub repository at {REPOSITORY}!
+Check out the GitHub repository at https://github.com/orhun/rustypaste
 
 By default, pastes expire every hour. The server admin may or may not have
 changed this."""
