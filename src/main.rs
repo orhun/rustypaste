@@ -19,7 +19,7 @@ use std::time::Duration;
 #[actix_web::main]
 async fn main() -> IoResult<()> {
     // Load the .env file.
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     // Initialize logger.
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
