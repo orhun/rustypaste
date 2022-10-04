@@ -43,6 +43,8 @@ pub struct ServerConfig {
     pub auth_token: Option<String>,
     /// Landing page text.
     pub landing_page: Option<String>,
+    /// Expose version.
+    pub expose_version: Option<bool>,
 }
 
 /// Paste configuration.
