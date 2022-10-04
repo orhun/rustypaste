@@ -88,6 +88,32 @@ async fn serve(
     }
 }
 
+/// Expose version endpoint
+#[get("/version")]
+async fn version(
+    request: HttpRequest,
+    config: web::Data<RwLock<Config>>,
+) -> Result<HttpResponse, Error> {
+    let config = config
+        .read()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let connection = request.connection_info().clone();
+    let host = connection.peer_addr().unwrap_or("unknown host");
+    auth::check(
+        host,
+        request.headers(),
+        env::var(AUTH_TOKEN_ENV)
+            .ok()
+            .or_else(|| config.server.auth_token.as_ref().cloned()),
+    )?;
+    if !config.server.expose_version.unwrap_or(false) {
+        log::warn!("server is not configured to expose version endpoint");
+        Err(error::ErrorForbidden("endpoint is not exposed"))?;
+    }
+    let version = env!("CARGO_PKG_VERSION");
+    Ok(HttpResponse::Ok().body(version))
+}
+
 /// Handles file upload by processing `multipart/form-data`.
 #[post("/")]
 async fn upload(
@@ -205,6 +231,7 @@ async fn upload(
 /// Configures the server routes.
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(index)
+        .service(version)
         .service(serve)
         .service(upload)
         .route("", web::head().to(HttpResponse::MethodNotAllowed));
@@ -296,6 +323,70 @@ mod tests {
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response, "landing page").await?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_version_without_auth() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.auth_token = Some(String::from("test"));
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/version")
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+        assert_body(response, "unauthorized").await?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_version_without_config() -> Result<(), Error> {
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(Config::default())))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/version")
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::FORBIDDEN, response.status());
+        assert_body(response, "endpoint is not exposed").await?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_version() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_version = Some(true);
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/version")
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response, env!("CARGO_PKG_VERSION")).await?;
         Ok(())
     }
 
