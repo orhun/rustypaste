@@ -15,6 +15,10 @@ expose_version=true
 
 If `expose_version` entry is not present in the configuration file, `/version` is not exposed. It is recommended to use this feature with authorization enabled.
 
+### Fixed
+- Replace unmaintained `dotenv` crate with `dotenvy`
+  - Fixes [RUSTSEC-2021-0141](https://rustsec.org/advisories/RUSTSEC-2021-0141.html)
+
 ## [0.8.0] - 2022-10-03
 ### Added
 - Support adding a landing page
