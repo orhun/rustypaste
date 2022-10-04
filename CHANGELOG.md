@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2022-10-04
+### Updated
+- Don't expose version endpoint in default config
+  - Set `expose_version` to `false` in the configuration file
+
 ## [0.8.1] - 2022-10-04
 ### Added
 - Add `<server_address>/version` endpoint for retrieving the server version
@@ -38,7 +43,7 @@ If the landing page entry is not present in the configuration file, visiting the
 
 ### Updated
 - Do not check for duplicate files by default
-  - Set `duplicate_files` to `true` to the configuration file
+  - Set `duplicate_files` to `true` in the configuration file
   - It is an expensive operation to do on slower hardware and can take an unreasonable amount of time for bigger files
 - Enable [GitHub Sponsors](https://github.com/sponsors/orhun) for funding
   - Consider supporting me for my open-source work 💖

@@ -1401,7 +1401,7 @@ dependencies = [
 
 [[package]]
 name = "rustypaste"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "actix-files",
  "actix-multipart",
