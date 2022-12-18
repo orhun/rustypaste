@@ -343,7 +343,7 @@ mod tests {
             .await?;
         let file_path = PasteType::RemoteFile
             .get_path(&config.server.upload_path)
-            .join(&file_name);
+            .join(file_name);
         assert_eq!(
             "8c712905b799905357b8202d0cb7a244cefeeccf7aa5eb79896645ac50158ffa",
             util::sha256_digest(&*paste.data)?
