@@ -80,7 +80,7 @@ async fn main() -> IoResult<()> {
     };
     hotwatch
         .watch(&config_path, config_watcher)
-        .unwrap_or_else(|_| panic!("failed to watch {:?}", config_path));
+        .unwrap_or_else(|_| panic!("failed to watch {config_path:?}"));
 
     // Create a thread for cleaning up expired files.
     thread::spawn(move || loop {

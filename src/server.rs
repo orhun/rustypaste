@@ -454,10 +454,10 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
+        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
 
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
@@ -465,7 +465,7 @@ mod tests {
 
         fs::remove_file(file_name)?;
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
@@ -548,10 +548,10 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
+        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
 
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
@@ -560,12 +560,12 @@ mod tests {
         thread::sleep(Duration::from_millis(40));
 
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
-        if let Some(glob_path) = glob(&format!("{}.[0-9]*", file_name))
+        if let Some(glob_path) = glob(&format!("{file_name}.[0-9]*"))
             .map_err(error::ErrorInternalServerError)?
             .next()
         {
@@ -605,10 +605,10 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
+        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
 
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
@@ -623,7 +623,7 @@ mod tests {
         fs::remove_file(file_name)?;
 
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
@@ -695,24 +695,24 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{}\n", file_name)).await?;
+        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
 
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response, &timestamp).await?;
 
         let serve_request = TestRequest::get()
-            .uri(&format!("/{}", file_name))
+            .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         if let Some(glob_path) = glob(
             &oneshot_upload_path
-                .join(format!("{}.[0-9]*", file_name))
+                .join(format!("{file_name}.[0-9]*"))
                 .to_string_lossy(),
         )
         .map_err(error::ErrorInternalServerError)?

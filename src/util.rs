@@ -94,7 +94,7 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
         .iter()
         .collect::<Vec<&u8>>()
         .iter()
-        .map(|byte| format!("{:02x}", byte))
+        .map(|byte| format!("{byte:02x}"))
         .collect::<String>())
 }
 
@@ -148,7 +148,7 @@ mod tests {
     fn test_get_expired_files() -> Result<(), ActixError> {
         let current_dir = env::current_dir()?;
         let expiration_time = get_system_time()?.as_millis() + 50;
-        let path = PathBuf::from(format!("expired.file2.{}", expiration_time));
+        let path = PathBuf::from(format!("expired.file2.{expiration_time}"));
         fs::write(&path, String::new())?;
         assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
         thread::sleep(Duration::from_millis(75));

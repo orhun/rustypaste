@@ -139,7 +139,7 @@ impl Paste {
             .unwrap_or_default()
             .to_string();
         if let Some(timestamp) = expiry_date {
-            path.set_file_name(format!("{}.{}", file_name, timestamp));
+            path.set_file_name(format!("{file_name}.{timestamp}"));
         }
         let mut buffer = File::create(&path)?;
         buffer.write_all(&self.data)?;
@@ -225,7 +225,7 @@ impl Paste {
             .get_path(&config.server.upload_path)
             .join(&file_name);
         if let Some(timestamp) = expiry_date {
-            path.set_file_name(format!("{}.{}", file_name, timestamp));
+            path.set_file_name(format!("{file_name}.{timestamp}"));
         }
         fs::write(&path, url.to_string())?;
         Ok(file_name)
@@ -303,7 +303,7 @@ mod tests {
         let file_name = paste.store_file("test.file", Some(expiry_date), &config)?;
         let file_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
-            .join(format!("{}.{}", file_name, expiry_date));
+            .join(format!("{file_name}.{expiry_date}"));
         assert_eq!("test", fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
 
