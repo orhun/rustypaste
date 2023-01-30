@@ -11,7 +11,6 @@ COPY . .
 RUN cargo build --locked --release
 RUN mkdir -p build-out/
 RUN cp target/release/rustypaste build-out/
-RUN strip build-out/rustypaste
 
 FROM scratch
 WORKDIR /app
