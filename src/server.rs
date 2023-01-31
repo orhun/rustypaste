@@ -2,7 +2,7 @@ use crate::auth;
 use crate::config::Config;
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
-use crate::mime;
+use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
 use crate::util;
 use crate::AUTH_TOKEN_ENV;
@@ -12,6 +12,7 @@ use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
+use serde::Deserialize;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
@@ -31,11 +32,20 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     }
 }
 
+/// File serving options (i.e. query parameters).
+#[derive(Debug, Deserialize)]
+struct ServeOptions {
+    /// If set to `true`, change the MIME type to `application/octet-stream` and force downloading
+    /// the file.
+    download: bool,
+}
+
 /// Serves a file from the upload directory.
 #[get("/{file}")]
 async fn serve(
     request: HttpRequest,
     file: web::Path<String>,
+    options: Option<web::Query<ServeOptions>>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
     let config = config
@@ -62,12 +72,15 @@ async fn serve(
     }
     match paste_type {
         PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
+            let mime_type = if options.map(|v| v.download).unwrap_or(false) {
+                mime::APPLICATION_OCTET_STREAM
+            } else {
+                mime_util::get_mime_type(&config.paste.mime_override, file.to_string())
+                    .map_err(error::ErrorInternalServerError)?
+            };
             let response = NamedFile::open(&path)?
                 .disable_content_disposition()
-                .set_content_type(
-                    mime::get_mime_type(&config.paste.mime_override, file.to_string())
-                        .map_err(error::ErrorInternalServerError)?,
-                )
+                .set_content_type(mime_type)
                 .prefer_utf8(true)
                 .into_response(&request);
             if paste_type.is_oneshot() {
