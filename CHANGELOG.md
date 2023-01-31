@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.4] - 2023-01-31
 
-### Changed
+### Added
 
 - Allow downloading files via `?download=true` parameter
   - If you specify this for a file (e.g. `<server_address>/file?download=true`), `rustypaste` will override the MIME type to `application/octet-stream` and this will force your browser to download the file.
