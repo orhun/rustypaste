@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.4] - 2023-01-31
+
+### Changed
+
+- Allow downloading files via `?download=true` parameter
+  - If you specify this for a file (e.g. `<server_address>/file?download=true`), `rustypaste` will override the MIME type to `application/octet-stream` and this will force your browser to download the file.
+  - This is useful when e.g. you want to be able to share the link to a file that would play in the browser (like `.mp4`) but also share a link that will auto-download as well.
+
 ## [0.8.3] - 2023-01-30
 ### Updated
 - Bump dependencies
