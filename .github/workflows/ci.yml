@@ -13,7 +13,7 @@ on:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -31,7 +31,7 @@ jobs:
 
   test:
     name: Test suite
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -60,7 +60,7 @@ jobs:
 
   fixtures:
     name: Test fixtures
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -84,7 +84,7 @@ jobs:
 
   clippy:
     name: Lints
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -103,7 +103,7 @@ jobs:
 
   rustfmt:
     name: Formatting
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -122,7 +122,7 @@ jobs:
 
   lychee:
     name: Links
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout the repository
         uses: actions/checkout@master
