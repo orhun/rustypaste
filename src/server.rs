@@ -160,7 +160,16 @@ async fn upload(
             .as_ref()
             .cloned()),
     )?;
-    let expiry_date = header::parse_expiry_date(request.headers())?;
+    let time = util::get_system_time()?;
+    let mut expiry_date = header::parse_expiry_date(request.headers(), time)?;
+    if expiry_date.is_none() {
+        expiry_date = config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+            .paste
+            .default_expiry
+            .and_then(|v| time.checked_add(v).map(|t| t.as_millis()));
+    }
     let mut urls: Vec<String> = Vec::new();
     while let Some(item) = payload.next().await {
         let mut field = item?;

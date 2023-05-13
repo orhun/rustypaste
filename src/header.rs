@@ -1,19 +1,18 @@
-use crate::util;
 use actix_web::http::header::{
     ContentDisposition as ActixContentDisposition, DispositionParam, DispositionType, HeaderMap,
 };
 use actix_web::{error, Error as ActixError};
+use std::time::Duration;
 
 /// Custom HTTP header for expiry dates.
 pub const EXPIRE: &str = "expire";
 
 /// Parses the expiry date from the [`custom HTTP header`](EXPIRE).
-pub fn parse_expiry_date(headers: &HeaderMap) -> Result<Option<u128>, ActixError> {
+pub fn parse_expiry_date(headers: &HeaderMap, time: Duration) -> Result<Option<u128>, ActixError> {
     if let Some(expire_time) = headers.get(EXPIRE).and_then(|v| v.to_str().ok()) {
-        let timestamp = util::get_system_time()?;
         let expire_time =
             humantime::parse_duration(expire_time).map_err(error::ErrorInternalServerError)?;
-        Ok(timestamp.checked_add(expire_time).map(|t| t.as_millis()))
+        Ok(time.checked_add(expire_time).map(|t| t.as_millis()))
     } else {
         Ok(None)
     }
@@ -62,9 +61,9 @@ impl ContentDisposition {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util;
     use actix_web::http::header::{HeaderName, HeaderValue};
     use std::thread;
-    use std::time::Duration;
 
     #[test]
     fn test_content_disposition() -> Result<(), ActixError> {
@@ -97,7 +96,8 @@ mod tests {
             HeaderName::from_static(EXPIRE),
             HeaderValue::from_static("5ms"),
         );
-        let expiry_time = parse_expiry_date(&headers)?.unwrap_or_default();
+        let time = util::get_system_time()?;
+        let expiry_time = parse_expiry_date(&headers, time)?.unwrap_or_default();
         assert!(expiry_time > util::get_system_time()?.as_millis());
         thread::sleep(Duration::from_millis(10));
         assert!(expiry_time < util::get_system_time()?.as_millis());
