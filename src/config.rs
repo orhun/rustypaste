@@ -30,6 +30,8 @@ pub struct Settings {
 pub struct ServerConfig {
     /// The socket address to bind.
     pub address: String,
+    /// URL that can be used to access the server externally.
+    pub url: Option<String>,
     /// Number of workers to start.
     pub workers: Option<usize>,
     /// Maximum content length.
