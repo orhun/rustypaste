@@ -175,7 +175,7 @@ async fn actix_web(
     // Set up the application.
     let (config, server_config, _) = setup(&static_folder)?;
 
-    // Create the service application.
+    // Create the service.
     let service_config = move |cfg: &mut ServiceConfig| {
         let http_client = ClientBuilder::new()
             .timeout(
@@ -193,5 +193,6 @@ async fn actix_web(
                 .configure(server::configure_routes),
         );
     };
+
     Ok(service_config.into())
 }
