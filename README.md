@@ -12,7 +12,7 @@ $ curl https://paste.site.com/safe-toad.txt
 some text
 ```
 
-The public instance is available at [**https://rustypaste.shuttleapp.rs**](https://rustypaste.shuttleapp.rs) 🚀
+The public instance is available at [https://rustypaste.shuttleapp.rs](https://rustypaste.shuttleapp.rs) 🚀
 
 ## Features
 
