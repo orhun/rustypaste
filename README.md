@@ -22,6 +22,7 @@ The public instance is available at [https://rustypaste.shuttleapp.rs](https://r
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
   - supports expiring links
+    - auto-expiration of files (optional)
     - auto-deletion of expired files (optional)
   - supports one shot links (can only be viewed once)
   - guesses MIME types
