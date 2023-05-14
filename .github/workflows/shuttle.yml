@@ -1,4 +1,4 @@
-name: Deploy on shuttle
+name: Deploy on Shuttle
 
 on:
   push:
@@ -25,8 +25,6 @@ jobs:
         uses: taiki-e/install-action@cargo-binstall
       - name: Install cargo-shuttle
         run: cargo binstall -y cargo-shuttle
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
       - name: Prepare for deployment
         shell: bash
         run: sed -i 's|default = \[\]|default = \["shuttle"\]|g' Cargo.toml
