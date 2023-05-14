@@ -2,11 +2,8 @@ name: Deploy on Shuttle
 
 on:
   push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+    tags:
+      - "v*.*.*"
 
 jobs:
   deploy:
