@@ -3,7 +3,7 @@ refresh_rate = "1s"
 
 [server]
 address = "127.0.0.1:8000"
-#url = "https://rustypaste.shuttleapp.rs"
+url = "https://rustypaste.shuttleapp.rs"
 #workers=4
 max_content_length = "10MB"
 upload_path = "./upload"
@@ -15,26 +15,24 @@ landing_page = """
 ┴└─└─┘└─┘ ┴  ┴ ┴  ┴ ┴└─┘ ┴ └─┘
 
 Submit files via HTTP POST here:
-    curl -F 'file=@example.txt' <server>
+
+    curl -F 'file=@example.txt' https://rustypaste.shuttleapp.rs
+
 This will return the URL of the uploaded file.
 
-The server administrator might remove any pastes that they do not personally
-want to host.
+Pastes expire every hour. Uploaded files might not be persistent.
 
-If you are the server administrator and want to change this page, just go
-into your config file and change it! If you change the expiry time, it is
-recommended that you do.
+Check out the GitHub repository: https://github.com/orhun/rustypaste
+Command line tool is available : https://github.com/orhun/rustypaste-cli
 
-By default, pastes expire every hour. The server admin may or may not have
-changed this.
+If you liked this, consider supporting me: https://donate.orhun.dev <3
 
-Check out the GitHub repository at https://github.com/orhun/rustypaste
-Command line tool is available  at https://github.com/orhun/rustypaste-cli
+🦀
 """
 
 [paste]
-random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
-#random_url = { enabled = true, type = "alphanumeric", length = 8 }
+# random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
+random_url = { enabled = true, type = "alphanumeric", length = 6 }
 default_extension = "txt"
 mime_override = [
   { mime = "image/jpeg", regex = "^.*\\.jpg$" },
@@ -43,7 +41,7 @@ mime_override = [
   { mime = "video/webm", regex = "^.*\\.webm$" },
   { mime = "video/x-matroska", regex = "^.*\\.mkv$" },
   { mime = "application/octet-stream", regex = "^.*\\.bin$" },
-  { mime = "text/plain", regex = "^.*\\.(log|txt|diff|sh|rs|toml)$" },
+  { mime = "text/plain", regex = "^.*\\.(log|txt|diff|sh|kt|rs|toml)$" },
 ]
 mime_blacklist = [
   "application/x-dosexec",
@@ -51,5 +49,5 @@ mime_blacklist = [
   "application/java-vm",
 ]
 duplicate_files = true
-# default_expiry = "1h"
+default_expiry = "1h"
 delete_expired_files = { enabled = true, interval = "1h" }

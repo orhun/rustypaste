@@ -1,9 +1,10 @@
 use actix_web::middleware::Logger;
 use actix_web::web::Data;
+#[cfg(not(feature = "shuttle"))]
 use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
 use hotwatch::{Event, Hotwatch};
-use rustypaste::config::Config;
+use rustypaste::config::{Config, ServerConfig};
 use rustypaste::paste::PasteType;
 use rustypaste::server;
 use rustypaste::util;
@@ -11,17 +12,28 @@ use rustypaste::CONFIG_ENV;
 use std::env;
 use std::fs;
 use std::io::Result as IoResult;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{mpsc, RwLock};
 use std::thread;
 use std::time::Duration;
+#[cfg(feature = "shuttle")]
+use {
+    actix_web::web::{self, ServiceConfig},
+    shuttle_actix_web::ShuttleActixWeb,
+};
 
-#[actix_web::main]
-async fn main() -> IoResult<()> {
+/// Sets up the application.
+///
+/// * loads the configuration
+/// * initializes the logger
+/// * creates the necessary directories
+/// * spawns the threads
+fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, Hotwatch)> {
     // Load the .env file.
     dotenvy::dotenv().ok();
 
     // Initialize logger.
+    #[cfg(not(feature = "shuttle"))]
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     // Parse configuration.
@@ -30,7 +42,7 @@ async fn main() -> IoResult<()> {
             env::remove_var(CONFIG_ENV);
             PathBuf::from(path)
         }
-        None => PathBuf::from("config.toml"),
+        None => config_folder.join("config.toml"),
     };
     let config = Config::parse(&config_path).expect("failed to parse config");
     log::trace!("{:#?}", config);
@@ -83,6 +95,7 @@ async fn main() -> IoResult<()> {
         .unwrap_or_else(|_| panic!("failed to watch {config_path:?}"));
 
     // Create a thread for cleaning up expired files.
+    let upload_path = server_config.upload_path.clone();
     thread::spawn(move || loop {
         let mut enabled = false;
         if let Some(ref cleanup_config) = paste_config
@@ -92,7 +105,7 @@ async fn main() -> IoResult<()> {
         {
             if cleanup_config.enabled {
                 log::debug!("Running cleanup...");
-                for file in util::get_expired_files(&server_config.upload_path) {
+                for file in util::get_expired_files(&upload_path) {
                     match fs::remove_file(&file) {
                         Ok(()) => log::info!("Removed expired file: {:?}", file),
                         Err(e) => log::error!("Cannot remove expired file: {}", e),
@@ -117,6 +130,15 @@ async fn main() -> IoResult<()> {
             }
         }
     });
+
+    Ok((config, server_config, hotwatch))
+}
+
+#[cfg(not(feature = "shuttle"))]
+#[actix_web::main]
+async fn main() -> IoResult<()> {
+    // Set up the application.
+    let (config, server_config, _) = setup(&PathBuf::new())?;
 
     // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
@@ -143,4 +165,33 @@ async fn main() -> IoResult<()> {
 
     // Run the server.
     http_server.run().await
+}
+
+#[cfg(feature = "shuttle")]
+#[shuttle_runtime::main]
+async fn actix_web(
+    #[shuttle_static_folder::StaticFolder(folder = "shuttle")] static_folder: PathBuf,
+) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+    // Set up the application.
+    let (config, server_config, _) = setup(&static_folder)?;
+
+    // Create the service application.
+    let service_config = move |cfg: &mut ServiceConfig| {
+        let http_client = ClientBuilder::new()
+            .timeout(
+                server_config
+                    .timeout
+                    .unwrap_or_else(|| Duration::from_secs(30)),
+            )
+            .disable_redirects()
+            .finish();
+        cfg.service(
+            web::scope("")
+                .app_data(Data::clone(&config))
+                .app_data(Data::new(http_client))
+                .wrap(Logger::default())
+                .configure(server::configure_routes),
+        );
+    };
+    Ok(service_config.into())
 }
