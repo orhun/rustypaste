@@ -30,7 +30,5 @@ jobs:
         run: sed -i 's|default = \[\]|default = \["shuttle"\]|g' Cargo.toml
       - name: Login
         run: cargo shuttle login --api-key ${{ secrets.SHUTTLE_TOKEN }}
-      - name: Create
-        run: cargo shuttle project start --idle-minutes 0
       - name: Deploy
         run: cargo shuttle deploy --allow-dirty --no-test
