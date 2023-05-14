@@ -8,7 +8,7 @@ url = "https://rustypaste.shuttleapp.rs"
 max_content_length = "10MB"
 upload_path = "./upload"
 timeout = "30s"
-expose_version = false
+expose_version = true
 landing_page = """
 ┬─┐┬ ┬┌─┐┌┬┐┬ ┬┌─┐┌─┐┌─┐┌┬┐┌─┐
 ├┬┘│ │└─┐ │ └┬┘├─┘├─┤└─┐ │ ├┤
