@@ -2,6 +2,7 @@
 /.git/
 /.github/
 /upload/
+/shuttle/
 
 # Files
 .gitignore
