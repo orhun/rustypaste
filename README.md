@@ -84,6 +84,20 @@ cd rustypaste/
 cargo build --release
 ```
 
+#### Feature flags
+
+- `shuttle`: enable an entry point for deploying on Shuttle
+- `openssl`: use distro OpenSSL (binary size is reduced ~20% in release mode)
+- `rustls`: use [rustls](https://github.com/rustls/rustls) (enabled as default)
+
+To enable a feature for build, pass `--features` flag to `cargo build` command.
+
+For example, to reuse the OpenSSL present on a distro already:
+
+```sh
+cargo build --release --features openssl
+```
+
 #### Testing
 
 ##### Unit tests
