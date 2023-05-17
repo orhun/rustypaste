@@ -95,7 +95,7 @@ To enable a feature for build, pass `--features` flag to `cargo build` command.
 For example, to reuse the OpenSSL present on a distro already:
 
 ```sh
-cargo build --release --features openssl
+cargo build --release --no-default-features --features openssl
 ```
 
 #### Testing
