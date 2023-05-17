@@ -64,9 +64,17 @@ cargo install rustypaste
 pacman -S rustypaste
 ```
 
+### Alpine Linux
+
+`rustypaste` is available for [Alpine Edge](https://pkgs.alpinelinux.org/packages?name=rustypaste&branch=edge). It can be installed via [apk](https://wiki.alpinelinux.org/wiki/Alpine_Package_Keeper) after enabling the [testing repository](https://wiki.alpinelinux.org/wiki/Repositories).
+
+```sh
+apk add rustypaste
+```
+
 ### Binary releases
 
-See the available binaries on [releases](https://github.com/orhun/rustypaste/releases/) page.
+See the available binaries on the [releases](https://github.com/orhun/rustypaste/releases/) page.
 
 ### Build from source
 
