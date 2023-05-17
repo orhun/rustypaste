@@ -20,7 +20,7 @@ Submit files via HTTP POST here:
 
 This will return the URL of the uploaded file.
 
-Pastes expire every hour. Uploaded files might not be persistent.
+Pastes expire every 24 hours. Uploaded files might not be persistent.
 
 Check out the GitHub repository: https://github.com/orhun/rustypaste
 Command line tool is available : https://github.com/orhun/rustypaste-cli
@@ -49,5 +49,5 @@ mime_blacklist = [
   "application/java-vm",
 ]
 duplicate_files = true
-default_expiry = "1h"
+default_expiry = "24h"
 delete_expired_files = { enabled = true, interval = "1h" }
