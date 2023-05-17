@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2023-05-17
+
+The public instance is now available at [https://rustypaste.shuttleapp.rs](https://rustypaste.shuttleapp.rs) 🚀
+
+Read the blog post about `rustypaste` and Shuttle deployments: [https://blog.orhun.dev/blazingly-fast-file-sharing](https://blog.orhun.dev/blazingly-fast-file-sharing)
+
+### Added
+
+- Deploy on Shuttle.rs
+- Support setting a default expiry time
+
+You can now specify a expiry time for uploaded files. For example, if you want all the files to expire after one hour:
+
+```toml
+[paste]
+default_expiry = "1h"
+```
+
+- Support overriding the server URL
+
+If you are using `rustypaste` with a redirect or reverse proxy, it is now possible to set a different URL for the returned results:
+
+```toml
+[server]
+url = "https://rustypaste.shuttleapp.rs"
+```
+
+- Add instructions for installing on Alpine Linux
+
+`rustypaste` is now available in [testing](https://pkgs.alpinelinux.org/packages?name=rustypaste&branch=edge) repositories.
+
+- Add new crate features
+
+  - `shuttle`: enable an entry point for deploying on Shuttle
+  - `openssl`: use distro OpenSSL (binary size is reduced ~20% in release mode)
+  - `rustls`: use [rustls](https://github.com/rustls/rustls) (enabled as default)
+
+### Changed
+
+- Make the default landing page fancier
+- Generate SBOM attestation for the Docker image
+
+### Updated
+
+- Bump dependencies
+- Update the funding options
+  - Consider donating if you liked `rustypaste`: [https://donate.orhun.dev](https://donate.orhun.dev) 💖
+
 ## [0.8.4] - 2023-01-31
 
 ### Added
