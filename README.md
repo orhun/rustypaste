@@ -86,9 +86,16 @@ cargo build --release
 
 #### Testing
 
+##### Unit tests
+
 ```sh
-# run unit tests
 cargo test -- --test-threads 1
+```
+
+##### Test Fixtures
+
+```sh
+./fixtures/test-fixtures.sh
 ```
 
 ## Usage
