@@ -24,7 +24,7 @@ jobs:
         run: cargo binstall -y cargo-shuttle
       - name: Prepare for deployment
         shell: bash
-        run: sed -i 's|default = \[\]|default = \["shuttle"\]|g' Cargo.toml
+        run: sed -i 's|default = \["rustls"\]|default = \["rustls", "shuttle"\]|g' Cargo.toml
       - name: Login
         run: cargo shuttle login --api-key ${{ secrets.SHUTTLE_TOKEN }}
       - name: Deploy
