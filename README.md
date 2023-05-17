@@ -1,5 +1,13 @@
 <a href="https://github.com/orhun/rustypaste"><img src="img/rustypaste_logo.png" width="500"></a>
 
+[![GitHub Release](https://img.shields.io/github/v/release/orhun/rustypaste?style=flat&labelColor=823213&color=2c2c2c&logo=GitHub&logoColor=white)](https://github.com/orhun/rustypaste/releases)
+[![Crate Release](https://img.shields.io/crates/v/rustypaste?style=flat&labelColor=823213&color=2c2c2c&logo=Rust&logoColor=white)](https://crates.io/crates/rustypaste/)
+[![Coverage](https://img.shields.io/codecov/c/gh/orhun/rustypaste?style=flat&labelColor=823213&color=2c2c2c&logo=Codecov&logoColor=white)](https://codecov.io/gh/orhun/rustypaste)
+[![Continuous Integration](https://img.shields.io/github/actions/workflow/status/orhun/rustypaste/ci.yml?branch=master&style=flat&labelColor=823213&color=2c2c2c&logo=GitHub%20Actions&logoColor=white)](https://github.com/orhun/rustypaste/actions?query=workflow%3A%22Continuous+Integration%22)
+[![Continuous Deployment](https://img.shields.io/github/actions/workflow/status/orhun/rustypaste/cd.yml?style=flat&labelColor=823213&color=2c2c2c&logo=GitHub%20Actions&logoColor=white&label=deploy)](https://github.com/orhun/rustypaste/actions?query=workflow%3A%22Continuous+Deployment%22)
+[![Docker Builds](https://img.shields.io/github/actions/workflow/status/orhun/rustypaste/docker.yml?style=flat&labelColor=823213&color=2c2c2c&label=docker&logo=Docker&logoColor=white)](https://hub.docker.com/r/orhunp/rustypaste)
+[![Documentation](https://img.shields.io/docsrs/rustypaste?style=flat&labelColor=823213&color=2c2c2c&logo=Rust&logoColor=white)](https://docs.rs/rustypaste/)
+
 **Rustypaste** is a minimal file upload/pastebin service.
 
 ```sh
