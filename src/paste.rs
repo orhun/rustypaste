@@ -23,6 +23,8 @@ pub enum PasteType {
     Oneshot,
     /// A file that only contains an URL.
     Url,
+    /// A oneshot url
+    OneshotUrl,
 }
 
 impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
@@ -34,6 +36,8 @@ impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
             Ok(Self::RemoteFile)
         } else if content_disposition.has_form_field("oneshot") {
             Ok(Self::Oneshot)
+        } else if content_disposition.has_form_field("oneshot_url") {
+            Ok(Self::OneshotUrl)
         } else if content_disposition.has_form_field("url") {
             Ok(Self::Url)
         } else {
@@ -49,6 +53,7 @@ impl PasteType {
             Self::File | Self::RemoteFile => String::new(),
             Self::Oneshot => String::from("oneshot"),
             Self::Url => String::from("url"),
+            Self::OneshotUrl => String::from("oneshot_url"),
         }
     }
 
@@ -220,8 +225,9 @@ impl Paste {
             .paste
             .random_url
             .generate()
-            .unwrap_or_else(|| PasteType::Url.get_dir());
-        let mut path = PasteType::Url
+            .unwrap_or_else(|| self.type_.get_dir());
+        let mut path = self
+            .type_
             .get_path(&config.server.upload_path)
             .join(&file_name);
         if let Some(timestamp) = expiry_date {

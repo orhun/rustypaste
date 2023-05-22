@@ -1,11 +1,12 @@
-use crate::auth;
-use crate::config::Config;
-use crate::file::Directory;
-use crate::header::{self, ContentDisposition};
-use crate::mime as mime_util;
-use crate::paste::{Paste, PasteType};
-use crate::util;
-use crate::AUTH_TOKEN_ENV;
+use crate::{
+    auth,
+    config::Config,
+    file::Directory,
+    header::{self, ContentDisposition},
+    mime as mime_util,
+    paste::{Paste, PasteType},
+    util, AUTH_TOKEN_ENV,
+};
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
@@ -13,10 +14,7 @@ use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use serde::Deserialize;
-use std::convert::TryFrom;
-use std::env;
-use std::fs;
-use std::sync::RwLock;
+use std::{convert::TryFrom, env, fs, sync::RwLock};
 
 /// Shows the landing page.
 #[get("/")]
@@ -57,7 +55,7 @@ async fn serve(
     let mut path = util::glob_match_file(path)?;
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
-        for type_ in &[PasteType::Url, PasteType::Oneshot] {
+        for type_ in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
             let alt_path = type_.get_path(&config.server.upload_path).join(&*file);
             let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
@@ -100,6 +98,16 @@ async fn serve(
         PasteType::Url => Ok(HttpResponse::Found()
             .append_header(("Location", fs::read_to_string(&path)?))
             .finish()),
+        PasteType::OneshotUrl => {
+            let resp = HttpResponse::Found()
+                .append_header(("Location", fs::read_to_string(&path)?))
+                .finish();
+            fs::rename(
+                &path,
+                path.with_file_name(format!("{}.{}", file, util::get_system_time()?.as_millis())),
+            )?;
+            Ok(resp)
+        }
     }
 }
 
@@ -194,6 +202,7 @@ async fn upload(
             }
             if paste_type != PasteType::Oneshot
                 && paste_type != PasteType::RemoteFile
+                && paste_type != PasteType::OneshotUrl
                 && expiry_date.is_none()
                 && !config
                     .read()
@@ -236,7 +245,7 @@ async fn upload(
                         .store_remote_file(expiry_date, &client, &config)
                         .await?
                 }
-                PasteType::Url => {
+                PasteType::Url | PasteType::OneshotUrl => {
                     let config = config
                         .read()
                         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
@@ -751,6 +760,58 @@ mod tests {
             fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?)?;
         }
         fs::remove_dir(oneshot_upload_path)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_oneshot_url() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.max_content_length = Byte::from_bytes(100);
+
+        let oneshot_url_suffix = "oneshot_url";
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config.clone())))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let url_upload_path = PasteType::OneshotUrl.get_path(&config.server.upload_path);
+        fs::create_dir_all(&url_upload_path)?;
+
+        let response = test::call_service(
+            &app,
+            get_multipart_request(
+                env!("CARGO_PKG_HOMEPAGE"),
+                oneshot_url_suffix,
+                oneshot_url_suffix,
+            )
+            .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(
+            response,
+            &format!("http://localhost:8080/{}\n", oneshot_url_suffix),
+        )
+        .await?;
+
+        // Make the oneshot_url request, ensure it is found.
+        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::FOUND, response.status());
+
+        // Make the same request again, and ensure that the oneshot_url is not found.
+        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Cleanup
+        fs::remove_dir_all(url_upload_path)?;
 
         Ok(())
     }
