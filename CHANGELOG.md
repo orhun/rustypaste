@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1] - 2023-05-24
+
+### Changed
+
+- Bump Shuttle to `0.17.0`
+- Tweak public instance settings
+  - Increase the default expiry time to 24 hours
+  - Increase the max content length to 20MB
+- Bump dependencies
+
 ## [0.9.0] - 2023-05-17
 
 The public instance is now available at [https://rustypaste.shuttleapp.rs](https://rustypaste.shuttleapp.rs) 🚀
