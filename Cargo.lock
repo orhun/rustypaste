@@ -331,55 +331,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anstream"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ca84f3628370c59db74ee214b3263d58f9aadd9b4fe7e711fd87dc452b7f163"
-dependencies = [
- "anstyle",
- "anstyle-parse",
- "anstyle-query",
- "anstyle-wincon",
- "colorchoice",
- "is-terminal",
- "utf8parse",
-]
-
-[[package]]
-name = "anstyle"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41ed9a86bf92ae6580e0a31281f65a1b1d867c0cc68d5346e2ae128dddfa6a7d"
-
-[[package]]
-name = "anstyle-parse"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e765fd216e48e067936442276d1d57399e37bce53c264d6fefbe298080cb57ee"
-dependencies = [
- "utf8parse",
-]
-
-[[package]]
-name = "anstyle-query"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ca11d4be1bab0c8bc8734a9aa7bf4ee8316d462a08c6ac5052f888fef5b494b"
-dependencies = [
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "anstyle-wincon"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "180abfa45703aebe0093f79badacc01b8fd4ea2e35118747e5811127f926e188"
-dependencies = [
- "anstyle",
- "windows-sys 0.48.0",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -635,54 +586,6 @@ dependencies = [
  "serde",
  "winapi 0.3.9",
 ]
-
-[[package]]
-name = "clap"
-version = "4.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34d21f9bf1b425d2968943631ec91202fe5e837264063503708b83013f8fc938"
-dependencies = [
- "clap_builder",
- "clap_derive",
- "once_cell",
-]
-
-[[package]]
-name = "clap_builder"
-version = "4.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "914c8c79fb560f238ef6429439a30023c862f7a28e688c58f7203f12b29970bd"
-dependencies = [
- "anstream",
- "anstyle",
- "bitflags",
- "clap_lex",
- "strsim",
-]
-
-[[package]]
-name = "clap_derive"
-version = "4.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f9644cd56d6b87dbe899ef8b053e331c0637664e9e21a33dfcdc36093f5c5c4"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 2.0.16",
-]
-
-[[package]]
-name = "clap_lex"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a2dd5a6fe8c6e3502f568a6353e5273bbb15193ad9a89e457b9970798efbea1"
-
-[[package]]
-name = "colorchoice"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "config"
@@ -2510,9 +2413,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-actix-web"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a64d5b328d431b2b317bc4c4d41c34aec922a7f6e6f88fcc17e769368095560"
+checksum = "56bee90e2d16e71d4227eda3c5e994ceacdf9757268fda3bf46a403756b160ec"
 dependencies = [
  "actix-web",
  "num_cpus",
@@ -2521,21 +2424,21 @@ dependencies = [
 
 [[package]]
 name = "shuttle-codegen"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "207a2e8b132eba5beaeb809c1bb4f52d1286e91def671aa676afade1b390226c"
+checksum = "3a11d14dd9d3d7ef276c9277f18f8cb90e600384ec1d74ba4f86d1d8d2b9c187"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.16",
 ]
 
 [[package]]
 name = "shuttle-common"
-version = "0.16.2"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "038501726ae934aaaec90e203a0ade9fd261b60c52d2bc643bd4d17245758818"
+checksum = "7edfbffa004cd34fe38195cb33e98df320bae081d925a269a994dfc34f140f1a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2571,9 +2474,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-proto"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fdb0b1e4029c73b2be07e2c885cab67cec48e44bce298bdbd76201bc1211b7a"
+checksum = "29003d5bd8d7e0011f0bc369366b7fd6aec7a319b46d9a0bad1b11982d510e95"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2589,14 +2492,13 @@ dependencies = [
 
 [[package]]
 name = "shuttle-runtime"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be538eec058fa1816086358e3315716876c9c45e85e09e566b365154133ea4ff"
+checksum = "35415937a04f73cc929de3e6aa44517a1131dabdba690045c35a37bc4350fec5"
 dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
- "clap",
  "prost-types",
  "serde",
  "serde_json",
@@ -2615,9 +2517,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-service"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05c10309ce94dac2bba01a13e8c72e543fef8374e49cc30bd644e71d864b0764"
+checksum = "0614fece23b0f7722a617ca903ee3b79152ab6aa5e81e8ecbf6d21db9a08d29a"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2630,9 +2532,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-static-folder"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27a9e59077a02423713e401f10600f9f54b44a4378400cda231527a37103f4ba"
+checksum = "40673332fc479ce14195f078d87f60c099b54e7f93557f9236c122e3726ac7d2"
 dependencies = [
  "async-trait",
  "dunce",
@@ -3203,12 +3105,6 @@ name = "utf8-width"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5190c9442dcdaf0ddd50f37420417d219ae5261bbf5db120d0f9bab996c9cba1"
-
-[[package]]
-name = "utf8parse"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
 name = "uuid"
