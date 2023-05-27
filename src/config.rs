@@ -45,6 +45,8 @@ pub struct ServerConfig {
     pub auth_token: Option<String>,
     /// Landing page text.
     pub landing_page: Option<String>,
+    /// Landing page content-type
+    pub landing_page_content_type: Option<String>,
     /// Expose version.
     pub expose_version: Option<bool>,
 }

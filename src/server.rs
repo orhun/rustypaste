@@ -24,9 +24,10 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let content_type = config.server.landing_page_content_type.clone().unwrap_or("text/plain; charset=utf-8".to_string());
     match &config.server.landing_page {
         Some(page) => Ok(HttpResponse::Ok()
-            .content_type("text/plain; charset=\"UTF-8\"")
+            .content_type(content_type)
             .body(page.clone())),
         None => Ok(HttpResponse::Found()
             .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))

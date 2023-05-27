@@ -31,6 +31,7 @@ changed this.
 Check out the GitHub repository at https://github.com/orhun/rustypaste
 Command line tool is available  at https://github.com/orhun/rustypaste-cli
 """
+landing_page_content_type = "text/plain; charset=utf-8"
 
 [paste]
 random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
