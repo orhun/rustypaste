@@ -55,24 +55,29 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
 ///
 /// Fail-safe, omits errors.
 pub fn get_expired_files(base_path: &Path) -> Vec<PathBuf> {
-    [PasteType::File, PasteType::Oneshot, PasteType::Url]
-        .into_iter()
-        .filter_map(|v| glob(&v.get_path(base_path).join("*.[0-9]*").to_string_lossy()).ok())
-        .flat_map(|glob| glob.filter_map(|v| v.ok()).collect::<Vec<PathBuf>>())
-        .filter(|path| {
-            if let Some(extension) = path
-                .extension()
-                .and_then(|v| v.to_str())
-                .and_then(|v| v.parse().ok())
-            {
-                get_system_time()
-                    .map(|system_time| system_time > Duration::from_millis(extension))
-                    .unwrap_or(false)
-            } else {
-                false
-            }
-        })
-        .collect()
+    [
+        PasteType::File,
+        PasteType::Oneshot,
+        PasteType::Url,
+        PasteType::OneshotUrl,
+    ]
+    .into_iter()
+    .filter_map(|v| glob(&v.get_path(base_path).join("*.[0-9]*").to_string_lossy()).ok())
+    .flat_map(|glob| glob.filter_map(|v| v.ok()).collect::<Vec<PathBuf>>())
+    .filter(|path| {
+        if let Some(extension) = path
+            .extension()
+            .and_then(|v| v.to_str())
+            .and_then(|v| v.parse().ok())
+        {
+            get_system_time()
+                .map(|system_time| system_time > Duration::from_millis(extension))
+                .unwrap_or(false)
+        } else {
+            false
+        }
+    })
+    .collect()
 }
 
 /// Returns the SHA256 digest of the given input.
