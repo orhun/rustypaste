@@ -1,12 +1,11 @@
-use crate::{
-    auth,
-    config::Config,
-    file::Directory,
-    header::{self, ContentDisposition},
-    mime as mime_util,
-    paste::{Paste, PasteType},
-    util, AUTH_TOKEN_ENV,
-};
+use crate::auth;
+use crate::config::Config;
+use crate::file::Directory;
+use crate::header::{self, ContentDisposition};
+use crate::mime as mime_util;
+use crate::paste::{Paste, PasteType};
+use crate::util;
+use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
@@ -14,7 +13,10 @@ use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use serde::Deserialize;
-use std::{convert::TryFrom, env, fs, sync::RwLock};
+use std::convert::TryFrom;
+use std::env;
+use std::fs;
+use std::sync::RwLock;
 
 /// Shows the landing page.
 #[get("/")]
