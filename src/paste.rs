@@ -23,7 +23,7 @@ pub enum PasteType {
     Oneshot,
     /// A file that only contains an URL.
     Url,
-    /// A oneshot url
+    /// A oneshot url.
     OneshotUrl,
 }
 

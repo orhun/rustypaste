@@ -32,8 +32,7 @@ The public instance is available at [https://rustypaste.shuttleapp.rs](https://r
   - supports expiring links
     - auto-expiration of files (optional)
     - auto-deletion of expired files (optional)
-  - supports one shot links (can only be viewed once)
-  - supports one shot urls (can only be viewed once)
+  - supports one shot links/URLs (can only be viewed once)
   - guesses MIME types
     - supports overriding and blacklisting
     - supports forcing to download via `?download=true`
@@ -143,7 +142,7 @@ $ curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
 
 (supported units: `ns`, `us`, `ms`, `sec`, `min`, `hours`, `days`, `weeks`, `months`, `years`)
 
-#### One shot
+#### One shot files
 
 ```sh
 $ curl -F "oneshot=@x.txt" "<server_address>"
