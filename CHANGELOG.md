@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2023-05-31
+
+### Added
+
+- Support one shot URLs
+
+With using the `oneshot_url` multipart field, you can now shorten an URL and make it disappear after viewed once:
+
+```sh
+curl -F "oneshot_url=https://example.com" "<server_address>"
+```
+
+- Allow configuring the content type for the landing page
+
+`landing_page_content_type` is added as a configuration option for setting the [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type) header:
+
+```toml
+[server]
+landing_page = ""
+landing_page_content_type = "text/plain; charset=utf-8"
+```
+
+- Add information/example about using HTML forms
+
+With utilizing the newly added option for the content type, you can now use HTML forms for the landing page:
+
+```toml
+[server]
+landing_page = "<html>"
+landing_page_content_type = "text/html; charset=utf-8"
+```
+
+There is an example added to the repository: [html_form.toml](https://github.com/orhun/rustypaste/blob/1a8958966972f2afb04a12cb2f5537a1d971561c/examples/html_form.toml)
+
+Also, there is an ongoing discussion about refactoring the usage of landing page fields in the configuration file. See [#52](https://github.com/orhun/rustypaste/issues/52)
+
+- An informative log message is added for showing the server address at startup
+
 ## [0.9.1] - 2023-05-24
 
 ### Changed
