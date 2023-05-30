@@ -204,6 +204,11 @@ $ rustypaste
 
 See [config.toml](./config.toml) for configuration options.
 
+#### HTML form
+
+It is possible to use an HTML form for uploading files. To do so, you need to update two field in your `config.toml`.  Set the `landing_page_content_type` to `text/html; charset=utf-8` and update the `landing_page` field with your HTML form.  For an example, see [config_html.toml](./config_html.toml)
+
+
 #### Docker
 
 Following command can be used to run a container which is built from the [Dockerfile](./Dockerfile) in this repository:
