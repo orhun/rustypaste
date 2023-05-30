@@ -156,7 +156,7 @@ async fn main() -> IoResult<()> {
             .wrap(Logger::default())
             .configure(server::configure_routes)
     })
-    .bind(server_config.address)?;
+    .bind(&server_config.address)?;
 
     // Set worker count for the server.
     if let Some(workers) = server_config.workers {
@@ -164,6 +164,7 @@ async fn main() -> IoResult<()> {
     }
 
     // Run the server.
+    log::info!("Server is running at {}", server_config.address);
     http_server.run().await
 }
 
