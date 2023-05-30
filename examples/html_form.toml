@@ -1,0 +1,128 @@
+[config]
+refresh_rate = "1s"
+
+[server]
+address = "127.0.0.1:8000"
+#url = "https://rustypaste.shuttleapp.rs"
+#workers=4
+max_content_length = "10MB"
+upload_path = "./upload"
+timeout = "30s"
+expose_version = false
+landing_page = """
+<html lang="en">
+  <head>
+    <title>rustypaste</title>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        background-color: #f2f2f2;
+        font-family: arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      pre {
+        background-color: #333;
+        color: #fff;
+        font-size: 18px;
+        margin: 0;
+        overflow: auto;
+        padding: 20px;
+        white-space: pre-wrap;
+      }
+      h2 {
+        color: #333;
+        font-size: 24px;
+        margin-top: 40px;
+      }
+      form {
+        margin: 20px 0;
+      }
+      input[type="url"],
+      input[type="file"] {
+        border: none;
+        border-radius: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        font-family: arial, sans-serif;
+        font-size: 18px;
+        margin-right: 10px;
+        padding: 10px;
+        width: 400px;
+      }
+      input[type="submit"] {
+        background-color: #333;
+        border: none;
+        border-radius: 5px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        color: #fff;
+        cursor: pointer;
+        font-family: arial, sans-serif;
+        font-size: 18px;
+        padding: 10px 20px;
+        transition: background-color 0.2s ease-in-out;
+      }
+      input[type="submit"]:hover {
+        background-color: #444;
+      }
+    </style>
+  </head>
+  <body>
+    <pre>
+┬─┐┬ ┬┌─┐┌┬┐┬ ┬┌─┐┌─┐┌─┐┌┬┐┌─┐
+├┬┘│ │└─┐ │ └┬┘├─┘├─┤└─┐ │ ├┤
+┴└─└─┘└─┘ ┴  ┴ ┴  ┴ ┴└─┘ ┴ └─┘
+the server administrator might remove any pastes that they do not personally
+want to host.
+
+by default, pastes expire every hour.
+        </pre
+    >
+    <h2>share url</h2>
+    <form action="/" method="post" enctype="multipart/form-data">
+      <input type="url" name="url" />
+      <input type="submit" value="share" />
+    </form>
+
+    <h2>share file from url</h2>
+    <form action="/" method="post" enctype="multipart/form-data">
+      <input type="url" name="remote" />
+      <input type="submit" value="share" />
+    </form>
+
+    <h2>share file</h2>
+    <form action="/" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" />
+      <input type="submit" value="share" />
+    </form>
+
+    <h2>share one-time file</h2>
+    <form action="/" method="post" enctype="multipart/form-data">
+      <input type="file" name="oneshot" />
+      <input type="submit" value="share" />
+    </form>
+  </body>
+</html>
+"""
+landing_page_content_type = "text/html; charset=utf-8"
+
+[paste]
+random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
+#random_url = { enabled = true, type = "alphanumeric", length = 8 }
+default_extension = "txt"
+mime_override = [
+  { mime = "image/jpeg", regex = "^.*\\.jpg$" },
+  { mime = "image/png", regex = "^.*\\.png$" },
+  { mime = "image/svg+xml", regex = "^.*\\.svg$" },
+  { mime = "video/webm", regex = "^.*\\.webm$" },
+  { mime = "video/x-matroska", regex = "^.*\\.mkv$" },
+  { mime = "application/octet-stream", regex = "^.*\\.bin$" },
+  { mime = "text/plain", regex = "^.*\\.(log|txt|diff|sh|rs|toml)$" },
+]
+mime_blacklist = [
+  "application/x-dosexec",
+  "application/java-archive",
+  "application/java-vm",
+]
+duplicate_files = true
+# default_expiry = "1h"
+delete_expired_files = { enabled = true, interval = "1h" }

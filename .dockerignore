@@ -3,6 +3,7 @@
 /.github/
 /upload/
 /shuttle/
+/examples/
 
 # Files
 .gitignore
