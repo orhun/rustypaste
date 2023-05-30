@@ -22,6 +22,43 @@ some text
 
 The public instance is available at [https://rustypaste.shuttleapp.rs](https://rustypaste.shuttleapp.rs) 🚀
 
+</details>
+
+<details>
+  <summary>Table of Contents</summary>
+
+<!-- vim-markdown-toc GFM -->
+
+- [Features](#features)
+- [Installation](#installation)
+  - [From crates.io](#from-cratesio)
+  - [Arch Linux](#arch-linux)
+  - [Alpine Linux](#alpine-linux)
+  - [Binary releases](#binary-releases)
+  - [Build from source](#build-from-source)
+    - [Feature flags](#feature-flags)
+    - [Testing](#testing)
+      - [Unit tests](#unit-tests)
+      - [Test Fixtures](#test-fixtures)
+- [Usage](#usage)
+  - [CLI](#cli)
+    - [Expiration](#expiration)
+    - [One shot files](#one-shot-files)
+    - [One shot URLs](#one-shot-urls)
+    - [URL shortening](#url-shortening)
+    - [Paste file from remote URL](#paste-file-from-remote-url)
+    - [Cleaning up expired files](#cleaning-up-expired-files)
+  - [Server](#server)
+    - [HTML Form](#html-form)
+    - [Docker](#docker)
+    - [Nginx](#nginx)
+  - [Contributing](#contributing)
+    - [License](#license)
+
+<!-- vim-markdown-toc -->
+
+</details>
+
 ## Features
 
 - File upload & URL shortening & upload from URL
