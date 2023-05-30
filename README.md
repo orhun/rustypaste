@@ -22,6 +22,8 @@ some text
 
 The public instance is available at [https://rustypaste.shuttleapp.rs](https://rustypaste.shuttleapp.rs) 🚀
 
+Here you can read the blog post about how it is deployed on Shuttle: [https://blog.orhun.dev/blazingly-fast-file-sharing](https://blog.orhun.dev/blazingly-fast-file-sharing)
+
 </details>
 
 <details>
