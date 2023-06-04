@@ -138,7 +138,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
     // Set up the application.
-    let (config, server_config, _) = setup(&PathBuf::new())?;
+    let (config, server_config, _hotwatch) = setup(&PathBuf::new())?;
 
     // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
@@ -174,7 +174,7 @@ async fn actix_web(
     #[shuttle_static_folder::StaticFolder(folder = "shuttle")] static_folder: PathBuf,
 ) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     // Set up the application.
-    let (config, server_config, _) = setup(&static_folder)?;
+    let (config, server_config, _hotwatch) = setup(&PathBuf::new())?;
 
     // Create the service.
     let service_config = move |cfg: &mut ServiceConfig| {
