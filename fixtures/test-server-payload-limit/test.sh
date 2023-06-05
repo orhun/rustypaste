@@ -3,7 +3,7 @@
 setup() {
   touch emptyfile
   truncate -s 9KB smallfile
-  truncate -s 10KB normalfile
+  fallocate -l 10000 normalfile
   truncate -s 11KB bigfile
 }
 
@@ -15,7 +15,7 @@ run_test() {
   test "upload limit exceeded" = "$result"
 
   result=$(curl -s -F "file=@normalfile" localhost:8000)
-  test "upload limit exceeded" != "$result"
+  test "upload limit exceeded" = "$result"
 
   result=$(curl -s -F "file=@smallfile" localhost:8000)
   test "upload limit exceeded" != "$result"

@@ -5,6 +5,7 @@ use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
 use hotwatch::{Event, Hotwatch};
 use rustypaste::config::{Config, ServerConfig};
+use rustypaste::middleware::ContentLengthLimiter;
 use rustypaste::paste::PasteType;
 use rustypaste::server;
 use rustypaste::util;
@@ -154,6 +155,9 @@ async fn main() -> IoResult<()> {
             .app_data(Data::clone(&config))
             .app_data(Data::new(http_client))
             .wrap(Logger::default())
+            .wrap(ContentLengthLimiter::new(
+                server_config.max_content_length.get_bytes(),
+            ))
             .configure(server::configure_routes)
     })
     .bind(&server_config.address)?;
@@ -191,6 +195,9 @@ async fn actix_web(
                 .app_data(Data::clone(&config))
                 .app_data(Data::new(http_client))
                 .wrap(Logger::default())
+                .wrap(ContentLengthLimiter::new(
+                    server_config.max_content_length.get_bytes(),
+                ))
                 .configure(server::configure_routes),
         );
     };

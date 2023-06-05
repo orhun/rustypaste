@@ -28,6 +28,9 @@ pub mod mime;
 /// Helper functions.
 pub mod util;
 
+/// Custom middleware implementation.
+pub mod middleware;
+
 /// Environment variable for setting the configuration file path.
 pub const CONFIG_ENV: &str = "CONFIG";
 

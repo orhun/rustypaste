@@ -195,13 +195,6 @@ async fn upload(
             let mut bytes = Vec::<u8>::new();
             while let Some(chunk) = field.next().await {
                 bytes.append(&mut chunk?.to_vec());
-                let config = config
-                    .read()
-                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                if bytes.len() as u128 > config.server.max_content_length.get_bytes() {
-                    log::warn!("Upload rejected for {}", host);
-                    return Err(error::ErrorPayloadTooLarge("upload limit exceeded"));
-                }
             }
             if bytes.is_empty() {
                 log::warn!("{} sent zero bytes", host);
@@ -286,17 +279,16 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::middleware::ContentLengthLimiter;
     use crate::random::{RandomURLConfig, RandomURLType};
-    use actix_web::body::BodySize;
     use actix_web::body::MessageBody;
-    use actix_web::dev::ServiceResponse;
+    use actix_web::body::{BodySize, BoxBody};
     use actix_web::error::Error;
     use actix_web::http::{header, StatusCode};
     use actix_web::test::{self, TestRequest};
     use actix_web::web::Data;
     use actix_web::App;
     use awc::ClientBuilder;
-    use byte_unit::Byte;
     use glob::glob;
     use std::path::PathBuf;
     use std::str;
@@ -324,8 +316,7 @@ mod tests {
             .set_payload(multipart_data)
     }
 
-    async fn assert_body(response: ServiceResponse, expected: &str) -> Result<(), Error> {
-        let body = response.into_body();
+    async fn assert_body(body: BoxBody, expected: &str) -> Result<(), Error> {
         if let BodySize::Sized(size) = body.size() {
             assert_eq!(size, expected.as_bytes().len() as u64);
             let body_bytes = actix_web::body::to_bytes(body).await?;
@@ -368,7 +359,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, "landing page").await?;
+        assert_body(response.into_body(), "landing page").await?;
         Ok(())
     }
 
@@ -390,7 +381,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-        assert_body(response, "unauthorized").await?;
+        assert_body(response.into_body(), "unauthorized").await?;
         Ok(())
     }
 
@@ -410,7 +401,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::FORBIDDEN, response.status());
-        assert_body(response, "endpoint is not exposed").await?;
+        assert_body(response.into_body(), "endpoint is not exposed").await?;
         Ok(())
     }
 
@@ -432,7 +423,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, env!("CARGO_PKG_VERSION")).await?;
+        assert_body(response.into_body(), env!("CARGO_PKG_VERSION")).await?;
         Ok(())
     }
 
@@ -452,7 +443,7 @@ mod tests {
         let response =
             test::call_service(&app, get_multipart_request("", "", "").to_request()).await;
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-        assert_body(response, "unauthorized").await?;
+        assert_body(response.into_body(), "unauthorized").await?;
 
         Ok(())
     }
@@ -463,6 +454,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(Config::default())))
                 .app_data(Data::new(Client::default()))
+                .wrap(ContentLengthLimiter::new(30000))
                 .configure(configure_routes),
         )
         .await;
@@ -473,7 +465,7 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::PAYLOAD_TOO_LARGE, response.status());
-        assert_body(response, "upload limit exceeded").await?;
+        assert_body(response.into_body().boxed(), "upload limit exceeded").await?;
 
         Ok(())
     }
@@ -482,7 +474,6 @@ mod tests {
     async fn test_upload_file() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.server.max_content_length = Byte::from_bytes(100);
 
         let app = test::init_service(
             App::new()
@@ -500,14 +491,18 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
+        assert_body(
+            response.into_body(),
+            &format!("http://localhost:8080/{file_name}\n"),
+        )
+        .await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &timestamp).await?;
+        assert_body(response.into_body(), &timestamp).await?;
 
         fs::remove_file(file_name)?;
         let serve_request = TestRequest::get()
@@ -526,7 +521,6 @@ mod tests {
 
         let mut config = Config::default();
         config.server.upload_path = PathBuf::from(&test_upload_dir);
-        config.server.max_content_length = Byte::from_bytes(100);
         config.paste.duplicate_files = Some(false);
         config.paste.random_url = RandomURLConfig {
             enabled: true,
@@ -571,7 +565,6 @@ mod tests {
     async fn test_upload_expiring_file() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.server.max_content_length = Byte::from_bytes(100);
 
         let app = test::init_service(
             App::new()
@@ -594,14 +587,18 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
+        assert_body(
+            response.into_body(),
+            &format!("http://localhost:8080/{file_name}\n"),
+        )
+        .await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &timestamp).await?;
+        assert_body(response.into_body(), &timestamp).await?;
 
         thread::sleep(Duration::from_millis(40));
 
@@ -651,7 +648,11 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
+        assert_body(
+            response.into_body().boxed(),
+            &format!("http://localhost:8080/{file_name}\n"),
+        )
+        .await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
@@ -681,7 +682,6 @@ mod tests {
     async fn test_upload_url() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.server.max_content_length = Byte::from_bytes(100);
 
         let app = test::init_service(
             App::new()
@@ -700,7 +700,7 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, "http://localhost:8080/url\n").await?;
+        assert_body(response.into_body(), "http://localhost:8080/url\n").await?;
 
         let serve_request = TestRequest::get().uri("/url").to_request();
         let response = test::call_service(&app, serve_request).await;
@@ -720,7 +720,6 @@ mod tests {
     async fn test_upload_oneshot() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.server.max_content_length = Byte::from_bytes(100);
 
         let app = test::init_service(
             App::new()
@@ -741,14 +740,18 @@ mod tests {
         )
         .await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &format!("http://localhost:8080/{file_name}\n")).await?;
+        assert_body(
+            response.into_body(),
+            &format!("http://localhost:8080/{file_name}\n"),
+        )
+        .await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response, &timestamp).await?;
+        assert_body(response.into_body(), &timestamp).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
@@ -775,7 +778,6 @@ mod tests {
     async fn test_upload_oneshot_url() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.server.max_content_length = Byte::from_bytes(100);
 
         let oneshot_url_suffix = "oneshot_url";
 
@@ -802,7 +804,7 @@ mod tests {
         .await;
         assert_eq!(StatusCode::OK, response.status());
         assert_body(
-            response,
+            response.into_body(),
             &format!("http://localhost:8080/{}\n", oneshot_url_suffix),
         )
         .await?;
