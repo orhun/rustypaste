@@ -3,7 +3,8 @@ use actix_web::web::Data;
 #[cfg(not(feature = "shuttle"))]
 use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
-use hotwatch::{Event, Hotwatch};
+use hotwatch::notify::event::ModifyKind;
+use hotwatch::{Event, EventKind, Hotwatch};
 use rustypaste::config::{Config, ServerConfig};
 use rustypaste::middleware::ContentLengthLimiter;
 use rustypaste::paste::PasteType;
@@ -71,8 +72,10 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     let config = Data::new(RwLock::new(config));
     let cloned_config = Data::clone(&config);
     let config_watcher = move |event: Event| {
-        if let Event::Write(path) = event {
-            match Config::parse(&path) {
+        if let (EventKind::Modify(ModifyKind::Data(_)), Some(path)) =
+            (event.kind, event.paths.get(0))
+        {
+            match Config::parse(path) {
                 Ok(config) => match cloned_config.write() {
                     Ok(mut cloned_config) => {
                         *cloned_config = config.clone();
