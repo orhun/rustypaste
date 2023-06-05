@@ -1,13 +1,18 @@
-name: Deploy on Shuttle
+name: Shuttle.rs
 
 on:
   push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
     tags:
       - "v*.*.*"
 
 jobs:
-  deploy:
-    name: Deploy
+  build:
+    name: Build / Deploy
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout the repository
@@ -25,9 +30,11 @@ jobs:
       - name: Prepare for deployment
         shell: bash
         run: sed -i 's|default = \["rustls"\]|default = \["rustls", "shuttle"\]|g' Cargo.toml
-      - name: Login
-        run: cargo shuttle login --api-key ${{ secrets.SHUTTLE_TOKEN }}
-      - name: Restart
-        run: cargo shuttle project restart
+      - name: Build
+        run: cargo build --locked --verbose
       - name: Deploy
-        run: cargo shuttle deploy --allow-dirty --no-test
+        if: startsWith(github.event.ref, 'refs/tags/v')
+        run: |
+          cargo shuttle login --api-key ${{ secrets.SHUTTLE_TOKEN }}
+          cargo shuttle project restart
+          cargo shuttle deploy --allow-dirty --no-test
