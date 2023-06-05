@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2023-06-05
+
+### Added
+
+- Add a middleware for checking the content length
+  - Before, the upload size was checked after full upload which was clearly wrong.
+  - With this change, total amount of bytes to upload is checked via [`Content-Length`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Length) header before the upload.
+
+### Changed
+
+- Bump Shuttle to `0.18.0`
+- Bump hotwatch to 0.5.0
+  - Fixes [`RUSTSEC-2020-0016`](https://rustsec.org/advisories/RUSTSEC-2020-0016.html)
+
+### Fixed
+
+- Do not drop the config watcher
+  - Since `0.9.0`, the configuration watcher was dropped early which caused for it to not work and resulted in mysterious spikes in CPU usage.
+  - With this version, this issue is fixed.
+
 ## [0.10.0] - 2023-05-31
 
 ### Added
