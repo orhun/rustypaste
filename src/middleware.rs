@@ -19,16 +19,8 @@ pub struct ContentLengthLimiter {
 
 impl ContentLengthLimiter {
     /// Contructs a new instance.
-    pub fn new(limit: u128) -> Self {
-        Self { max_bytes: limit }
-    }
-}
-
-impl Default for ContentLengthLimiter {
-    fn default() -> Self {
-        Self {
-            max_bytes: 10 * 1024 * 1024,
-        }
+    pub fn new(max_bytes: u128) -> Self {
+        Self { max_bytes }
     }
 }
 
@@ -46,7 +38,7 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(ContentLengthLimiterMiddleware {
             service: Rc::new(service),
-            limit: self.max_bytes,
+            max_bytes: self.max_bytes,
         }))
     }
 }
@@ -55,7 +47,7 @@ where
 #[derive(Debug)]
 pub struct ContentLengthLimiterMiddleware<S> {
     service: Rc<S>,
-    limit: u128,
+    max_bytes: u128,
 }
 
 impl<S, B> Service<ServiceRequest> for ContentLengthLimiterMiddleware<S>
@@ -76,8 +68,7 @@ where
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse::<u128>().ok())
         {
-            if content_length > self.limit {
-                log::warn!("{} > {}", content_length, self.limit);
+            if content_length > self.max_bytes {
                 log::warn!("Upload rejected due to exceeded limit.");
                 return Box::pin(async move {
                     // drain the body due to https://github.com/actix/actix-web/issues/2695

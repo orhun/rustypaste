@@ -313,6 +313,11 @@ mod tests {
                 header::CONTENT_TYPE,
                 header::HeaderValue::from_static("multipart/mixed; boundary=\"multipart_bound\""),
             ))
+            .insert_header((
+                header::CONTENT_LENGTH,
+                header::HeaderValue::from_str(&data.bytes().len().to_string())
+                    .expect("cannot create header value"),
+            ))
             .set_payload(multipart_data)
     }
 
@@ -454,7 +459,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(Config::default())))
                 .app_data(Data::new(Client::default()))
-                .wrap(ContentLengthLimiter::new(30000))
+                .wrap(ContentLengthLimiter::new(1))
                 .configure(configure_routes),
         )
         .await;
