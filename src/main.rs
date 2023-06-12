@@ -157,7 +157,9 @@ async fn main() -> IoResult<()> {
         App::new()
             .app_data(Data::clone(&config))
             .app_data(Data::new(http_client))
-            .wrap(Logger::default())
+            .wrap(Logger::new(
+                "%{r}a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T",
+            ))
             .wrap(ContentLengthLimiter::new(
                 server_config.max_content_length.get_bytes(),
             ))
@@ -197,7 +199,9 @@ async fn actix_web(
             web::scope("")
                 .app_data(Data::clone(&config))
                 .app_data(Data::new(http_client))
-                .wrap(Logger::default())
+                .wrap(Logger::new(
+                    "%{r}a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T",
+                ))
                 .wrap(ContentLengthLimiter::new(
                     server_config.max_content_length.get_bytes(),
                 ))
