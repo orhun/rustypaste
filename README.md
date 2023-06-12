@@ -179,7 +179,19 @@ $ rpaste -
 $ curl -F "file=@x.txt" -H "expire:10min" "<server_address>"
 ```
 
-(supported units: `ns`, `us`, `ms`, `sec`, `min`, `hours`, `days`, `weeks`, `months`, `years`)
+supported units:
+
+- `nsec`, `ns`
+- `usec`, `us`
+- `msec`, `ms`
+- `seconds`, `second`, `sec`, `s`
+- `minutes`, `minute`, `min`, `m`
+- `hours`, `hour`, `hr`, `h`
+- `days`, `day`, `d`
+- `weeks`, `week`, `w`
+- `months`, `month`, `M`
+- `years`, `year`, `y`
+
 
 #### One shot files
 
