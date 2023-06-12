@@ -128,7 +128,7 @@ async fn version(
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let connection = request.connection_info().clone();
-    let host = connection.peer_addr().unwrap_or("unknown host");
+    let host = connection.realip_remote_addr().unwrap_or("unknown host");
     auth::check(
         host,
         request.headers(),
@@ -153,7 +153,7 @@ async fn upload(
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
-    let host = connection.peer_addr().unwrap_or("unknown host");
+    let host = connection.realip_remote_addr().unwrap_or("unknown host");
     let server_url = match config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
