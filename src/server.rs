@@ -29,6 +29,19 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         .landing_page_content_type
         .clone()
         .unwrap_or("text/plain; charset=utf-8".to_string());
+
+    match &config.server.landing_page_file {
+        Some(file) => {
+            let file_contents = fs::read_to_string(file).unwrap_or("".to_string());
+            if file_contents.is_empty() == false {
+                return Ok(HttpResponse::Ok()
+                    .content_type(content_type)
+                    .body(file_contents.clone()));
+            }
+        },
+        None => (),
+    }
+
     match &config.server.landing_page {
         Some(page) => Ok(HttpResponse::Ok()
             .content_type(content_type)
