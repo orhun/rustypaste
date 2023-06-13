@@ -38,7 +38,7 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
                     .content_type(content_type)
                     .body(file_contents));
             }
-        },
+        }
         None => (),
     }
 
