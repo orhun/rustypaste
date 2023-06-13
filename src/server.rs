@@ -33,10 +33,10 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     match &config.server.landing_page_file {
         Some(file) => {
             let file_contents = fs::read_to_string(file).unwrap_or("".to_string());
-            if file_contents.is_empty() == false {
+            if !file_contents.is_empty() {
                 return Ok(HttpResponse::Ok()
                     .content_type(content_type)
-                    .body(file_contents.clone()));
+                    .body(file_contents));
             }
         },
         None => (),
