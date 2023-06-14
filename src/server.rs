@@ -402,7 +402,7 @@ mod tests {
         let filename = "landing_page.txt";
         let mut config = Config::default();
         config.server.landing_page = Some(String::from("landing page"));
-        config.server.landing_page_file = Some(String::from(filename.to_string()));
+        config.server.landing_page_file = Some(filename.to_string());
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
