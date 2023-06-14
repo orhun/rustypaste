@@ -298,6 +298,8 @@ mod tests {
     use std::str;
     use std::thread;
     use std::time::Duration;
+    use std::fs::File;
+    use std::io::Write;
 
     fn get_multipart_request(data: &str, name: &str, filename: &str) -> TestRequest {
         let multipart_data = format!(
@@ -369,6 +371,50 @@ mod tests {
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), "landing page").await?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_index_with_landing_page_file() -> Result<(), Error> {
+        let filename = "landing_page.txt";
+        let mut config = Config::default();
+        let mut file = File::create(filename)?;
+        file.write_all("landing page from file".as_bytes())?;
+        config.server.landing_page_file = Some(filename.to_string());
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), "landing page from file").await?;
+        fs::remove_file(filename)?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_index_with_landing_page_file_not_found() -> Result<(), Error> {
+        let filename = "landing_page.txt";
+        let mut config = Config::default();
+        config.server.landing_page = Some(String::from("landing page"));
+        config.server.landing_page_file = Some(String::from(filename.to_string()));
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::FOUND, response.status());
+        //assert_body(response.into_body(), "landing page").await?;
         Ok(())
     }
 
