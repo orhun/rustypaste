@@ -294,12 +294,12 @@ mod tests {
     use actix_web::App;
     use awc::ClientBuilder;
     use glob::glob;
+    use std::fs::File;
+    use std::io::Write;
     use std::path::PathBuf;
     use std::str;
     use std::thread;
     use std::time::Duration;
-    use std::fs::File;
-    use std::io::Write;
 
     fn get_multipart_request(data: &str, name: &str, filename: &str) -> TestRequest {
         let multipart_data = format!(
