@@ -414,7 +414,6 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::FOUND, response.status());
-        //assert_body(response.into_body(), "landing page").await?;
         Ok(())
     }
 
