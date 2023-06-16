@@ -29,7 +29,11 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         .landing_page_content_type
         .clone()
         .unwrap_or("text/plain; charset=utf-8".to_string());
-    match &config.server.landing_page {
+    let mut landing_page = config.server.landing_page.clone();
+    if let Some(file) = &config.server.landing_page_file {
+        landing_page = fs::read_to_string(file).ok();
+    }
+    match &landing_page {
         Some(page) => Ok(HttpResponse::Ok()
             .content_type(content_type)
             .body(page.clone())),
@@ -290,6 +294,8 @@ mod tests {
     use actix_web::App;
     use awc::ClientBuilder;
     use glob::glob;
+    use std::fs::File;
+    use std::io::Write;
     use std::path::PathBuf;
     use std::str;
     use std::thread;
@@ -365,6 +371,49 @@ mod tests {
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), "landing page").await?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_index_with_landing_page_file() -> Result<(), Error> {
+        let filename = "landing_page.txt";
+        let mut config = Config::default();
+        let mut file = File::create(filename)?;
+        file.write_all("landing page from file".as_bytes())?;
+        config.server.landing_page_file = Some(filename.to_string());
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), "landing page from file").await?;
+        fs::remove_file(filename)?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_index_with_landing_page_file_not_found() -> Result<(), Error> {
+        let filename = "landing_page.txt";
+        let mut config = Config::default();
+        config.server.landing_page = Some(String::from("landing page"));
+        config.server.landing_page_file = Some(filename.to_string());
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .service(index),
+        )
+        .await;
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(StatusCode::FOUND, response.status());
         Ok(())
     }
 
