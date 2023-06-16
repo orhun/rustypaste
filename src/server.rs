@@ -25,12 +25,12 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let content_type = config
-        .server
-        .landing_page_content_type
+        .landing_page
+        .content_type
         .clone()
         .unwrap_or("text/plain; charset=utf-8".to_string());
-    let mut landing_page = config.server.landing_page.clone();
-    if let Some(file) = &config.server.landing_page_file {
+    let mut landing_page = config.landing_page.text.clone();
+    if let Some(file) = &config.landing_page.file {
         landing_page = fs::read_to_string(file).ok();
     }
     match &landing_page {
@@ -358,7 +358,7 @@ mod tests {
     #[actix_web::test]
     async fn test_index_with_landing_page() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.landing_page = Some(String::from("landing page"));
+        config.landing_page.text = Some(String::from("landing page"));
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -380,7 +380,7 @@ mod tests {
         let mut config = Config::default();
         let mut file = File::create(filename)?;
         file.write_all("landing page from file".as_bytes())?;
-        config.server.landing_page_file = Some(filename.to_string());
+        config.landing_page.file = Some(filename.to_string());
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -401,8 +401,8 @@ mod tests {
     async fn test_index_with_landing_page_file_not_found() -> Result<(), Error> {
         let filename = "landing_page.txt";
         let mut config = Config::default();
-        config.server.landing_page = Some(String::from("landing page"));
-        config.server.landing_page_file = Some(filename.to_string());
+        config.landing_page.text = Some(String::from("landing page"));
+        config.landing_page.file = Some(filename.to_string());
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))

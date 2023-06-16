@@ -4,6 +4,8 @@ max_content_length="10MB"
 upload_path="./upload"
 auth_token="rustypasteisawesome"
 
+[landing_page]
+
 [paste]
 random_url = { enabled = false, type = "petname", words = 2, separator = "-" }
 default_extension = "txt"

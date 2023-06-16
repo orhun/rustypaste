@@ -9,7 +9,9 @@ max_content_length = "10MB"
 upload_path = "./upload"
 timeout = "30s"
 expose_version = false
-landing_page = """
+
+[landing_page]
+text = """
 ┬─┐┬ ┬┌─┐┌┬┐┬ ┬┌─┐┌─┐┌─┐┌┬┐┌─┐
 ├┬┘│ │└─┐ │ └┬┘├─┘├─┤└─┐ │ ├┤
 ┴└─└─┘└─┘ ┴  ┴ ┴  ┴ ┴└─┘ ┴ └─┘
@@ -31,7 +33,8 @@ changed this.
 Check out the GitHub repository at https://github.com/orhun/rustypaste
 Command line tool is available  at https://github.com/orhun/rustypaste-cli
 """
-landing_page_content_type = "text/plain; charset=utf-8"
+#file = "index.txt"
+content_type = "text/plain; charset=utf-8"
 
 [paste]
 random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
