@@ -24,13 +24,14 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let mut content_type = "text/plain; charset=utf-8".to_string();
+    let content_type_default = "text/plain; charset=utf-8".to_string();
+    let mut content_type = content_type_default.clone();
     let mut landing_page = None;
     if let Some(config_landing_page) = &config.landing_page {
         content_type = config_landing_page
             .content_type
             .clone()
-            .unwrap_or("text/plain; charset=utf-8".to_string());
+            .unwrap_or(content_type_default);
         landing_page = config_landing_page.text.clone();
         if let Some(file) = &config_landing_page.file {
             landing_page = fs::read_to_string(file).ok();
