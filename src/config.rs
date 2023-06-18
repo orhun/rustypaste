@@ -16,7 +16,7 @@ pub struct Config {
     /// Paste configuration.
     pub paste: PasteConfig,
     /// Landing page configuration.
-    pub landing_page: LandingPageConfig,
+    pub landing_page: Option<LandingPageConfig>,
 }
 
 /// General settings for configuration.
