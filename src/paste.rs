@@ -129,7 +129,7 @@ impl Paste {
             input = "file".to_string();
         }
 
-        let mut v: Vec<&str> = input.split(".").collect();
+        let mut v: Vec<&str> = input.split('.').collect();
 
         let mut filename;
         let mut dotfile = false;
@@ -137,7 +137,7 @@ impl Paste {
         if !first.is_empty() {
             filename = v[0].to_string();
         } else {
-            filename = format!(".{}", v[1].to_string());
+            filename = format!(".{}", v[1]);
             dotfile = true;
         }
 
