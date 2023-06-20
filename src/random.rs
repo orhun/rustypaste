@@ -14,6 +14,8 @@ pub struct RandomURLConfig {
     /// Type of the random URL.
     #[serde(rename = "type")]
     pub type_: RandomURLType,
+    /// Suffix mode: append the random string to the original filename
+    pub suffix_mode: Option<bool>,
 }
 
 impl RandomURLConfig {

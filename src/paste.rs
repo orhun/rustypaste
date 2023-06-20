@@ -116,28 +116,61 @@ impl Paste {
             Some(v) => v.to_string(),
             None => String::from("file"),
         };
+        let mut input = file_name.to_string();
+
         let mut path = self
             .type_
             .get_path(&config.server.upload_path)
             .join(file_name);
-        match path.clone().extension() {
-            Some(extension) => {
-                if let Some(file_name) = config.paste.random_url.generate() {
-                    path.set_file_name(file_name);
-                    path.set_extension(extension);
-                }
+
+        // set_file_name does not accept names that contain a . unless it is the first character (e.g. "file.name" not ok, ".file" ok)
+        // as a workaround we use set_extension, because it can set multiple extensions (e.g. "tar.gz")
+        if input == "." {
+            input = "file".to_string();
+        }
+
+        let mut v: Vec<&str> = input.split(".").collect();
+
+        let mut filename;
+        let mut dotfile = false;
+        let first = v[0];
+        if !first.is_empty() {
+            filename = v[0].to_string();
+        } else {
+            filename = format!(".{}", v[1].to_string());
+            dotfile = true;
+        }
+
+        let mut extension;
+        let l = v.len();
+        if l > 1 {
+            v.remove(0);
+            if dotfile {
+                v.remove(0);
             }
-            None => {
-                if let Some(file_name) = config.paste.random_url.generate() {
-                    path.set_file_name(file_name);
+            extension = v.join(".");
+        } else {
+            extension = file_type
+                .map(|t| t.extension())
+                .unwrap_or(&config.paste.default_extension)
+                .to_string()
+        }
+
+        if let Some(random_text) = config.paste.random_url.generate() {
+            if let Some(suffix_mode) = config.paste.random_url.suffix_mode {
+                if suffix_mode {
+                    extension = format!("{}.{}", random_text, extension);
+                } else {
+                    filename = random_text;
                 }
-                path.set_extension(
-                    file_type
-                        .map(|t| t.extension())
-                        .unwrap_or(&config.paste.default_extension),
-                );
+            } else {
+                filename = random_text;
             }
         }
+
+        path.set_file_name(filename);
+        path.set_extension(extension);
+
         let file_name = path
             .file_name()
             .map(|v| v.to_string_lossy())
