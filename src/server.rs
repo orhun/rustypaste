@@ -287,6 +287,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::LandingPageConfig;
     use crate::middleware::ContentLengthLimiter;
     use crate::random::{RandomURLConfig, RandomURLType};
     use actix_web::body::MessageBody;
@@ -361,8 +362,13 @@ mod tests {
 
     #[actix_web::test]
     async fn test_index_with_landing_page() -> Result<(), Error> {
-        let mut config = Config::default();
-        config.landing_page.text = Some(String::from("landing page"));
+        let config = Config {
+            landing_page: Some(LandingPageConfig {
+                text: Some(String::from("landing page")),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -381,10 +387,15 @@ mod tests {
     #[actix_web::test]
     async fn test_index_with_landing_page_file() -> Result<(), Error> {
         let filename = "landing_page.txt";
-        let mut config = Config::default();
+        let config = Config {
+            landing_page: Some(LandingPageConfig {
+                file: Some(filename.to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
         let mut file = File::create(filename)?;
         file.write_all("landing page from file".as_bytes())?;
-        config.landing_page.file = Some(filename.to_string());
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -404,9 +415,14 @@ mod tests {
     #[actix_web::test]
     async fn test_index_with_landing_page_file_not_found() -> Result<(), Error> {
         let filename = "landing_page.txt";
-        let mut config = Config::default();
-        config.landing_page.text = Some(String::from("landing page"));
-        config.landing_page.file = Some(filename.to_string());
+        let config = Config {
+            landing_page: Some(LandingPageConfig {
+                text: Some(String::from("landing page")),
+                file: Some(filename.to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
