@@ -47,6 +47,12 @@ pub struct ServerConfig {
     pub auth_token: Option<String>,
     /// Expose version.
     pub expose_version: Option<bool>,
+    // START - code to not break current configs. can be removed in the future.
+    /// Landing page text.
+    pub landing_page: Option<String>,
+    /// Landing page content-type.
+    pub landing_page_content_type: Option<String>,
+    // END - code to not break current configs. can be removed in the future.
 }
 
 /// Landing page configuration.

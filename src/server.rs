@@ -25,8 +25,19 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let content_type_default = "text/plain; charset=utf-8".to_string();
+    #[allow(unused_assignments)]
     let mut content_type = content_type_default.clone();
+    #[allow(unused_assignments)]
     let mut landing_page = None;
+    // START - code to not break current configs. can be removed in the future.
+    // The 2 allow directives for clippy (see above) can then also be removed
+    landing_page = config.server.landing_page.clone();
+    content_type = config
+        .server
+        .landing_page_content_type
+        .clone()
+        .unwrap_or(content_type_default.clone());
+    // END - code to not break current configs. can be removed in the future.
     if let Some(config_landing_page) = &config.landing_page {
         content_type = config_landing_page
             .content_type
