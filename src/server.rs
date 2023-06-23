@@ -12,6 +12,7 @@ use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
+use mime::TEXT_PLAIN_UTF_8;
 use serde::Deserialize;
 use std::convert::TryFrom;
 use std::env;
@@ -20,41 +21,40 @@ use std::sync::RwLock;
 
 /// Shows the landing page.
 #[get("/")]
+#[allow(deprecated)]
 async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let content_type_default = "text/plain; charset=utf-8".to_string();
-    #[allow(unused_assignments)]
-    let mut content_type = content_type_default.clone();
-    #[allow(unused_assignments)]
-    let mut landing_page = None;
-    // START - code to not break current configs. can be removed in the future.
-    // The 2 allow directives for clippy (see above) can then also be removed
-    landing_page = config.server.landing_page.clone();
-    content_type = config
-        .server
-        .landing_page_content_type
-        .clone()
-        .unwrap_or(content_type_default.clone());
-    // END - code to not break current configs. can be removed in the future.
-    if let Some(config_landing_page) = &config.landing_page {
-        content_type = config_landing_page
-            .content_type
-            .clone()
-            .unwrap_or(content_type_default);
-        landing_page = config_landing_page.text.clone();
-        if let Some(file) = &config_landing_page.file {
-            landing_page = fs::read_to_string(file).ok();
+    let redirect = HttpResponse::Found()
+        .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
+        .finish();
+    if let Some(mut landing_page) = config.landing_page.clone() {
+        if config.server.landing_page.is_some() {
+            landing_page.text = config.server.landing_page.clone();
+            log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
         }
-    }
-    match &landing_page {
-        Some(page) => Ok(HttpResponse::Ok()
-            .content_type(content_type)
-            .body(page.clone())),
-        None => Ok(HttpResponse::Found()
-            .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
-            .finish()),
+        if config.server.landing_page_content_type.is_some() {
+            landing_page.content_type = config.server.landing_page_content_type.clone();
+            log::warn!(
+                "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
+            );
+        }
+        let content_type = landing_page
+            .content_type
+            .unwrap_or(TEXT_PLAIN_UTF_8.to_string());
+        let mut text = landing_page.text.clone();
+        if let Some(file) = landing_page.file {
+            text = fs::read_to_string(file).ok();
+        }
+        match &text {
+            Some(page) => Ok(HttpResponse::Ok()
+                .content_type(content_type)
+                .body(page.clone())),
+            None => Ok(redirect),
+        }
+    } else {
+        Ok(redirect)
     }
 }
 
