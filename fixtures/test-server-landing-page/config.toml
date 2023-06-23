@@ -2,8 +2,10 @@
 address="127.0.0.1:8000"
 max_content_length="10MB"
 upload_path="./upload"
-landing_page="awesome_landing"
-landing_page_content_type = "text/plain; charset=utf-8"
+
+[landing_page]
+text="awesome_landing"
+content_type = "text/plain; charset=utf-8"
 
 [paste]
 random_url = { enabled = false, type = "petname", words = 2, separator = "-" }

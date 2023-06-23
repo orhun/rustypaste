@@ -12,6 +12,7 @@ use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
+use mime::TEXT_PLAIN_UTF_8;
 use serde::Deserialize;
 use std::convert::TryFrom;
 use std::env;
@@ -20,26 +21,40 @@ use std::sync::RwLock;
 
 /// Shows the landing page.
 #[get("/")]
+#[allow(deprecated)]
 async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let content_type = config
-        .server
-        .landing_page_content_type
-        .clone()
-        .unwrap_or("text/plain; charset=utf-8".to_string());
-    let mut landing_page = config.server.landing_page.clone();
-    if let Some(file) = &config.server.landing_page_file {
-        landing_page = fs::read_to_string(file).ok();
-    }
-    match &landing_page {
-        Some(page) => Ok(HttpResponse::Ok()
-            .content_type(content_type)
-            .body(page.clone())),
-        None => Ok(HttpResponse::Found()
-            .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
-            .finish()),
+    let redirect = HttpResponse::Found()
+        .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
+        .finish();
+    if let Some(mut landing_page) = config.landing_page.clone() {
+        if config.server.landing_page.is_some() {
+            landing_page.text = config.server.landing_page.clone();
+            log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
+        }
+        if config.server.landing_page_content_type.is_some() {
+            landing_page.content_type = config.server.landing_page_content_type.clone();
+            log::warn!(
+                "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
+            );
+        }
+        let content_type = landing_page
+            .content_type
+            .unwrap_or(TEXT_PLAIN_UTF_8.to_string());
+        let mut text = landing_page.text.clone();
+        if let Some(file) = landing_page.file {
+            text = fs::read_to_string(file).ok();
+        }
+        match &text {
+            Some(page) => Ok(HttpResponse::Ok()
+                .content_type(content_type)
+                .body(page.clone())),
+            None => Ok(redirect),
+        }
+    } else {
+        Ok(redirect)
     }
 }
 
@@ -283,6 +298,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::LandingPageConfig;
     use crate::middleware::ContentLengthLimiter;
     use crate::random::{RandomURLConfig, RandomURLType};
     use actix_web::body::MessageBody;
@@ -357,8 +373,13 @@ mod tests {
 
     #[actix_web::test]
     async fn test_index_with_landing_page() -> Result<(), Error> {
-        let mut config = Config::default();
-        config.server.landing_page = Some(String::from("landing page"));
+        let config = Config {
+            landing_page: Some(LandingPageConfig {
+                text: Some(String::from("landing page")),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -377,10 +398,15 @@ mod tests {
     #[actix_web::test]
     async fn test_index_with_landing_page_file() -> Result<(), Error> {
         let filename = "landing_page.txt";
-        let mut config = Config::default();
+        let config = Config {
+            landing_page: Some(LandingPageConfig {
+                file: Some(filename.to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
         let mut file = File::create(filename)?;
         file.write_all("landing page from file".as_bytes())?;
-        config.server.landing_page_file = Some(filename.to_string());
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -400,9 +426,14 @@ mod tests {
     #[actix_web::test]
     async fn test_index_with_landing_page_file_not_found() -> Result<(), Error> {
         let filename = "landing_page.txt";
-        let mut config = Config::default();
-        config.server.landing_page = Some(String::from("landing page"));
-        config.server.landing_page_file = Some(filename.to_string());
+        let config = Config {
+            landing_page: Some(LandingPageConfig {
+                text: Some(String::from("landing page")),
+                file: Some(filename.to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))

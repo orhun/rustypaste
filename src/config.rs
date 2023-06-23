@@ -15,6 +15,8 @@ pub struct Config {
     pub server: ServerConfig,
     /// Paste configuration.
     pub paste: PasteConfig,
+    /// Landing page configuration.
+    pub landing_page: Option<LandingPageConfig>,
 }
 
 /// General settings for configuration.
@@ -43,14 +45,25 @@ pub struct ServerConfig {
     pub timeout: Option<Duration>,
     /// Authentication token.
     pub auth_token: Option<String>,
-    /// Landing page text.
-    pub landing_page: Option<String>,
-    /// Landing page file.
-    pub landing_page_file: Option<String>,
-    /// Landing page content-type
-    pub landing_page_content_type: Option<String>,
     /// Expose version.
     pub expose_version: Option<bool>,
+    /// Landing page text.
+    #[deprecated(note = "use the [landing_page] table")]
+    pub landing_page: Option<String>,
+    /// Landing page content-type.
+    #[deprecated(note = "use the [landing_page] table")]
+    pub landing_page_content_type: Option<String>,
+}
+
+/// Landing page configuration.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct LandingPageConfig {
+    /// Landing page text.
+    pub text: Option<String>,
+    /// Landing page file.
+    pub file: Option<String>,
+    /// Landing page content-type
+    pub content_type: Option<String>,
 }
 
 /// Paste configuration.
