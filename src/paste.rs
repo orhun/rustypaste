@@ -325,6 +325,39 @@ mod tests {
         assert!(file_name.starts_with("foo."));
         fs::remove_file(file_name)?;
 
+        config.paste.random_url = RandomURLConfig {
+            enabled: true,
+            length: Some(4),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(true),
+            ..RandomURLConfig::default()
+        };
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file(".foo.tar.gz", None, &config)?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert!(file_name.ends_with(".tar.gz"));
+        assert!(file_name.starts_with(".foo."));
+        fs::remove_file(file_name)?;
+
+        config.paste.random_url = RandomURLConfig {
+            enabled: true,
+            length: Some(4),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(false),
+            ..RandomURLConfig::default()
+        };
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file("foo.tar.gz", None, &config)?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert!(file_name.ends_with(".tar.gz"));
+        fs::remove_file(file_name)?;
+
         config.paste.default_extension = String::from("bin");
         config.paste.random_url.enabled = false;
         config.paste.random_url = RandomURLConfig {
