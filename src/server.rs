@@ -23,34 +23,39 @@ use std::sync::RwLock;
 #[get("/")]
 #[allow(deprecated)]
 async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
-    let config = config
+    let mut config = config
         .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+        .clone();
     let redirect = HttpResponse::Found()
         .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
         .finish();
-    if let Some(mut landing_page) = config.landing_page.clone() {
-        if config.server.landing_page.is_some() {
-            landing_page.text = config.server.landing_page.clone();
-            log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
+    if config.server.landing_page.is_some() {
+        if let Some(ref mut landing_page) = config.landing_page {
+            landing_page.text = config.server.landing_page;
         }
-        if config.server.landing_page_content_type.is_some() {
-            landing_page.content_type = config.server.landing_page_content_type.clone();
-            log::warn!(
+        log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
+    }
+    if config.server.landing_page_content_type.is_some() {
+        if let Some(ref mut landing_page) = config.landing_page {
+            landing_page.content_type = config.server.landing_page_content_type;
+        }
+        log::warn!(
                 "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
             );
-        }
-        let content_type = landing_page
-            .content_type
-            .unwrap_or(TEXT_PLAIN_UTF_8.to_string());
-        let mut text = landing_page.text.clone();
+    }
+    if let Some(mut landing_page) = config.landing_page {
         if let Some(file) = landing_page.file {
-            text = fs::read_to_string(file).ok();
+            landing_page.text = fs::read_to_string(file).ok();
         }
-        match &text {
+        match landing_page.text {
             Some(page) => Ok(HttpResponse::Ok()
-                .content_type(content_type)
-                .body(page.clone())),
+                .content_type(
+                    landing_page
+                        .content_type
+                        .unwrap_or(TEXT_PLAIN_UTF_8.to_string()),
+                )
+                .body(page)),
             None => Ok(redirect),
         }
     } else {
