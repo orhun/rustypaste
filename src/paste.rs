@@ -320,8 +320,8 @@ mod tests {
         };
         let file_name = paste.store_file("foo.tar.gz", None, &config)?;
         assert_eq!("tessus", fs::read_to_string(&file_name)?);
-        assert_eq!(true, file_name.ends_with(".tar.gz"));
-        assert_eq!(true, file_name.starts_with("foo."));
+        assert!(file_name.ends_with(".tar.gz"));
+        assert!(file_name.starts_with("foo."));
         fs::remove_file(file_name)?;
 
         config.paste.default_extension = String::from("bin");
