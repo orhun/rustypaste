@@ -125,27 +125,28 @@ impl Paste {
 
         // set_file_name does not accept names that contain a . unless it is the first character (e.g. "file.name" not ok, ".file" ok)
         // as a workaround we use set_extension, because it can set multiple extensions (e.g. "tar.gz")
+        // never accept a filename "." - similar to above where an empty string is replaced by file, and - by stdin
         if input == "." {
             input = "file".to_string();
         }
-
+        // Split the string into an array
         let mut v: Vec<&str> = input.split('.').collect();
-
         let mut filename;
         let mut dotfile = false;
-        let first = v[0];
-        if !first.is_empty() {
+        if !v[0].is_empty() {
             filename = v[0].to_string();
         } else {
+            // If the first array element is empty, it means the file started with a dot (e.g.: .foo)
             filename = format!(".{}", v[1]);
+            // Index shifts one to the right in the array for the rest of the string (the extension)
             dotfile = true;
         }
-
         let mut extension;
-        let l = v.len();
-        if l > 1 {
+        if v.len() > 1 {
+            // To get the rest (the extension), we have to remove the first element of the array, which is the filename
             v.remove(0);
             if dotfile {
+                // If the filename starts with a dot, we have to remove another element, because the first element was empty
                 v.remove(0);
             }
             extension = v.join(".");
