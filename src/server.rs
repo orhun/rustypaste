@@ -99,7 +99,7 @@ async fn serve(
         }
     }
     if !path.is_file() || !path.exists() {
-        return Err(error::ErrorNotFound("file is not found or expired :("));
+        return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
     match paste_type {
         PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
