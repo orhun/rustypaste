@@ -113,65 +113,52 @@ impl Paste {
             .and_then(|v| v.to_str())
         {
             Some("-") => String::from("stdin"),
+            Some(".") => String::from("file"),
             Some(v) => v.to_string(),
             None => String::from("file"),
         };
-        let mut input = file_name.to_string();
-
         let mut path = self
             .type_
             .get_path(&config.server.upload_path)
-            .join(file_name);
-
-        // set_file_name does not accept names that contain a . unless it is the first character (e.g. "file.name" not ok, ".file" ok)
-        // as a workaround we use set_extension, because it can set multiple extensions (e.g. "tar.gz")
-        // never accept a filename "." - similar to above where an empty string is replaced by file, and - by stdin
-        if input == "." {
-            input = "file".to_string();
-        }
-        // Split the string into an array
-        let mut v: Vec<&str> = input.split('.').collect();
-        let mut filename;
+            .join(&file_name);
+        let mut parts: Vec<&str> = file_name.split('.').collect();
         let mut dotfile = false;
-        if !v[0].is_empty() {
-            filename = v[0].to_string();
-        } else {
-            // If the first array element is empty, it means the file started with a dot (e.g.: .foo)
-            filename = format!(".{}", v[1]);
-            // Index shifts one to the right in the array for the rest of the string (the extension)
-            dotfile = true;
-        }
-        let mut extension;
-        if v.len() > 1 {
+        let mut file_name = match parts[0] {
+            "" => {
+                // Index shifts one to the right in the array for the rest of the string (the extension)
+                dotfile = true;
+                // If the first array element is empty, it means the file started with a dot (e.g.: .foo)
+                format!(".{}", parts[1])
+            }
+            _ => parts[0].to_string(),
+        };
+        let mut extension = if parts.len() > 1 {
             // To get the rest (the extension), we have to remove the first element of the array, which is the filename
-            v.remove(0);
+            parts.remove(0);
             if dotfile {
                 // If the filename starts with a dot, we have to remove another element, because the first element was empty
-                v.remove(0);
+                parts.remove(0);
             }
-            extension = v.join(".");
+            parts.join(".")
         } else {
-            extension = file_type
+            file_type
                 .map(|t| t.extension())
                 .unwrap_or(&config.paste.default_extension)
                 .to_string()
-        }
-
+        };
         if let Some(random_text) = config.paste.random_url.generate() {
             if let Some(random_suffix) = config.paste.random_url.random_suffix {
                 if random_suffix {
                     extension = format!("{}.{}", random_text, extension);
                 } else {
-                    filename = random_text;
+                    file_name = random_text;
                 }
             } else {
-                filename = random_text;
+                file_name = random_text;
             }
         }
-
-        path.set_file_name(filename);
+        path.set_file_name(file_name);
         path.set_extension(extension);
-
         let file_name = path
             .file_name()
             .map(|v| v.to_string_lossy())
