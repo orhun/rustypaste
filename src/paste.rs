@@ -127,7 +127,8 @@ impl Paste {
         let mut file_name = match parts[0] {
             "" => {
                 // Index shifts one to the right in the array for the rest of the string (the extension)
-                dotfile = true; lower_bound = 2;
+                dotfile = true;
+                lower_bound = 2;
                 // If the first array element is empty, it means the file started with a dot (e.g.: .foo)
                 format!(".{}", parts[1])
             }
