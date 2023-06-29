@@ -147,8 +147,8 @@ impl Paste {
                 .to_string()
         };
         if let Some(random_text) = config.paste.random_url.generate() {
-            if let Some(random_suffix) = config.paste.random_url.random_suffix {
-                if random_suffix {
+            if let Some(suffix_mode) = config.paste.random_url.suffix_mode {
+                if suffix_mode {
                     extension = format!("{}.{}", random_text, extension);
                 } else {
                     file_name = random_text;
@@ -299,7 +299,7 @@ mod tests {
             enabled: true,
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
-            random_suffix: Some(true),
+            suffix_mode: Some(true),
             ..RandomURLConfig::default()
         };
         let paste = Paste {
@@ -316,7 +316,7 @@ mod tests {
             enabled: true,
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
-            random_suffix: Some(true),
+            suffix_mode: Some(true),
             ..RandomURLConfig::default()
         };
         let paste = Paste {
@@ -333,7 +333,7 @@ mod tests {
             enabled: true,
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
-            random_suffix: Some(false),
+            suffix_mode: Some(false),
             ..RandomURLConfig::default()
         };
         let paste = Paste {
