@@ -68,6 +68,7 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
   - random file names (optional)
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
+    - random suffix (e.g. `file.MRV5as.tar.gz`)
   - supports expiring links
     - auto-expiration of files (optional)
     - auto-deletion of expired files (optional)
@@ -191,7 +192,6 @@ supported units:
 - `weeks`, `week`, `w`
 - `months`, `month`, `M`
 - `years`, `year`, `y`
-
 
 #### One shot files
 

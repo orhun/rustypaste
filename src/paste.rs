@@ -113,31 +113,54 @@ impl Paste {
             .and_then(|v| v.to_str())
         {
             Some("-") => String::from("stdin"),
+            Some(".") => String::from("file"),
             Some(v) => v.to_string(),
             None => String::from("file"),
         };
         let mut path = self
             .type_
             .get_path(&config.server.upload_path)
-            .join(file_name);
-        match path.clone().extension() {
-            Some(extension) => {
-                if let Some(file_name) = config.paste.random_url.generate() {
-                    path.set_file_name(file_name);
-                    path.set_extension(extension);
-                }
+            .join(&file_name);
+        let mut parts: Vec<&str> = file_name.split('.').collect();
+        let mut dotfile = false;
+        let mut lower_bound = 1;
+        let mut file_name = match parts[0] {
+            "" => {
+                // Index shifts one to the right in the array for the rest of the string (the extension)
+                dotfile = true;
+                lower_bound = 2;
+                // If the first array element is empty, it means the file started with a dot (e.g.: .foo)
+                format!(".{}", parts[1])
             }
-            None => {
-                if let Some(file_name) = config.paste.random_url.generate() {
-                    path.set_file_name(file_name);
+            _ => parts[0].to_string(),
+        };
+        let mut extension = if parts.len() > lower_bound {
+            // To get the rest (the extension), we have to remove the first element of the array, which is the filename
+            parts.remove(0);
+            if dotfile {
+                // If the filename starts with a dot, we have to remove another element, because the first element was empty
+                parts.remove(0);
+            }
+            parts.join(".")
+        } else {
+            file_type
+                .map(|t| t.extension())
+                .unwrap_or(&config.paste.default_extension)
+                .to_string()
+        };
+        if let Some(random_text) = config.paste.random_url.generate() {
+            if let Some(suffix_mode) = config.paste.random_url.suffix_mode {
+                if suffix_mode {
+                    extension = format!("{}.{}", random_text, extension);
+                } else {
+                    file_name = random_text;
                 }
-                path.set_extension(
-                    file_type
-                        .map(|t| t.extension())
-                        .unwrap_or(&config.paste.default_extension),
-                );
+            } else {
+                file_name = random_text;
             }
         }
+        path.set_file_name(file_name);
+        path.set_extension(extension);
         let file_name = path
             .file_name()
             .map(|v| v.to_string_lossy())
@@ -272,6 +295,67 @@ mod tests {
                 .extension()
                 .and_then(|v| v.to_str())
         );
+        fs::remove_file(file_name)?;
+
+        config.paste.random_url = RandomURLConfig {
+            enabled: true,
+            length: Some(4),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(true),
+            ..RandomURLConfig::default()
+        };
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file("foo.tar.gz", None, &config)?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert!(file_name.ends_with(".tar.gz"));
+        assert!(file_name.starts_with("foo."));
+        fs::remove_file(file_name)?;
+
+        config.paste.random_url = RandomURLConfig {
+            enabled: true,
+            length: Some(4),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(true),
+            ..RandomURLConfig::default()
+        };
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file(".foo.tar.gz", None, &config)?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert!(file_name.ends_with(".tar.gz"));
+        assert!(file_name.starts_with(".foo."));
+        fs::remove_file(file_name)?;
+
+        config.paste.random_url = RandomURLConfig {
+            enabled: true,
+            length: Some(4),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(false),
+            ..RandomURLConfig::default()
+        };
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file("foo.tar.gz", None, &config)?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert!(file_name.ends_with(".tar.gz"));
+        fs::remove_file(file_name)?;
+
+        config.paste.default_extension = String::from("txt");
+        config.paste.random_url.enabled = false;
+        let paste = Paste {
+            data: vec![120, 121, 122],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file(".foo", None, &config)?;
+        assert_eq!("xyz", fs::read_to_string(&file_name)?);
+        assert_eq!(".foo.txt", file_name);
         fs::remove_file(file_name)?;
 
         config.paste.default_extension = String::from("bin");
