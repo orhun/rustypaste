@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2023-07-01
+
+### Added
+
+- Add a new section for the landing page
+  - Also, support a file for the landing page (#64)
+
+Migration path:
+
+Old:
+
+```toml
+[server]
+landing_page = "Landing page text."
+landing_page_file = "index.html"
+landing_page_content_type = "text/html; charset=utf-8"
+```
+
+New:
+
+```toml
+[landing_page]
+text = "Landing page text."
+file = "index.html"
+content_type = "text/html; charset=utf-8"
+```
+
+The configuration is backwards compatible but we recommend using the new `landing_page` section as shown above since the other fields are now deprecated.
+
+- Add random suffix mode (#69)
+  - Support appending a random suffix to the filename before the extension. For example, `foo.tar.gz` will result in `foo.eu7f92x1.tar.gz`
+
+To enable, set `suffix_mode` to `true`:
+
+```toml
+[paste]
+random_url = { enabled = true, type = "alphanumeric", length = 6, suffix_mode = true }
+```
+
+- Honor X-Forward-\* headers (`X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto`) (#61)
+
+  - This would be really useful to have for setups where the service is running behind a reverse-proxy or gateway and the possibility to adjust the logging output based on their availability, to have the real IP addresses of the clients available in the log.
+
+- Add new line character to the 404 message (#72)
+
+Terminal output will look better when the file is not found:
+
+```sh
+$ curl http://localhost:8000/sweeping-tahr
+file is not found or expired :(
+```
+
+- Add editorconfig for correctly formatting the test fixture files
+- Add pull request template
+
+### Changed
+
+- Bump Shuttle to `0.20.0`
+- List all the supported units in the documentation (#63)
+- Note that the Alpine Linux package is moved to the community
+
+  - <https://pkgs.alpinelinux.org/packages?name=rustypaste>
+
+- Bump dependencies
+
+### Fixed
+
+- Use the static folder for the Shuttle config (#70)
+  - There was a regression in the previous release that has caused the static folder to be not present in Shuttle deployments. This shouldn't be an issue anymore and the deployment should be live.
+  - Also, it is now possible to trigger a deployment manually via GitHub Actions.
+
+Thanks to [@tessus](https://github.com/tessus) for his contributions to this release!
+
 ## [0.10.1] - 2023-06-05
 
 ### Added
