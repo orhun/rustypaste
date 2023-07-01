@@ -1,5 +1,5 @@
 use crate::auth;
-use crate::config::Config;
+use crate::config::{Config, LandingPageConfig};
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
@@ -31,12 +31,18 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
         .finish();
     if config.server.landing_page.is_some() {
+        if config.landing_page.is_none() {
+            config.landing_page = Some(LandingPageConfig::default());
+        }
         if let Some(ref mut landing_page) = config.landing_page {
             landing_page.text = config.server.landing_page;
         }
         log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
     }
     if config.server.landing_page_content_type.is_some() {
+        if config.landing_page.is_none() {
+            config.landing_page = Some(LandingPageConfig::default());
+        }
         if let Some(ref mut landing_page) = config.landing_page {
             landing_page.content_type = config.server.landing_page_content_type;
         }
