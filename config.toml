@@ -9,6 +9,10 @@ max_content_length = "10MB"
 upload_path = "./upload"
 timeout = "30s"
 expose_version = false
+#auth_tokens = [
+#  "super_secret_token1",
+#  "super_secret_token2",
+#]
 
 [landing_page]
 text = """

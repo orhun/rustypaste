@@ -165,6 +165,7 @@ async fn version(
         env::var(AUTH_TOKEN_ENV)
             .ok()
             .or_else(|| config.server.auth_token.as_ref().cloned()),
+        config.server.auth_tokens.as_ref().cloned(),
     )?;
     if !config.server.expose_version.unwrap_or(false) {
         log::warn!("server is not configured to expose version endpoint");
@@ -206,6 +207,13 @@ async fn upload(
             .auth_token
             .as_ref()
             .cloned()),
+        config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+            .server
+            .auth_tokens
+            .as_ref()
+            .cloned(),
     )?;
     let time = util::get_system_time()?;
     let mut expiry_date = header::parse_expiry_date(request.headers(), time)?;

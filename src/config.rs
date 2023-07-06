@@ -45,6 +45,8 @@ pub struct ServerConfig {
     pub timeout: Option<Duration>,
     /// Authentication token.
     pub auth_token: Option<String>,
+    /// Authentication tokens.
+    pub auth_tokens: Option<Vec<String>>,
     /// Expose version.
     pub expose_version: Option<bool>,
     /// Landing page text.
