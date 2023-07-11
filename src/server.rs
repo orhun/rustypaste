@@ -9,15 +9,21 @@ use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
+use serde_json::json;
 use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
 use std::sync::RwLock;
+
+#[derive(Serialize)]
+struct IndexItem {
+    file_name: String
+}
 
 /// Shows the landing page.
 #[get("/")]
@@ -30,6 +36,22 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     let redirect = HttpResponse::Found()
         .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
         .finish();
+
+    if config.server.json_index_enabled {
+        let entries: Vec<IndexItem> = fs::read_dir(config.server.upload_path)?
+        .filter_map(|entry| {
+            entry.ok().and_then(|e| {
+                e.file_name()
+                    .into_string()
+                    .ok()
+                    .map(|name| IndexItem { file_name: name })
+            })
+        })
+        .collect();
+
+        return Ok(HttpResponse::Ok()
+        .json( json!(entries)))
+    }
     if config.server.landing_page.is_some() {
         if config.landing_page.is_none() {
             config.landing_page = Some(LandingPageConfig::default());

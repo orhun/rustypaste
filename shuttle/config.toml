@@ -10,6 +10,8 @@ upload_path = "./upload"
 timeout = "30s"
 expose_version = true
 landing_page = """
+json_index_enabled = true
+
 ┬─┐┬ ┬┌─┐┌┬┐┬ ┬┌─┐┌─┐┌─┐┌┬┐┌─┐
 ├┬┘│ │└─┐ │ └┬┘├─┘├─┤└─┐ │ ├┤
 ┴└─└─┘└─┘ ┴  ┴ ┴  ┴ ┴└─┘ ┴ └─┘

@@ -9,6 +9,7 @@ max_content_length = "10MB"
 upload_path = "./upload"
 timeout = "30s"
 expose_version = false
+json_index_enabled = true
 
 [landing_page]
 text = """
