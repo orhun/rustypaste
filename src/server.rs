@@ -4,7 +4,7 @@ use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
-use crate::util;
+use crate::util::{self, get_system_time};
 use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
@@ -18,11 +18,14 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
+use std::path::Path;
 use std::sync::RwLock;
+use std::time::Duration;
 
 #[derive(Serialize)]
 struct IndexItem {
-    file_name: String
+    file_name: String,
+    expires_in_seconds: Option<u64>
 }
 
 /// Shows the landing page.
@@ -40,11 +43,34 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     if config.server.json_index_enabled {
         let entries: Vec<IndexItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
-            entry.ok().and_then(|e| {
-                e.file_name()
-                    .into_string()
-                    .ok()
-                    .map(|name| IndexItem { file_name: name })
+            entry.ok().and_then(|e| {                
+
+                let metadata = fs::metadata(&e.path()).expect("Failed to retrieve metadata");
+
+                if metadata.is_dir() {
+                    return None;
+                }
+
+                let file_name = e.file_name().into_string().ok()?;
+                let extension = Path::new(&file_name)
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .and_then(|v| v.parse().ok());
+
+                let mut expires_in = None;
+
+                if let Some(expiration) = extension {
+                    if let Ok(sys_time) = get_system_time() {
+                        let duration = (Duration::from_millis(expiration) - sys_time).as_secs();
+                        expires_in = Some(duration);
+                    }
+                    
+                }
+
+                Some(IndexItem {
+                    file_name,
+                    expires_in_seconds: expires_in,
+                })
             })
         })
         .collect();
