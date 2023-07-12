@@ -9,8 +9,7 @@ max_content_length = "10MB"
 upload_path = "./upload"
 timeout = "30s"
 expose_version = false
-json_index_enabled = true
-# json_index_path = "uploads"
+json_index_path = "uploads"
 
 [landing_page]
 text = """

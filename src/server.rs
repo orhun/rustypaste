@@ -22,12 +22,6 @@ use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use std::time::Duration;
 
-#[derive(Serialize)]
-struct IndexItem {
-    file_name: String,
-    expires_in_seconds: Option<u64>,
-}
-
 /// Shows the landing page.
 #[get("/")]
 #[allow(deprecated)]
@@ -39,7 +33,6 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     let redirect = HttpResponse::Found()
         .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
         .finish();
-
     if config.server.landing_page.is_some() {
         if config.landing_page.is_none() {
             config.landing_page = Some(LandingPageConfig::default());
@@ -60,64 +53,23 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
                 "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
             );
     }
-
     if let Some(mut landing_page) = config.landing_page {
         if let Some(file) = landing_page.file {
             landing_page.text = fs::read_to_string(file).ok();
         }
-
-        if let Some(page) = landing_page.text {
-            return Ok(HttpResponse::Ok()
+        match landing_page.text {
+            Some(page) => Ok(HttpResponse::Ok()
                 .content_type(
                     landing_page
                         .content_type
                         .unwrap_or(TEXT_PLAIN_UTF_8.to_string()),
                 )
-                .body(page));
+                .body(page)),
+            None => Ok(redirect),
         }
-    }
-
-    if config.server.json_index_enabled && config.server.json_index_path.is_none() {
-        show_json_index(config.server.upload_path)
     } else {
         Ok(redirect)
     }
-}
-
-fn show_json_index(path: PathBuf) -> Result<HttpResponse, Error> {
-    let entries: Vec<IndexItem> = fs::read_dir(path)?
-        .filter_map(|entry| {
-            entry.ok().and_then(|e| {
-                let metadata = fs::metadata(&e.path()).expect("Failed to retrieve metadata");
-
-                if metadata.is_dir() {
-                    return None;
-                }
-
-                let file_name = e.file_name().into_string().ok()?;
-                let extension = Path::new(&file_name)
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .and_then(|v| v.parse().ok());
-
-                let mut expires_in = None;
-
-                if let Some(expiration) = extension {
-                    if let Ok(sys_time) = get_system_time() {
-                        let duration = (Duration::from_millis(expiration) - sys_time).as_secs();
-                        expires_in = Some(duration);
-                    }
-                }
-
-                Some(IndexItem {
-                    file_name,
-                    expires_in_seconds: expires_in,
-                })
-            })
-        })
-        .collect();
-
-    return Ok(HttpResponse::Ok().json(json!(entries)));
 }
 
 /// File serving options (i.e. query parameters).
@@ -141,7 +93,7 @@ async fn serve(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
         .clone();
 
-    if config.server.json_index_enabled && config.server.json_index_path.is_some() {
+    if config.server.json_index_path.is_some() {
         if let Some(index_path) = config.server.json_index_path {
             if index_path.eq(&file.to_string()) {
                 return show_json_index(config.server.upload_path);
@@ -365,6 +317,49 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         .service(serve)
         .service(upload)
         .route("", web::head().to(HttpResponse::MethodNotAllowed));
+}
+
+#[derive(Serialize)]
+struct IndexItem {
+    file_name: String,
+    expires_in_seconds: Option<u64>,
+}
+
+// Returns a list of files
+fn show_json_index(path: PathBuf) -> Result<HttpResponse, Error> {
+    let entries: Vec<IndexItem> = fs::read_dir(path)?
+        .filter_map(|entry| {
+            entry.ok().and_then(|e| {
+                let metadata = fs::metadata(&e.path()).expect("Failed to retrieve metadata");
+
+                if metadata.is_dir() {
+                    return None;
+                }
+
+                let file_name = e.file_name().into_string().ok()?;
+                let extension = Path::new(&file_name)
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .and_then(|v| v.parse().ok());
+
+                let mut expires_in = None;
+
+                if let Some(expiration) = extension {
+                    if let Ok(sys_time) = get_system_time() {
+                        let duration = (Duration::from_millis(expiration) - sys_time).as_secs();
+                        expires_in = Some(duration);
+                    }
+                }
+
+                Some(IndexItem {
+                    file_name,
+                    expires_in_seconds: expires_in,
+                })
+            })
+        })
+        .collect();
+
+    return Ok(HttpResponse::Ok().json(json!(entries)));
 }
 
 #[cfg(test)]

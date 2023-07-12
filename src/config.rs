@@ -53,10 +53,8 @@ pub struct ServerConfig {
     /// Landing page content-type.
     #[deprecated(note = "use the [landing_page] table")]
     pub landing_page_content_type: Option<String>,
-    /// Return a JSON array of pastes
-    pub json_index_enabled: bool,
     /// Set the path for the JSON index
-    pub json_index_path: Option<String>
+    pub json_index_path: Option<String>,
 }
 
 /// Landing page configuration.
