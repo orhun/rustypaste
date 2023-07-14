@@ -324,6 +324,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 #[derive(Serialize)]
 struct IndexItem {
     file_name: String,
+    file_size: u64,
     expires_at: Option<String>,
 }
 
@@ -356,6 +357,7 @@ fn show_json_index(path: PathBuf) -> Result<HttpResponse, Error> {
 
                 Some(IndexItem {
                     file_name,
+                    file_size: metadata.len(),
                     expires_at,
                 })
             })
