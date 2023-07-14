@@ -11,6 +11,8 @@ use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
+use chrono::prelude::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
 use serde::{Deserialize, Serialize};
@@ -322,7 +324,8 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 #[derive(Serialize)]
 struct IndexItem {
     file_name: String,
-    expires_in_seconds: Option<u64>,
+    file_size: u64,
+    expires_at: Option<String>,
 }
 
 // Returns a list of files
@@ -337,23 +340,25 @@ fn show_json_index(path: PathBuf) -> Result<HttpResponse, Error> {
                 }
 
                 let file_name = e.file_name().into_string().ok()?;
-                let extension = Path::new(&file_name)
+                let extension: Option<i64> = Path::new(&file_name)
                     .extension()
                     .and_then(|ext| ext.to_str())
                     .and_then(|v| v.parse().ok());
 
-                let mut expires_in = None;
+                let mut expires_at = None;
 
                 if let Some(expiration) = extension {
-                    if let Ok(sys_time) = get_system_time() {
-                        let duration = (Duration::from_millis(expiration) - sys_time).as_secs();
-                        expires_in = Some(duration);
-                    }
+                    let seconds = expiration / 1000;
+                    let dt = NaiveDateTime::parse_from_str(&seconds.to_string(), "%s")
+                        .expect("invalid unix timestamp");
+
+                    expires_at = Some(dt.format("%Y-%m-%d %H:%M:%S").to_string());
                 }
 
                 Some(IndexItem {
                     file_name,
-                    expires_in_seconds: expires_in,
+                    file_size: metadata.len(),
+                    expires_at,
                 })
             })
         })
