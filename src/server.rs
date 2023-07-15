@@ -150,6 +150,7 @@ async fn serve(
 
 /// Expose version endpoint
 #[get("/version")]
+#[allow(deprecated)]
 async fn version(
     request: HttpRequest,
     config: web::Data<RwLock<Config>>,
@@ -162,9 +163,10 @@ async fn version(
     auth::check(
         host,
         request.headers(),
-        env::var(AUTH_TOKEN_ENV)
-            .ok()
-            .or_else(|| config.server.auth_token.as_ref().cloned()),
+        env::var(AUTH_TOKEN_ENV).ok().or_else(|| {
+            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
+            config.server.auth_token.as_ref().cloned()
+        }),
         config.server.auth_tokens.as_ref().cloned(),
     )?;
     if !config.server.expose_version.unwrap_or(false) {
@@ -177,6 +179,7 @@ async fn version(
 
 /// Handles file upload by processing `multipart/form-data`.
 #[post("/")]
+#[allow(deprecated)]
 async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
@@ -200,13 +203,16 @@ async fn upload(
     auth::check(
         host,
         request.headers(),
-        env::var(AUTH_TOKEN_ENV).ok().or(config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-            .server
-            .auth_token
-            .as_ref()
-            .cloned()),
+        env::var(AUTH_TOKEN_ENV).ok().or({
+            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
+            config
+                .read()
+                .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+                .server
+                .auth_token
+                .as_ref()
+                .cloned()
+            }),
         config
             .read()
             .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?

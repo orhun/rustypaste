@@ -44,6 +44,7 @@ pub struct ServerConfig {
     #[serde(default, with = "humantime_serde")]
     pub timeout: Option<Duration>,
     /// Authentication token.
+    #[deprecated(note = "use [server].auth_tokens instead")]
     pub auth_token: Option<String>,
     /// Authentication tokens.
     pub auth_tokens: Option<Vec<String>>,
