@@ -476,7 +476,7 @@ mod tests {
     #[actix_web::test]
     async fn test_version_without_auth() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.auth_token = Some(String::from("test"));
+        config.server.auth_tokens = Some(vec!["test".to_string()]);
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -540,7 +540,7 @@ mod tests {
     #[actix_web::test]
     async fn test_auth() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.auth_token = Some(String::from("test"));
+        config.server.auth_tokens = Some(vec!["test".to_string()]);
 
         let app = test::init_service(
             App::new()
