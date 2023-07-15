@@ -212,7 +212,7 @@ async fn upload(
                 .auth_token
                 .as_ref()
                 .cloned()
-            }),
+        }),
         config
             .read()
             .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
