@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-auth_tokens="rustypasteisawesome token1 token2 token4"
+auth_tokens=("rustypasteisawesome token1 token2 token4")
 
 content="topsecret"
 
@@ -12,7 +12,7 @@ run_test() {
   result=$(curl -s -F "file=@file" localhost:8000)
   test "unauthorized" = "$result"
 
-  for auth_token in $auth_tokens
+  for auth_token in ${auth_tokens[@]}
   do
     result=$(curl -s -F "file=@file" -H "Authorization: $auth_token" localhost:8000)
     test "unauthorized" != "$result"
