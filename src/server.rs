@@ -150,7 +150,6 @@ async fn serve(
 
 /// Expose version endpoint
 #[get("/version")]
-#[allow(deprecated)]
 async fn version(
     request: HttpRequest,
     config: web::Data<RwLock<Config>>,
@@ -160,15 +159,8 @@ async fn version(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    auth::check(
-        host,
-        request.headers(),
-        env::var(AUTH_TOKEN_ENV).ok().or_else(|| {
-            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
-            config.server.auth_token.as_ref().cloned()
-        }),
-        config.server.auth_tokens.as_ref().cloned(),
-    )?;
+    let tokens = get_tokens(&config);
+    auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
         log::warn!("server is not configured to expose version endpoint");
         Err(error::ErrorForbidden("endpoint is not exposed"))?;
@@ -179,7 +171,6 @@ async fn version(
 
 /// Handles file upload by processing `multipart/form-data`.
 #[post("/")]
-#[allow(deprecated)]
 async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
@@ -188,6 +179,13 @@ async fn upload(
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
+    {
+        let config = config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+        let tokens = get_tokens(&config);
+        auth::check(host, request.headers(), tokens)?;
+    }
     let server_url = match config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
@@ -200,27 +198,6 @@ async fn upload(
             format!("{}://{}", connection.scheme(), connection.host(),)
         }
     };
-    auth::check(
-        host,
-        request.headers(),
-        env::var(AUTH_TOKEN_ENV).ok().or({
-            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
-            config
-                .read()
-                .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-                .server
-                .auth_token
-                .as_ref()
-                .cloned()
-        }),
-        config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-            .server
-            .auth_tokens
-            .as_ref()
-            .cloned(),
-    )?;
     let time = util::get_system_time()?;
     let mut expiry_date = header::parse_expiry_date(request.headers(), time)?;
     if expiry_date.is_none() {
@@ -318,6 +295,27 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         .service(serve)
         .service(upload)
         .route("", web::head().to(HttpResponse::MethodNotAllowed));
+}
+
+/// Retrieves all configured tokens.
+#[allow(deprecated)]
+fn get_tokens(config: &Config) -> Option<Vec<String>> {
+    if config.server.auth_token.is_some() || config.server.auth_tokens.is_some() {
+        let mut merged: Vec<String> = vec![];
+        if let Some(tokens) = &config.server.auth_tokens {
+            merged = tokens.clone();
+        }
+        if let Some(token) = &config.server.auth_token {
+            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
+            merged.insert(0, token.to_string());
+        }
+        if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
+            merged.insert(0, env_token);
+        }
+        Some(merged)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
