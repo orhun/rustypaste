@@ -255,6 +255,10 @@ $ rustypaste
 
 See [config.toml](./config.toml) for configuration options.
 
+### List endpoint
+
+Set `json_list_enabled` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot urls, or urls. 
+
 #### HTML Form
 
 It is possible to use an HTML form for uploading files. To do so, you need to update two fields in your `config.toml`:

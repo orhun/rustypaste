@@ -93,25 +93,6 @@ async fn serve(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
         .clone();
 
-    if config.server.json_index_path.is_some() {
-        if let Some(index_path) = config.server.json_index_path {
-            let connection = request.connection_info().clone();
-            let host = connection.realip_remote_addr().unwrap_or("unknown host");
-
-            auth::check(
-                host,
-                request.headers(),
-                env::var(AUTH_TOKEN_ENV)
-                    .ok()
-                    .or_else(|| config.server.auth_token.as_ref().cloned()),
-            )?;
-
-            if index_path.eq(&file.to_string()) {
-                return show_json_index(config.server.upload_path);
-            }
-        }
-    }
-
     let path = config.server.upload_path.join(&*file);
     let mut path = util::glob_match_file(path)?;
     let mut paste_type = PasteType::File;
@@ -321,15 +302,6 @@ async fn upload(
     Ok(HttpResponse::Ok().body(urls.join("")))
 }
 
-/// Configures the server routes.
-pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(index)
-        .service(version)
-        .service(serve)
-        .service(upload)
-        .route("", web::head().to(HttpResponse::MethodNotAllowed));
-}
-
 #[derive(Serialize)]
 struct IndexItem {
     file_name: String,
@@ -338,8 +310,32 @@ struct IndexItem {
 }
 
 // Returns a list of files
-fn show_json_index(path: PathBuf) -> Result<HttpResponse, Error> {
-    let entries: Vec<IndexItem> = fs::read_dir(path)?
+#[get("/list")]
+async fn list(
+    request: HttpRequest,
+    config: web::Data<RwLock<Config>>,
+) -> Result<HttpResponse, Error> {
+    let config = config
+        .read()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+        .clone();
+
+    if !config.server.json_list_enabled.unwrap_or(false) {
+        Err(error::ErrorForbidden("json list is not enabled"))?;
+    }
+
+    let connection = request.connection_info().clone();
+    let host = connection.realip_remote_addr().unwrap_or("unknown host");
+
+    auth::check(
+        host,
+        request.headers(),
+        env::var(AUTH_TOKEN_ENV)
+            .ok()
+            .or_else(|| config.server.auth_token.as_ref().cloned()),
+    )?;
+
+    let entries: Vec<IndexItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
                 let metadata = fs::metadata(&e.path()).expect("Failed to retrieve metadata");
@@ -374,6 +370,16 @@ fn show_json_index(path: PathBuf) -> Result<HttpResponse, Error> {
         .collect();
 
     return Ok(HttpResponse::Ok().json(json!(entries)));
+}
+
+/// Configures the server routes.
+pub fn configure_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(index)
+        .service(version)
+        .service(list)
+        .service(serve)
+        .service(upload)
+        .route("", web::head().to(HttpResponse::MethodNotAllowed));
 }
 
 #[cfg(test)]
