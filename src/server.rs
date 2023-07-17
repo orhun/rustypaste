@@ -4,14 +4,13 @@ use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
-use crate::util::{self, get_system_time};
+use crate::util::{self};
 use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
-use chrono::prelude::{DateTime, Utc};
 use chrono::NaiveDateTime;
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
@@ -22,7 +21,6 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
-use std::time::Duration;
 
 /// Shows the landing page.
 #[get("/")]
@@ -97,6 +95,17 @@ async fn serve(
 
     if config.server.json_index_path.is_some() {
         if let Some(index_path) = config.server.json_index_path {
+            let connection = request.connection_info().clone();
+            let host = connection.realip_remote_addr().unwrap_or("unknown host");
+
+            auth::check(
+                host,
+                request.headers(),
+                env::var(AUTH_TOKEN_ENV)
+                    .ok()
+                    .or_else(|| config.server.auth_token.as_ref().cloned()),
+            )?;
+
             if index_path.eq(&file.to_string()) {
                 return show_json_index(config.server.upload_path);
             }
