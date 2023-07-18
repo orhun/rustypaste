@@ -302,8 +302,8 @@ async fn upload(
     Ok(HttpResponse::Ok().body(urls.join("")))
 }
 
-#[derive(Serialize)]
-struct IndexItem {
+#[derive(Serialize, Deserialize)]
+struct ListItem {
     file_name: String,
     file_size: u64,
     expires_at: Option<String>,
@@ -335,7 +335,7 @@ async fn list(
             .or_else(|| config.server.auth_token.as_ref().cloned()),
     )?;
 
-    let entries: Vec<IndexItem> = fs::read_dir(config.server.upload_path)?
+    let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
                 let metadata = fs::metadata(&e.path()).expect("Failed to retrieve metadata");
@@ -360,7 +360,7 @@ async fn list(
                     expires_at = Some(dt.format("%Y-%m-%d %H:%M:%S").to_string());
                 }
 
-                Some(IndexItem {
+                Some(ListItem {
                     file_name,
                     file_size: metadata.len(),
                     expires_at,
@@ -596,6 +596,28 @@ mod tests {
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), env!("CARGO_PKG_VERSION")).await?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_json_list() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.json_list_enabled = Some(true);
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+
+        test::call_and_read_body_json(&app, request).await;
+
         Ok(())
     }
 
