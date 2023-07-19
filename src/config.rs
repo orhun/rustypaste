@@ -1,7 +1,9 @@
 use crate::mime::MimeMatcher;
 use crate::random::RandomURLConfig;
+use crate::AUTH_TOKEN_ENV;
 use byte_unit::Byte;
 use config::{self, ConfigError};
+use std::env;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -109,6 +111,42 @@ impl Config {
             .add_source(config::Environment::default().separator("__"))
             .build()?
             .try_deserialize()
+    }
+    /// Retrieves all configured tokens.
+    #[allow(deprecated)]
+    pub fn get_tokens(&self) -> Option<Vec<String>> {
+        if self.server.auth_token.is_some() || self.server.auth_tokens.is_some() {
+            let mut merged: Vec<String> = vec![];
+            if let Some(tokens) = &self.server.auth_tokens {
+                merged = tokens.clone();
+            }
+            if let Some(token) = &self.server.auth_token {
+                log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
+                merged.insert(0, token.to_string());
+            }
+            if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
+                merged.insert(0, env_token);
+            }
+            if !merged.is_empty() {
+                return Some(merged);
+            }
+        }
+        None
+    }
+    /// Print deprecation warnings (at server startup).
+    #[allow(deprecated)]
+    pub fn warn_deprecation(&self) {
+        if self.server.auth_token.is_some() {
+            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
+        }
+        if self.server.landing_page.is_some() {
+            log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
+        }
+        if self.server.landing_page_content_type.is_some() {
+            log::warn!(
+                "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
+            );
+        }
     }
 }
 

@@ -24,22 +24,6 @@ use {
     shuttle_actix_web::ShuttleActixWeb,
 };
 
-/// Print deprecation warnings at server startup
-#[allow(deprecated)]
-fn warn_deprecation(config: &Config) {
-    if config.server.auth_token.is_some() {
-        log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
-    }
-    if config.server.landing_page.is_some() {
-        log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
-    }
-    if config.server.landing_page_content_type.is_some() {
-        log::warn!(
-            "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
-        );
-    }
-}
-
 /// Sets up the application.
 ///
 /// * loads the configuration
@@ -64,7 +48,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     };
     let config = Config::parse(&config_path).expect("failed to parse config");
     log::trace!("{:#?}", config);
-    warn_deprecation(&config);
+    config.warn_deprecation();
     let server_config = config.server.clone();
     let paste_config = RwLock::new(config.paste.clone());
     let (config_sender, config_receiver) = mpsc::channel::<Config>();

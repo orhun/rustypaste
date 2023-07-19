@@ -5,7 +5,6 @@ use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
 use crate::util;
-use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
@@ -159,7 +158,7 @@ async fn version(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = get_tokens(&config);
+    let tokens = config.get_tokens();
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
         log::warn!("server is not configured to expose version endpoint");
@@ -183,7 +182,7 @@ async fn upload(
         let config = config
             .read()
             .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-        let tokens = get_tokens(&config);
+        let tokens = config.get_tokens();
         auth::check(host, request.headers(), tokens)?;
     }
     let server_url = match config
@@ -295,27 +294,6 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         .service(serve)
         .service(upload)
         .route("", web::head().to(HttpResponse::MethodNotAllowed));
-}
-
-/// Retrieves all configured tokens.
-#[allow(deprecated)]
-fn get_tokens(config: &Config) -> Option<Vec<String>> {
-    if config.server.auth_token.is_some() || config.server.auth_tokens.is_some() {
-        let mut merged: Vec<String> = vec![];
-        if let Some(tokens) = &config.server.auth_tokens {
-            merged = tokens.clone();
-        }
-        if let Some(token) = &config.server.auth_token {
-            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
-            merged.insert(0, token.to_string());
-        }
-        if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
-            merged.insert(0, env_token);
-        }
-        Some(merged)
-    } else {
-        None
-    }
 }
 
 #[cfg(test)]
