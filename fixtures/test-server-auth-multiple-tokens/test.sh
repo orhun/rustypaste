@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-auth_tokens=("rustypasteisawesome token1 token2 token4")
+auth_tokens=("rustypasteisawesome" "token1" "token2" "token4")
 
 content="topsecret"
 
