@@ -5,23 +5,12 @@ use actix_web::{error, Error};
 ///
 /// `Authorization: (type) <token>`
 pub fn check(host: &str, headers: &HeaderMap, tokens: Option<Vec<String>>) -> Result<(), Error> {
-    if tokens.is_some() {
-        let mut token_found = false;
+    if let Some(tokens) = tokens {
         let auth_header = headers
             .get(AUTHORIZATION)
             .map(|v| v.to_str().unwrap_or_default())
             .map(|v| v.split_whitespace().last().unwrap_or_default());
-        if let Some(tokens) = tokens {
-            if !token_found {
-                for token in &tokens {
-                    if auth_header.unwrap_or_default() == token {
-                        token_found = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if !token_found {
+        if !tokens.iter().any(|v| v == auth_header.unwrap_or_default()) {
             log::warn!(
                 "authorization failure for {} (header: {})",
                 host,
