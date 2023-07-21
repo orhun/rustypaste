@@ -16,7 +16,7 @@ pub fn check(host: &str, headers: &HeaderMap, tokens: Option<Vec<String>>) -> Re
                 host,
                 auth_header.unwrap_or("none"),
             );
-            return Err(error::ErrorUnauthorized("unauthorized"));
+            return Err(error::ErrorUnauthorized("unauthorized\n"));
         }
     }
     Ok(())
