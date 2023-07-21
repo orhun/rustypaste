@@ -338,7 +338,7 @@ async fn list(
     let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
-                let metadata = fs::metadata(&e.path()).expect("Failed to retrieve metadata");
+                let metadata = fs::metadata(e.path()).expect("Failed to retrieve metadata");
 
                 if metadata.is_dir() {
                     return None;
@@ -369,7 +369,7 @@ async fn list(
         })
         .collect();
 
-    return Ok(HttpResponse::Ok().json(json!(entries)));
+    Ok(HttpResponse::Ok().json(json!(entries)))
 }
 
 /// Configures the server routes.
