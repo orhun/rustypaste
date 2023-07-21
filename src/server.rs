@@ -19,7 +19,7 @@ use serde_json::json;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::RwLock;
 
 /// Shows the landing page.
@@ -616,7 +616,7 @@ mod tests {
             .uri("/list")
             .to_request();
 
-        test::call_and_read_body_json(&app, request).await;
+        let _result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
 
         Ok(())
     }
