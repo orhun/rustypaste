@@ -16,7 +16,12 @@ include = ["src/**/*", "Cargo.*", "LICENSE", "README.md", "CHANGELOG.md"]
 default = ["rustls"]
 openssl = ["actix-web/openssl", "awc/openssl"]
 rustls = ["actix-web/rustls", "awc/rustls"]
-shuttle = ["dep:shuttle-actix-web", "dep:shuttle-runtime", "dep:shuttle-static-folder", "dep:tokio"]
+shuttle = [
+  "dep:shuttle-actix-web", 
+  "dep:shuttle-runtime", 
+  "dep:shuttle-static-folder", 
+  "dep:tokio"
+]
 
 [dependencies]
 actix-web = { version = "4.3.1" }
@@ -25,7 +30,7 @@ actix-files = "0.6.2"
 awc = { version = "3.1.1" }
 env_logger = "0.10.0"
 log = "0.4.19"
-serde = "1.0.171"
+serde = "1.0.173"
 futures-util = "0.3.28"
 petname = { version = "1.1.3", default-features = false, features = [
   "std_rng",
