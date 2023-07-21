@@ -118,7 +118,6 @@ impl Config {
     pub fn get_tokens(&self) -> Option<Vec<String>> {
         let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
         if let Some(token) = &self.server.auth_token {
-            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
             tokens.insert(0, token.to_string());
         }
         if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
@@ -127,7 +126,7 @@ impl Config {
         (!tokens.is_empty()).then_some(tokens)
     }
 
-    /// Print deprecation warnings (at server startup).
+    /// Print deprecation warnings.
     #[allow(deprecated)]
     pub fn warn_deprecation(&self) {
         if self.server.auth_token.is_some() {

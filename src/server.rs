@@ -36,7 +36,6 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         if let Some(ref mut landing_page) = config.landing_page {
             landing_page.text = config.server.landing_page;
         }
-        log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
     }
     if config.server.landing_page_content_type.is_some() {
         if config.landing_page.is_none() {
@@ -45,9 +44,6 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         if let Some(ref mut landing_page) = config.landing_page {
             landing_page.content_type = config.server.landing_page_content_type;
         }
-        log::warn!(
-                "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
-            );
     }
     if let Some(mut landing_page) = config.landing_page {
         if let Some(file) = landing_page.file {
