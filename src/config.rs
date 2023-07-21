@@ -112,6 +112,7 @@ impl Config {
             .build()?
             .try_deserialize()
     }
+
     /// Retrieves all configured tokens.
     #[allow(deprecated)]
     pub fn get_tokens(&self) -> Option<Vec<String>> {
@@ -125,6 +126,7 @@ impl Config {
         }
         (!tokens.is_empty()).then_some(tokens)
     }
+
     /// Print deprecation warnings (at server startup).
     #[allow(deprecated)]
     pub fn warn_deprecation(&self) {
