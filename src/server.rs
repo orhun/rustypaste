@@ -158,10 +158,10 @@ async fn version(
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
         log::warn!("server is not configured to expose version endpoint");
-        Err(error::ErrorForbidden("endpoint is not exposed"))?;
+        Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
     }
     let version = env!("CARGO_PKG_VERSION");
-    Ok(HttpResponse::Ok().body(version))
+    Ok(HttpResponse::Ok().body(version.to_owned() + "\n"))
 }
 
 /// Handles file upload by processing `multipart/form-data`.
@@ -463,7 +463,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-        assert_body(response.into_body(), "unauthorized").await?;
+        assert_body(response.into_body(), "unauthorized\n").await?;
         Ok(())
     }
 
@@ -483,7 +483,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::FORBIDDEN, response.status());
-        assert_body(response.into_body(), "endpoint is not exposed").await?;
+        assert_body(response.into_body(), "endpoint is not exposed\n").await?;
         Ok(())
     }
 
@@ -505,7 +505,11 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response.into_body(), env!("CARGO_PKG_VERSION")).await?;
+        assert_body(
+            response.into_body(),
+            &(env!("CARGO_PKG_VERSION").to_owned() + "\n"),
+        )
+        .await?;
         Ok(())
     }
 
@@ -525,7 +529,7 @@ mod tests {
         let response =
             test::call_service(&app, get_multipart_request("", "", "").to_request()).await;
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-        assert_body(response.into_body(), "unauthorized").await?;
+        assert_body(response.into_body(), "unauthorized\n").await?;
 
         Ok(())
     }
