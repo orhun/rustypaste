@@ -4,7 +4,6 @@ use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
-use crate::util::{self};
 use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
