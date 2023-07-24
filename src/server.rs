@@ -4,6 +4,7 @@ use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
+use crate::util;
 use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
@@ -39,7 +40,6 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         if let Some(ref mut landing_page) = config.landing_page {
             landing_page.text = config.server.landing_page;
         }
-        log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
     }
     if config.server.landing_page_content_type.is_some() {
         if config.landing_page.is_none() {
@@ -48,9 +48,6 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
         if let Some(ref mut landing_page) = config.landing_page {
             landing_page.content_type = config.server.landing_page_content_type;
         }
-        log::warn!(
-                "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
-            );
     }
     if let Some(mut landing_page) = config.landing_page {
         if let Some(file) = landing_page.file {
@@ -163,19 +160,14 @@ async fn version(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    auth::check(
-        host,
-        request.headers(),
-        env::var(AUTH_TOKEN_ENV)
-            .ok()
-            .or_else(|| config.server.auth_token.as_ref().cloned()),
-    )?;
+    let tokens = config.get_tokens();
+    auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
         log::warn!("server is not configured to expose version endpoint");
-        Err(error::ErrorForbidden("endpoint is not exposed"))?;
+        Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
     }
     let version = env!("CARGO_PKG_VERSION");
-    Ok(HttpResponse::Ok().body(version))
+    Ok(HttpResponse::Ok().body(version.to_owned() + "\n"))
 }
 
 /// Handles file upload by processing `multipart/form-data`.
@@ -188,6 +180,13 @@ async fn upload(
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
+    {
+        let config = config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+        let tokens = config.get_tokens();
+        auth::check(host, request.headers(), tokens)?;
+    }
     let server_url = match config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
@@ -200,17 +199,6 @@ async fn upload(
             format!("{}://{}", connection.scheme(), connection.host(),)
         }
     };
-    auth::check(
-        host,
-        request.headers(),
-        env::var(AUTH_TOKEN_ENV).ok().or(config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-            .server
-            .auth_token
-            .as_ref()
-            .cloned()),
-    )?;
     let time = util::get_system_time()?;
     let mut expiry_date = header::parse_expiry_date(request.headers(), time)?;
     if expiry_date.is_none() {
@@ -535,7 +523,7 @@ mod tests {
     #[actix_web::test]
     async fn test_version_without_auth() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.auth_token = Some(String::from("test"));
+        config.server.auth_tokens = Some(vec!["test".to_string()]);
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -550,7 +538,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-        assert_body(response.into_body(), "unauthorized").await?;
+        assert_body(response.into_body(), "unauthorized\n").await?;
         Ok(())
     }
 
@@ -570,7 +558,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::FORBIDDEN, response.status());
-        assert_body(response.into_body(), "endpoint is not exposed").await?;
+        assert_body(response.into_body(), "endpoint is not exposed\n").await?;
         Ok(())
     }
 
@@ -592,7 +580,11 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
-        assert_body(response.into_body(), env!("CARGO_PKG_VERSION")).await?;
+        assert_body(
+            response.into_body(),
+            &(env!("CARGO_PKG_VERSION").to_owned() + "\n"),
+        )
+        .await?;
         Ok(())
     }
 
@@ -621,7 +613,7 @@ mod tests {
     #[actix_web::test]
     async fn test_auth() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.auth_token = Some(String::from("test"));
+        config.server.auth_tokens = Some(vec!["test".to_string()]);
 
         let app = test::init_service(
             App::new()
@@ -634,7 +626,7 @@ mod tests {
         let response =
             test::call_service(&app, get_multipart_request("", "", "").to_request()).await;
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-        assert_body(response.into_body(), "unauthorized").await?;
+        assert_body(response.into_body(), "unauthorized\n").await?;
 
         Ok(())
     }

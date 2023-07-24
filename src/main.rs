@@ -48,6 +48,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     };
     let config = Config::parse(&config_path).expect("failed to parse config");
     log::trace!("{:#?}", config);
+    config.warn_deprecation();
     let server_config = config.server.clone();
     let paste_config = RwLock::new(config.paste.clone());
     let (config_sender, config_receiver) = mpsc::channel::<Config>();

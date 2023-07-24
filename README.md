@@ -219,7 +219,7 @@ $ curl -F "remote=https://example.com/file.png" "<server_address>"
 
 #### Cleaning up expired files
 
-Configure `delete_expired_files` to set an interval for deleting the expired files automatically.
+Configure `[paste].delete_expired_files` to set an interval for deleting the expired files automatically.
 
 On the other hand, following script can be used as [cron](https://en.wikipedia.org/wiki/Cron) for cleaning up the expired files manually:
 
@@ -253,6 +253,8 @@ $ echo "AUTH_TOKEN=$(openssl rand -base64 16)" > .env
 $ rustypaste
 ```
 
+You can also set multiple auth tokens via the array field `[server].auth_tokens` in your `config.toml`.
+
 See [config.toml](./config.toml) for configuration options.
 
 ### List endpoint
@@ -264,8 +266,8 @@ This route will require an `AUTH_TOKEN` if one is set.
 
 It is possible to use an HTML form for uploading files. To do so, you need to update two fields in your `config.toml`:
 
-- Set the `landing_page_content_type` to `text/html; charset=utf-8`.
-- Update the `landing_page` field with your HTML form.
+- Set the `[landing_page].content_type` to `text/html; charset=utf-8`.
+- Update the `[landing_page].text` field with your HTML form or point `[landing_page].file` to your html file.
 
 For an example, see [examples/html_form.toml](./examples/html_form.toml)
 
