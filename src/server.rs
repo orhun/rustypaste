@@ -320,7 +320,7 @@ async fn list(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
         .clone();
 
-    if !config.server.json_list_enabled.unwrap_or(false) {
+    if !config.server.expose_list.unwrap_or(false) {
         Err(error::ErrorForbidden("json list is not enabled"))?;
     }
 
@@ -602,7 +602,7 @@ mod tests {
     #[actix_web::test]
     async fn test_json_list() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.json_list_enabled = Some(true);
+        config.server.expose_list = Some(true);
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
