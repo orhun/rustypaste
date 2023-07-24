@@ -5,7 +5,6 @@ use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
 use crate::util;
-use crate::AUTH_TOKEN_ENV;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
@@ -289,14 +288,18 @@ async fn upload(
     Ok(HttpResponse::Ok().body(urls.join("")))
 }
 
+/// File entry item for list endpoint
 #[derive(Serialize, Deserialize)]
 struct ListItem {
+    /// Uploaded file name
     file_name: String,
+    /// Size of the file in bytes
     file_size: u64,
+    /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
     expires_at: Option<String>,
 }
 
-// Returns a list of files
+/// Returns a list of files
 #[get("/list")]
 async fn list(
     request: HttpRequest,
@@ -308,13 +311,9 @@ async fn list(
         .clone();
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    auth::check(
-        host,
-        request.headers(),
-        env::var(AUTH_TOKEN_ENV)
-            .ok()
-            .or_else(|| config.server.auth_token.as_ref().cloned()),
-    )?;
+
+    let tokens = config.get_tokens();
+    auth::check(host, request.headers(), tokens)?;
 
     if !config.server.expose_list.unwrap_or(false) {
         log::warn!("server is not configured to expose list endpoint");
@@ -589,7 +588,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_json_list() -> Result<(), Error> {
+    async fn test_list() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.expose_list = Some(true);
         let app = test::init_service(
