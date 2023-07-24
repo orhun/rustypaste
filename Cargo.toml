@@ -17,9 +17,9 @@ default = ["rustls"]
 openssl = ["actix-web/openssl", "awc/openssl"]
 rustls = ["actix-web/rustls", "awc/rustls"]
 shuttle = [
-  "dep:shuttle-actix-web", 
-  "dep:shuttle-runtime", 
-  "dep:shuttle-static-folder", 
+  "dep:shuttle-actix-web",
+  "dep:shuttle-runtime",
+  "dep:shuttle-static-folder",
   "dep:tokio"
 ]
 
