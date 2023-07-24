@@ -318,14 +318,8 @@ async fn list(
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
         .clone();
-
-    if !config.server.expose_list.unwrap_or(false) {
-        Err(error::ErrorForbidden("json list is not enabled"))?;
-    }
-
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-
     auth::check(
         host,
         request.headers(),
@@ -334,6 +328,10 @@ async fn list(
             .or_else(|| config.server.auth_token.as_ref().cloned()),
     )?;
 
+    if !config.server.expose_list.unwrap_or(false) {
+        log::warn!("server is not configured to expose list endpoint");
+        Err(error::ErrorForbidden("endpoint is not exposed"))?;
+    }
     let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
