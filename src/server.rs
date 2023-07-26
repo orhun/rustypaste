@@ -317,7 +317,7 @@ async fn list(
 
     if !config.server.expose_list.unwrap_or(false) {
         log::warn!("server is not configured to expose list endpoint");
-        Err(error::ErrorForbidden("endpoint is not exposed"))?;
+        Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
     }
     let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
