@@ -10,7 +10,6 @@ use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
-use chrono::NaiveDateTime;
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
 use serde::{Deserialize, Serialize};
@@ -20,6 +19,7 @@ use std::env;
 use std::fs;
 use std::path::Path;
 use std::sync::RwLock;
+use uts2ts;
 
 /// Shows the landing page.
 #[get("/")]
@@ -338,10 +338,9 @@ async fn list(
 
                 if let Some(expiration) = extension {
                     let seconds = expiration / 1000;
-                    let dt = NaiveDateTime::parse_from_str(&seconds.to_string(), "%s")
-                        .expect("invalid unix timestamp");
+                    let timestamp = uts2ts::uts2ts(seconds);
 
-                    expires_at = Some(dt.format("%Y-%m-%d %H:%M:%S").to_string());
+                    expires_at = Some(timestamp.as_string());
                 }
 
                 Some(ListItem {
