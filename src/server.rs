@@ -85,8 +85,7 @@ async fn serve(
 ) -> Result<HttpResponse, Error> {
     let config = config
         .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-        .clone();
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
 
     let path = config.server.upload_path.join(&*file);
     let mut path = util::glob_match_file(path)?;
