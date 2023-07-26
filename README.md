@@ -259,7 +259,7 @@ See [config.toml](./config.toml) for configuration options.
 
 ### List endpoint
 
-Set `json_list_enabled` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot urls, or urls. 
+Set `expose_list` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot urls, or urls. 
 
 ```sh
 curl http://<server address>/list
