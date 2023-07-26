@@ -292,11 +292,11 @@ async fn upload(
 #[derive(Serialize, Deserialize)]
 struct ListItem {
     /// Uploaded file name
-    file_name: String,
+    pub file_name: String,
     /// Size of the file in bytes
-    file_size: u64,
+    pub file_size: u64,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
-    expires_at: Option<String>,
+    pub expires_at: Option<String>,
 }
 
 /// Returns a list of files
@@ -590,6 +590,11 @@ mod tests {
     async fn test_list() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -598,12 +603,24 @@ mod tests {
         )
         .await;
 
+        let file_name = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", file_name).to_request(),
+        )
+        .await;
+
         let request = TestRequest::default()
             .insert_header(("content-type", "text/plain"))
             .uri("/list")
             .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
 
-        let _result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result.first().unwrap().file_name, file_name);
+
+        fs::remove_dir_all(test_upload_dir)?;
 
         Ok(())
     }
