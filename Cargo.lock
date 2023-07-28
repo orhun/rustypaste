@@ -2236,7 +2236,6 @@ dependencies = [
  "regex",
  "ring",
  "serde",
- "serde_json",
  "serde_regex",
  "shuttle-actix-web",
  "shuttle-runtime",

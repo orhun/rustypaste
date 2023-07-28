@@ -13,7 +13,6 @@ use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
@@ -350,7 +349,7 @@ async fn list(
         })
         .collect();
 
-    Ok(HttpResponse::Ok().json(json!(entries)))
+    Ok(HttpResponse::Ok().json(entries))
 }
 
 /// Configures the server routes.
