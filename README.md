@@ -262,7 +262,8 @@ See [config.toml](./config.toml) for configuration options.
 Set `expose_list` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot urls, or urls. 
 
 ```sh
-curl http://<server address>/list
+$ curl "http://<server_address>/list"
+
 [{"expires_at":null,"file_name":"accepted-cicada.txt","file_size":241}]
 ```
 This route will require an `AUTH_TOKEN` if one is set.
