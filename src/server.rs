@@ -285,18 +285,18 @@ async fn upload(
     Ok(HttpResponse::Ok().body(urls.join("")))
 }
 
-/// File entry item for list endpoint
+/// File entry item for list endpoint.
 #[derive(Serialize, Deserialize)]
-struct ListItem {
-    /// Uploaded file name
+pub struct ListItem {
+    /// Uploaded file name.
     pub file_name: String,
-    /// Size of the file in bytes
+    /// Size of the file in bytes.
     pub file_size: u64,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
     pub expires_at: Option<String>,
 }
 
-/// Returns a list of files
+/// Returns the list of files.
 #[get("/list")]
 async fn list(
     request: HttpRequest,
