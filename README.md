@@ -267,6 +267,7 @@ $ curl "http://<server_address>/list"
 [{"expires_at":null,"file_name":"accepted-cicada.txt","file_size":241}]
 ```
 This route will require an `AUTH_TOKEN` if one is set.
+
 #### HTML Form
 
 It is possible to use an HTML form for uploading files. To do so, you need to update two fields in your `config.toml`:
