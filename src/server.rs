@@ -615,7 +615,7 @@ mod tests {
         let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
 
         assert_eq!(result.len(), 1);
-        assert!(result.first().is_some());
+        assert_eq!(result.first().expect("json object").file_name, file_name);
 
         fs::remove_dir_all(test_upload_dir)?;
 
