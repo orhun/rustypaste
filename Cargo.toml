@@ -20,7 +20,7 @@ shuttle = [
   "dep:shuttle-actix-web",
   "dep:shuttle-runtime",
   "dep:shuttle-static-folder",
-  "dep:tokio"
+  "dep:tokio",
 ]
 
 [dependencies]
