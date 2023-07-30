@@ -289,9 +289,9 @@ async fn upload(
 #[derive(Serialize, Deserialize)]
 pub struct ListItem {
     /// Uploaded file name.
-    pub file_name: String,
+    pub filename: String,
     /// Size of the file in bytes.
-    pub file_size: u64,
+    pub filesize: u64,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
     pub expires_at: Option<String>,
 }
@@ -325,8 +325,8 @@ async fn list(
                     return None;
                 }
 
-                let file_name = e.file_name().into_string().ok()?;
-                let extension: Option<i64> = Path::new(&file_name)
+                let filename = e.file_name().into_string().ok()?;
+                let extension: Option<i64> = Path::new(&filename)
                     .extension()
                     .and_then(|ext| ext.to_str())
                     .and_then(|v| v.parse().ok());
@@ -341,8 +341,8 @@ async fn list(
                 }
 
                 Some(ListItem {
-                    file_name,
-                    file_size: metadata.len(),
+                    filename,
+                    filesize: metadata.len(),
                     expires_at,
                 })
             })
@@ -600,11 +600,11 @@ mod tests {
         )
         .await;
 
-        let file_name = "test_file.txt";
+        let filename = "test_file.txt";
         let timestamp = util::get_system_time()?.as_secs().to_string();
         test::call_service(
             &app,
-            get_multipart_request(&timestamp, "file", file_name).to_request(),
+            get_multipart_request(&timestamp, "file", filename).to_request(),
         )
         .await;
 
@@ -615,7 +615,7 @@ mod tests {
         let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result.first().expect("json object").file_name, file_name);
+        assert_eq!(result.first().expect("json object").filename, filename);
 
         fs::remove_dir_all(test_upload_dir)?;
 
