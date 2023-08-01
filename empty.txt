@@ -1,0 +1,1 @@
+cargo fmt does not allow empty files.
