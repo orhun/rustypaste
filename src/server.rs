@@ -164,6 +164,14 @@ async fn version(
     Ok(HttpResponse::Ok().body(version.to_owned() + "\n"))
 }
 
+fn process_filename(file_name: &str, config: &RwLock<Config>) -> String {
+    let config_read = config.read().unwrap();
+    if let Some(true) = config_read.server.url_encode_filenames {
+        return file_name.replace(" ", "%20");
+    }
+    file_name.to_string()
+}
+
 /// Handles file upload by processing `multipart/form-data`.
 #[post("/")]
 async fn upload(
@@ -249,7 +257,7 @@ async fn upload(
                 data: bytes.to_vec(),
                 type_: paste_type,
             };
-            let file_name = match paste.type_ {
+            let mut file_name = match paste.type_ {
                 PasteType::File | PasteType::Oneshot => {
                     let config = config
                         .read()
@@ -274,6 +282,7 @@ async fn upload(
                 Byte::from_bytes(paste.data.len() as u128).get_appropriate_unit(false),
                 host
             );
+            file_name = process_filename(&file_name, &config);
             urls.push(format!("{}/{}\n", server_url, file_name));
         } else {
             log::warn!("{} sent an invalid form field", host);
@@ -910,4 +919,16 @@ mod tests {
 
         Ok(())
     }
+
+    #[actix_rt::test]
+    async fn test_url_encoding() {
+        // Setup configuration
+        let mut cfg = Config::default();
+        cfg.server.url_encode_filenames = Some(true);
+
+        let encoded_filename = process_filename("file with spaces.txt", &RwLock::new(cfg));
+
+        assert!(encoded_filename.contains("%20"));  // Check if the space is encoded
+    }
+
 }

@@ -58,6 +58,8 @@ pub struct ServerConfig {
     /// Landing page content-type.
     #[deprecated(note = "use the [landing_page] table")]
     pub landing_page_content_type: Option<String>,
+    /// URL encoding.
+    pub url_encode_filenames: Option<bool>,
 }
 
 /// Landing page configuration.

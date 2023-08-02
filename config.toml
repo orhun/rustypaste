@@ -13,6 +13,7 @@ expose_version = false
 #  "super_secret_token1",
 #  "super_secret_token2",
 #]
+url_encode_filenames = true
 
 [landing_page]
 text = """
