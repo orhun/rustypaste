@@ -293,7 +293,7 @@ pub struct ListItem {
     /// Size of the file in bytes.
     pub file_size: u64,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
-    pub expires_at: Option<String>,
+    pub expires_at_utc: Option<String>,
 }
 
 /// Returns the list of files.
@@ -325,25 +325,26 @@ async fn list(
                     return None;
                 }
 
-                let file_name = e.file_name().into_string().ok()?;
+                let mut file_name = e.file_name().into_string().ok()?;
                 let extension: Option<i64> = Path::new(&file_name)
                     .extension()
                     .and_then(|ext| ext.to_str())
                     .and_then(|v| v.parse().ok());
 
-                let mut expires_at = None;
+                let mut expires_at_utc = None;
 
                 if let Some(expiration) = extension {
-                    let seconds = expiration / 1000;
-                    let timestamp = uts2ts::uts2ts(seconds);
-
-                    expires_at = Some(timestamp.as_string());
+                    expires_at_utc = Some(uts2ts::uts2ts(expiration / 1000).as_string());
+                    // Using pop() because truncate might panic on UTF-8 strings
+                    for _ in 0..14 {
+                        _ = file_name.pop();
+                    }
                 }
 
                 Some(ListItem {
                     file_name,
                     file_size: metadata.len(),
-                    expires_at,
+                    expires_at_utc,
                 })
             })
         })

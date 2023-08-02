@@ -3056,9 +3056,9 @@ checksum = "5190c9442dcdaf0ddd50f37420417d219ae5261bbf5db120d0f9bab996c9cba1"
 
 [[package]]
 name = "uts2ts"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31d5b8610e34be65f67795dd0cc18fbaa3b88ac7ac3a01fee58ede6fb9a0d18a"
+checksum = "018ca105ca58080880634723c71f26f89591c7de0ca600d9b851270b9980b44f"
 
 [[package]]
 name = "uuid"
