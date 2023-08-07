@@ -58,6 +58,8 @@ pub struct ServerConfig {
     /// Landing page content-type.
     #[deprecated(note = "use the [landing_page] table")]
     pub landing_page_content_type: Option<String>,
+    /// Path of the JSON index.
+    pub expose_list: Option<bool>,
 }
 
 /// Landing page configuration.
