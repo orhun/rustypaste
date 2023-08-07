@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::RwLock;
 use uts2ts;
 
@@ -289,7 +289,7 @@ async fn upload(
 #[derive(Serialize, Deserialize)]
 pub struct ListItem {
     /// Uploaded file name.
-    pub file_name: String,
+    pub file_name: PathBuf,
     /// Size of the file in bytes.
     pub file_size: u64,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
@@ -308,10 +308,8 @@ async fn list(
         .clone();
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-
     let tokens = config.get_tokens();
     auth::check(host, request.headers(), tokens)?;
-
     if !config.server.expose_list.unwrap_or(false) {
         log::warn!("server is not configured to expose list endpoint");
         Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
@@ -319,28 +317,29 @@ async fn list(
     let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
-                let metadata = fs::metadata(e.path()).expect("Failed to retrieve metadata");
-
-                if metadata.is_dir() {
-                    return None;
-                }
-
-                let mut file_name = e.file_name().into_string().ok()?;
-                let extension: Option<i64> = Path::new(&file_name)
+                let metadata = match e.metadata() {
+                    Ok(metadata) => {
+                        if metadata.is_dir() {
+                            return None;
+                        }
+                        metadata
+                    }
+                    Err(e) => {
+                        log::error!("failed to read metadata: {e}");
+                        return None;
+                    }
+                };
+                let mut file_name = PathBuf::from(e.file_name());
+                let expires_at_utc = if let Some(expiration) = file_name
                     .extension()
                     .and_then(|ext| ext.to_str())
-                    .and_then(|v| v.parse().ok());
-
-                let mut expires_at_utc = None;
-
-                if let Some(expiration) = extension {
-                    expires_at_utc = Some(uts2ts::uts2ts(expiration / 1000).as_string());
-                    // Using pop() because truncate might panic on UTF-8 strings
-                    for _ in 0..14 {
-                        _ = file_name.pop();
-                    }
-                }
-
+                    .and_then(|v| v.parse::<i64>().ok())
+                {
+                    file_name.set_extension("");
+                    Some(uts2ts::uts2ts(expiration / 1000).as_string())
+                } else {
+                    None
+                };
                 Some(ListItem {
                     file_name,
                     file_size: metadata.len(),
@@ -349,7 +348,6 @@ async fn list(
             })
         })
         .collect();
-
     Ok(HttpResponse::Ok().json(entries))
 }
 
@@ -616,7 +614,10 @@ mod tests {
         let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result.first().expect("json object").file_name, filename);
+        assert_eq!(
+            result.first().expect("json object").file_name,
+            PathBuf::from(filename)
+        );
 
         fs::remove_dir_all(test_upload_dir)?;
 
