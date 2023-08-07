@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2023-08-07
+
+### Added
+
+- Add an endpoint for retrieving a list of files (#94)
+
+Set the `expose_list` option to `true` in the configuration file for enabling this feature. It is disabled as default.
+
+```toml
+[server]
+expose_list = true
+```
+
+Then you can receive the list of files as JSON via `/list` endpoint:
+
+```sh
+$ curl "http://<server_address>/list" | jq .
+
+[
+  {
+    "file_name": "accepted-cicada.txt",
+    "file_size": 241,
+    "expires_at_utc": null
+  },
+  {
+    "file_name": "evolving-ferret.txt",
+    "file_size": 111,
+    "expires_at_utc": "2023-08-07 10:51:14"
+  }
+]
+```
+
+- Support multiple auth tokens (#84)
+
+`auth_token` option is now deprecated and replaced with `auth_tokens` which supports an array of authentication tokens. For example:
+
+```toml
+[server]
+auth_tokens = [
+  "super_secret_token1",
+  "super_secret_token2",
+]
+```
+
+- Add new line character to most prominent messages (#97)
+
+This is a follow-up to #72 for making the terminal output better:
+
+```sh
+$ curl http://localhost:8000/sweeping-tahr
+unauthorized
+```
+
+### Changed
+
+- Bump Shuttle to `0.23.0`
+- Bump dependencies
+
+### Fixed
+
+- Deploy the Shuttle service when a new tag is created
+
 ## [0.11.1] - 2023-07-01
 
 This is a hotfix release for supporting the use of deprecated `[server].landing_page*` fields.
