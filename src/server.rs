@@ -18,6 +18,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
+use std::time::Duration;
 use uts2ts;
 
 /// Shows the landing page.
@@ -330,21 +331,29 @@ async fn list(
                     }
                 };
                 let mut file_name = PathBuf::from(e.file_name());
+                let mut exp_ext = 0;
                 let expires_at_utc = if let Some(expiration) = file_name
                     .extension()
                     .and_then(|ext| ext.to_str())
                     .and_then(|v| v.parse::<i64>().ok())
                 {
                     file_name.set_extension("");
+                    exp_ext = expiration;
                     Some(uts2ts::uts2ts(expiration / 1000).as_string())
                 } else {
                     None
                 };
-                Some(ListItem {
-                    file_name,
-                    file_size: metadata.len(),
-                    expires_at_utc,
-                })
+                if expires_at_utc.is_none()
+                    || (util::get_system_time().ok() < Some(Duration::from_millis(exp_ext as u64)))
+                {
+                    Some(ListItem {
+                        file_name,
+                        file_size: metadata.len(),
+                        expires_at_utc,
+                    })
+                } else {
+                    None
+                }
             })
         })
         .collect();
