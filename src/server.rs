@@ -631,6 +631,51 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn test_list_expired() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", filename)
+                .insert_header((
+                    header::HeaderName::from_static("expire"),
+                    header::HeaderValue::from_static("50ms"),
+                ))
+                .to_request(),
+        )
+        .await;
+
+        thread::sleep(Duration::from_millis(500));
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        assert!(result.is_empty());
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
     async fn test_auth() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.auth_tokens = Some(vec!["test".to_string()]);
