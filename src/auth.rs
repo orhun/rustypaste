@@ -11,11 +11,13 @@ pub fn check(host: &str, headers: &HeaderMap, tokens: Option<Vec<String>>) -> Re
             .map(|v| v.to_str().unwrap_or_default())
             .map(|v| v.split_whitespace().last().unwrap_or_default());
         if !tokens.iter().any(|v| v == auth_header.unwrap_or_default()) {
+            #[cfg(debug_assertions)]
             log::warn!(
-                "authorization failure for {} (header: {})",
-                host,
+                "authorization failure for {host} (token: {})",
                 auth_header.unwrap_or("none"),
             );
+            #[cfg(not(debug_assertions))]
+            log::warn!("authorization failure for {host}");
             return Err(error::ErrorUnauthorized("unauthorized\n"));
         }
     }
