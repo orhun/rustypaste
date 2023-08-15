@@ -15,31 +15,21 @@ jobs:
     name: Check
     runs-on: ubuntu-22.04
     steps:
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
       - name: Checkout the repository
         uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
       - name: Check the project files
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --verbose
+        run: cargo check --locked --verbose
 
   test:
     name: Test suite
     runs-on: ubuntu-22.04
     steps:
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
       - name: Checkout the repository
         uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
       - name: Setup cargo-tarpaulin
         run: |
           curl -s https://api.github.com/repos/xd009642/tarpaulin/releases/latest | \
@@ -62,19 +52,12 @@ jobs:
     name: Test fixtures
     runs-on: ubuntu-22.04
     steps:
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
       - name: Checkout the repository
         uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
       - name: Build the project
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --verbose
+        run: cargo build --locked --verbose
       - name: Run test fixtures
         shell: bash
         run: ./test-fixtures.sh
@@ -86,39 +69,27 @@ jobs:
     name: Lints
     runs-on: ubuntu-22.04
     steps:
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: clippy
-          override: true
       - name: Checkout the repository
         uses: actions/checkout@v3
-      - name: Check the lints
-        uses: actions-rs/cargo@v1
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          command: clippy
-          args: --tests --verbose -- -D warnings
+          components: clippy
+      - name: Check the lints
+        run: cargo clippy --tests --verbose -- -D warnings
 
   rustfmt:
     name: Formatting
     runs-on: ubuntu-22.04
     steps:
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
-          override: true
       - name: Checkout the repository
         uses: actions/checkout@v3
-      - name: Check the formatting
-        uses: actions-rs/cargo@v1
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          command: fmt
-          args: -- --check --verbose
+          components: rustfmt
+      - name: Check the formatting
+        run: cargo fmt -- --check --verbose
 
   lychee:
     name: Links

@@ -24,11 +24,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             --allow-unauthenticated musl-tools
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
           target: ${{ matrix.TARGET }}
-          override: true
       - name: Build
         run: |
           cargo build --release --locked --target ${{ matrix.TARGET }}
@@ -61,8 +59,7 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
       - name: Publish
-        uses: actions-rs/cargo@v1
-        with:
-          command: publish
-          args: --locked --token ${{ secrets.CARGO_TOKEN }}
+        run: cargo publish --locked --token ${{ secrets.CARGO_TOKEN }}
