@@ -2172,7 +2172,7 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rustypaste"
-version = "0.11.1"
+version = "0.12.1"
 dependencies = [
  "actix-files",
  "actix-multipart",
@@ -2203,6 +2203,7 @@ dependencies = [
  "shuttle-static-folder",
  "tokio",
  "url",
+ "uts2ts",
 ]
 
 [[package]]
@@ -2326,9 +2327,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-actix-web"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90f34b1daa34e939d3dbccabd9f6cc8f06655aa75cc12a95a3505f6f0d2950fb"
+checksum = "2d6578f7adb3889a408bc07262c4b2e22080b0cf5e60688165f7059c2ad2f66b"
 dependencies = [
  "actix-web",
  "num_cpus",
@@ -2337,9 +2338,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-codegen"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dc8c26160bedab3fdddc684e52cbe41e692402d4e8254a142930b29a9a4ea97"
+checksum = "0e44dab12fe6c4ca6f7f5808c5c6bf52c1a5c07dfc54de61b0336c616c7f6a2d"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -2349,9 +2350,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-common"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26a36d3fc4ec9abe5d5b9f8d2698e248caf095fa6ad5bb3d6bcf9227515d4e78"
+checksum = "3e91c5d6f358588f97cb5d3869ceaad975eaa88ca1f963e684e72cc9a264bb62"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2387,15 +2388,16 @@ dependencies = [
 
 [[package]]
 name = "shuttle-proto"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9fae1e2817e1dc96f65c3ef6ca5daa75f8ead036900a02583d74b02da635a27"
+checksum = "a4b8ab4e4e8b8a7f299ea6949c60518479ae6a8eeb140545c6b4a0640b6e3668"
 dependencies = [
  "anyhow",
  "chrono",
  "home",
  "prost",
  "prost-types",
+ "serde_json",
  "shuttle-common",
  "tokio",
  "tonic",
@@ -2405,9 +2407,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-runtime"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "401441fd2d6f3d3285ecba1a67ff8adf5e748762f3e4ee5b7893be4063c51863"
+checksum = "d509359154b305070156c827af30006b4de604f240f63bbe1b0f4fa0d5096437"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2431,9 +2433,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-service"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beca267cd66915c6b24467f4a6cf65cba082dd1170708a3f14cd75c7a8474469"
+checksum = "a0365223a805fa37f43edf34dd6ed759d8381805cfcfd10a154405fd00711c48"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2445,9 +2447,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-static-folder"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85030a1fa4137d4d9f8f463f1d26d86fd1303455036a594de076b58a636cae33"
+checksum = "45821ec3dd9146afe89ee0b80287eddc00c5f3d813707cfdf79229738aaa904d"
 dependencies = [
  "async-trait",
  "dunce",
@@ -3022,6 +3024,12 @@ name = "utf8-width"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5190c9442dcdaf0ddd50f37420417d219ae5261bbf5db120d0f9bab996c9cba1"
+
+[[package]]
+name = "uts2ts"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "259b17235452d88d066e35685df3fd9fd3875936eee5451d0533b604201f06a8"
 
 [[package]]
 name = "uuid"

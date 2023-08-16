@@ -60,6 +60,8 @@ pub struct ServerConfig {
     pub landing_page_content_type: Option<String>,
     /// URL encoding.
     pub url_encode_filenames: Option<bool>,
+    /// Path of the JSON index.
+    pub expose_list: Option<bool>,
 }
 
 /// Landing page configuration.

@@ -12,11 +12,14 @@ use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::RwLock;
+use std::time::Duration;
+use uts2ts;
 
 /// Shows the landing page.
 #[get("/")]
@@ -292,10 +295,82 @@ async fn upload(
     Ok(HttpResponse::Ok().body(urls.join("")))
 }
 
+/// File entry item for list endpoint.
+#[derive(Serialize, Deserialize)]
+pub struct ListItem {
+    /// Uploaded file name.
+    pub file_name: PathBuf,
+    /// Size of the file in bytes.
+    pub file_size: u64,
+    /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
+    pub expires_at_utc: Option<String>,
+}
+
+/// Returns the list of files.
+#[get("/list")]
+async fn list(
+    request: HttpRequest,
+    config: web::Data<RwLock<Config>>,
+) -> Result<HttpResponse, Error> {
+    let config = config
+        .read()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+        .clone();
+    let connection = request.connection_info().clone();
+    let host = connection.realip_remote_addr().unwrap_or("unknown host");
+    let tokens = config.get_tokens();
+    auth::check(host, request.headers(), tokens)?;
+    if !config.server.expose_list.unwrap_or(false) {
+        log::warn!("server is not configured to expose list endpoint");
+        Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
+    }
+    let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
+        .filter_map(|entry| {
+            entry.ok().and_then(|e| {
+                let metadata = match e.metadata() {
+                    Ok(metadata) => {
+                        if metadata.is_dir() {
+                            return None;
+                        }
+                        metadata
+                    }
+                    Err(e) => {
+                        log::error!("failed to read metadata: {e}");
+                        return None;
+                    }
+                };
+                let mut file_name = PathBuf::from(e.file_name());
+                let expires_at_utc = if let Some(expiration) = file_name
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .and_then(|v| v.parse::<i64>().ok())
+                {
+                    file_name.set_extension("");
+                    if util::get_system_time().ok()?
+                        > Duration::from_millis(expiration.try_into().ok()?)
+                    {
+                        return None;
+                    }
+                    Some(uts2ts::uts2ts(expiration / 1000).as_string())
+                } else {
+                    None
+                };
+                Some(ListItem {
+                    file_name,
+                    file_size: metadata.len(),
+                    expires_at_utc,
+                })
+            })
+        })
+        .collect();
+    Ok(HttpResponse::Ok().json(entries))
+}
+
 /// Configures the server routes.
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(index)
         .service(version)
+        .service(list)
         .service(serve)
         .service(upload)
         .route("", web::head().to(HttpResponse::MethodNotAllowed));
@@ -519,6 +594,93 @@ mod tests {
             &(env!("CARGO_PKG_VERSION").to_owned() + "\n"),
         )
         .await?;
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_list() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", filename).to_request(),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(
+            result.first().expect("json object").file_name,
+            PathBuf::from(filename)
+        );
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_list_expired() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", filename)
+                .insert_header((
+                    header::HeaderName::from_static("expire"),
+                    header::HeaderValue::from_static("50ms"),
+                ))
+                .to_request(),
+        )
+        .await;
+
+        thread::sleep(Duration::from_millis(500));
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        assert!(result.is_empty());
+
+        fs::remove_dir_all(test_upload_dir)?;
+
         Ok(())
     }
 

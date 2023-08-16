@@ -51,6 +51,7 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
     - [Paste file from remote URL](#paste-file-from-remote-url)
     - [Cleaning up expired files](#cleaning-up-expired-files)
   - [Server](#server)
+  - [List endpoint](#list-endpoint)
     - [HTML Form](#html-form)
     - [Docker](#docker)
     - [Nginx](#nginx)
@@ -256,6 +257,18 @@ $ rustypaste
 You can also set multiple auth tokens via the array field `[server].auth_tokens` in your `config.toml`.
 
 See [config.toml](./config.toml) for configuration options.
+
+### List endpoint
+
+Set `expose_list` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot URLs, or URLs.
+
+```sh
+$ curl "http://<server_address>/list"
+
+[{"file_name":"accepted-cicada.txt","file_size":241,"expires_at_utc":null}]
+```
+
+This route will require an `AUTH_TOKEN` if one is set.
 
 #### HTML Form
 
