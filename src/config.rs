@@ -77,7 +77,7 @@ pub struct LandingPageConfig {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct PasteConfig {
     /// Random URL configuration.
-    pub random_url: RandomURLConfig,
+    pub random_url: Option<RandomURLConfig>,
     /// Default file extension.
     pub default_extension: String,
     /// Media type override options.
@@ -141,6 +141,13 @@ impl Config {
             log::warn!(
                 "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
             );
+        }
+        if let Some(random_url) = &self.paste.random_url {
+            if random_url.enabled.is_some() {
+                log::warn!(
+                    "[paste].random_url.enabled is deprecated, to disable comment out [paste].random_url"
+                );
+            }
         }
     }
 }
