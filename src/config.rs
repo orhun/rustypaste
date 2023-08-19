@@ -165,4 +165,18 @@ mod tests {
         assert_eq!("0.0.1.1", config.server.address);
         Ok(())
     }
+    #[test]
+    #[allow(deprecated)]
+    fn test_parse_deprecated_config() -> Result<(), ConfigError> {
+        let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
+        env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        let mut config = Config::parse(&config_path)?;
+        config.paste.random_url = Some(RandomURLConfig {
+            enabled: Some(true),
+            ..RandomURLConfig::default()
+        });
+        assert_eq!("0.0.1.1", config.server.address);
+        config.warn_deprecation();
+        Ok(())
+    }
 }
