@@ -268,7 +268,7 @@ impl Paste {
             path.set_file_name(format!("{file_name}.{timestamp}"));
         }
         fs::write(&path, url.to_string())?;
-        Ok(file_name.to_string())
+        Ok(file_name)
     }
 }
 
