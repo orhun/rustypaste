@@ -15,8 +15,8 @@ file = "landing_page.html"
 content_type = "text/html; charset=utf-8"
 
 [paste]
-random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
-#random_url = { enabled = true, type = "alphanumeric", length = 8 }
+random_url = { type = "petname", words = 2, separator = "-" }
+#random_url = { type = "alphanumeric", length = 8 }
 default_extension = "txt"
 mime_override = [
   { mime = "image/jpeg", regex = "^.*\\.jpg$" },

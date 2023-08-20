@@ -84,6 +84,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
                         if let Err(e) = config_sender.send(config) {
                             log::error!("Failed to send config for the cleanup routine: {}", e)
                         }
+                        cloned_config.warn_deprecation();
                     }
                     Err(e) => {
                         log::error!("Failed to acquire config: {}", e);

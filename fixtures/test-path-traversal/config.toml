@@ -1,9 +1,8 @@
 [server]
-address="127.0.0.1:8000"
-max_content_length="10kb"
-upload_path="./upload"
+address = "127.0.0.1:8000"
+max_content_length = "10kb"
+upload_path = "./upload"
 
 [paste]
-random_url = { enabled = false, type = "petname", words = 2, separator = "-" }
 default_extension = "txt"
 duplicate_files = false

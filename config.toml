@@ -42,9 +42,9 @@ Command line tool is available  at https://github.com/orhun/rustypaste-cli
 content_type = "text/plain; charset=utf-8"
 
 [paste]
-random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
-#random_url = { enabled = true, type = "alphanumeric", length = 8 }
-#random_url = { enabled = true, type = "alphanumeric", length = 6, suffix_mode = true }
+random_url = { type = "petname", words = 2, separator = "-" }
+#random_url = { type = "alphanumeric", length = 8 }
+#random_url = { type = "alphanumeric", length = 6, suffix_mode = true }
 default_extension = "txt"
 mime_override = [
   { mime = "image/jpeg", regex = "^.*\\.jpg$" },

@@ -77,7 +77,7 @@ pub struct LandingPageConfig {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct PasteConfig {
     /// Random URL configuration.
-    pub random_url: RandomURLConfig,
+    pub random_url: Option<RandomURLConfig>,
     /// Default file extension.
     pub default_extension: String,
     /// Media type override options.
@@ -142,6 +142,13 @@ impl Config {
                 "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
             );
         }
+        if let Some(random_url) = &self.paste.random_url {
+            if random_url.enabled.is_some() {
+                log::warn!(
+                    "[paste].random_url.enabled is deprecated, disable it by commenting out [paste].random_url"
+                );
+            }
+        }
     }
 }
 
@@ -156,6 +163,21 @@ mod tests {
         env::set_var("SERVER__ADDRESS", "0.0.1.1");
         let config = Config::parse(&config_path)?;
         assert_eq!("0.0.1.1", config.server.address);
+        Ok(())
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_parse_deprecated_config() -> Result<(), ConfigError> {
+        let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
+        env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        let mut config = Config::parse(&config_path)?;
+        config.paste.random_url = Some(RandomURLConfig {
+            enabled: Some(true),
+            ..RandomURLConfig::default()
+        });
+        assert_eq!("0.0.1.1", config.server.address);
+        config.warn_deprecation();
         Ok(())
     }
 }

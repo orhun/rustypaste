@@ -6,6 +6,6 @@ auth_token = "rustypasteisawesome"
 expose_list = true
 
 [paste]
-random_url = { enabled = true, type = "petname", words = 2, separator = "-" }
+random_url = { type = "petname", words = 2, separator = "-" }
 default_extension = "txt"
 duplicate_files = true
