@@ -168,9 +168,9 @@ async fn version(
 }
 
 fn process_filename(file_name: &str, config: &RwLock<Config>) -> String {
-    let config_read = config.read().unwrap();
+    let config_read = config.read().expect("Failed to read the config");
     if let Some(true) = config_read.server.url_encode_filenames {
-        return file_name.replace(" ", "%20");
+        return file_name.replace(' ', "%20");
     }
     file_name.to_string()
 }
@@ -1090,7 +1090,6 @@ mod tests {
 
         let encoded_filename = process_filename("file with spaces.txt", &RwLock::new(cfg));
 
-        assert!(encoded_filename.contains("%20"));  // Check if the space is encoded
+        assert!(encoded_filename.contains("%20")); // Check if the space is encoded
     }
-
 }
