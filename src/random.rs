@@ -23,10 +23,8 @@ pub struct RandomURLConfig {
 impl RandomURLConfig {
     /// Generates and returns a random URL (if `enabled`).
     pub fn generate(&self) -> Option<String> {
-        if let Some(enabled) = self.enabled {
-            if !enabled {
-                return None;
-            }
+        if !self.enabled.unwrap_or(true) {
+            return None;
         }
         Some(match self.type_ {
             RandomURLType::PetName => petname::petname(

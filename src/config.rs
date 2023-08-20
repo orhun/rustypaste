@@ -145,7 +145,7 @@ impl Config {
         if let Some(random_url) = &self.paste.random_url {
             if random_url.enabled.is_some() {
                 log::warn!(
-                    "[paste].random_url.enabled is deprecated, to disable comment out [paste].random_url"
+                    "[paste].random_url.enabled is deprecated, disable it by commenting out [paste].random_url"
                 );
             }
         }
@@ -165,6 +165,7 @@ mod tests {
         assert_eq!("0.0.1.1", config.server.address);
         Ok(())
     }
+
     #[test]
     #[allow(deprecated)]
     fn test_parse_deprecated_config() -> Result<(), ConfigError> {

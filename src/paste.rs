@@ -247,12 +247,6 @@ impl Paste {
         let data = str::from_utf8(&self.data)
             .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
         let url = Url::parse(data).map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
-        //let mut file_name;
-        // let file_name = &config
-        //     .paste
-        //     .random_url
-        //     .generate()
-        //     .unwrap_or_else(|| self.type_.get_dir());
         let mut file_name = self.type_.get_dir();
         if let Some(random_url) = &config.paste.random_url {
             if let Some(random_text) = random_url.generate() {
