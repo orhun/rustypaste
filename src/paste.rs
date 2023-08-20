@@ -259,7 +259,6 @@ impl Paste {
                 file_name = random_text;
             }
         }
-
         let mut path = self
             .type_
             .get_path(&config.server.upload_path)
