@@ -2,7 +2,7 @@
 address="127.0.0.1:8000"
 max_content_length="10MB"
 upload_path="./upload"
-url_encode_filenames = true
+handle_spaces = "encode"
 
 [paste]
 random_url = { enabled = false, type = "alphanumeric", length = 6, suffix_mode = true }
