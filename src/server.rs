@@ -774,6 +774,7 @@ mod tests {
     }
 
     #[actix_web::test]
+    #[allow(deprecated)]
     async fn test_upload_duplicate_file() -> Result<(), Error> {
         let test_upload_dir = "test_upload";
         fs::create_dir(test_upload_dir)?;
@@ -781,11 +782,11 @@ mod tests {
         let mut config = Config::default();
         config.server.upload_path = PathBuf::from(&test_upload_dir);
         config.paste.duplicate_files = Some(false);
-        config.paste.random_url = RandomURLConfig {
-            enabled: true,
+        config.paste.random_url = Some(RandomURLConfig {
+            enabled: Some(true),
             type_: RandomURLType::Alphanumeric,
             ..Default::default()
-        };
+        });
 
         let app = test::init_service(
             App::new()

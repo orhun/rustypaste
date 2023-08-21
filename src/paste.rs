@@ -160,15 +160,17 @@ impl Paste {
                 .unwrap_or(&config.paste.default_extension)
                 .to_string()
         };
-        if let Some(random_text) = config.paste.random_url.generate() {
-            if let Some(suffix_mode) = config.paste.random_url.suffix_mode {
-                if suffix_mode {
-                    extension = format!("{}.{}", random_text, extension);
+        if let Some(random_url) = &config.paste.random_url {
+            if let Some(random_text) = random_url.generate() {
+                if let Some(suffix_mode) = random_url.suffix_mode {
+                    if suffix_mode {
+                        extension = format!("{}.{}", random_text, extension);
+                    } else {
+                        file_name = random_text;
+                    }
                 } else {
                     file_name = random_text;
                 }
-            } else {
-                file_name = random_text;
             }
         }
         path.set_file_name(file_name);
@@ -255,15 +257,17 @@ impl Paste {
     /// - If [`random_url.enabled`] is `true`, file name is set to a pet name or random string.
     ///
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
+    #[allow(deprecated)]
     pub fn store_url(&self, expiry_date: Option<u128>, config: &Config) -> IoResult<String> {
         let data = str::from_utf8(&self.data)
             .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
         let url = Url::parse(data).map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
-        let file_name = config
-            .paste
-            .random_url
-            .generate()
-            .unwrap_or_else(|| self.type_.get_dir());
+        let mut file_name = self.type_.get_dir();
+        if let Some(random_url) = &config.paste.random_url {
+            if let Some(random_text) = random_url.generate() {
+                file_name = random_text;
+            }
+        }
         let mut path = self
             .type_
             .get_path(&config.server.upload_path)
@@ -288,16 +292,17 @@ mod tests {
     use std::time::Duration;
 
     #[actix_rt::test]
+    #[allow(deprecated)]
     async fn test_paste_data() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.paste.random_url = RandomURLConfig {
-            enabled: true,
+        config.paste.random_url = Some(RandomURLConfig {
+            enabled: Some(true),
             words: Some(3),
             separator: Some(String::from("_")),
             type_: RandomURLType::PetName,
             ..RandomURLConfig::default()
-        };
+        });
         let paste = Paste {
             data: vec![65, 66, 67],
             type_: PasteType::File,
@@ -312,13 +317,12 @@ mod tests {
         );
         fs::remove_file(file_name)?;
 
-        config.paste.random_url = RandomURLConfig {
-            enabled: true,
+        config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
             suffix_mode: Some(true),
             ..RandomURLConfig::default()
-        };
+        });
         let paste = Paste {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
@@ -329,13 +333,12 @@ mod tests {
         assert!(file_name.starts_with("foo."));
         fs::remove_file(file_name)?;
 
-        config.paste.random_url = RandomURLConfig {
-            enabled: true,
+        config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
             suffix_mode: Some(true),
             ..RandomURLConfig::default()
-        };
+        });
         let paste = Paste {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
@@ -346,13 +349,12 @@ mod tests {
         assert!(file_name.starts_with(".foo."));
         fs::remove_file(file_name)?;
 
-        config.paste.random_url = RandomURLConfig {
-            enabled: true,
+        config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
             suffix_mode: Some(false),
             ..RandomURLConfig::default()
-        };
+        });
         let paste = Paste {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
@@ -363,7 +365,7 @@ mod tests {
         fs::remove_file(file_name)?;
 
         config.paste.default_extension = String::from("txt");
-        config.paste.random_url.enabled = false;
+        config.paste.random_url = None;
         let paste = Paste {
             data: vec![120, 121, 122],
             type_: PasteType::File,
@@ -374,13 +376,11 @@ mod tests {
         fs::remove_file(file_name)?;
 
         config.paste.default_extension = String::from("bin");
-        config.paste.random_url.enabled = false;
-        config.paste.random_url = RandomURLConfig {
-            enabled: true,
+        config.paste.random_url = Some(RandomURLConfig {
             length: Some(10),
             type_: RandomURLType::Alphanumeric,
             ..RandomURLConfig::default()
-        };
+        });
         let paste = Paste {
             data: vec![120, 121, 122],
             type_: PasteType::File,
@@ -399,7 +399,7 @@ mod tests {
             fs::create_dir_all(paste_type.get_path(&config.server.upload_path))?;
         }
 
-        config.paste.random_url.enabled = false;
+        config.paste.random_url = None;
         let paste = Paste {
             data: vec![116, 101, 115, 116],
             type_: PasteType::Oneshot,
@@ -412,7 +412,10 @@ mod tests {
         assert_eq!("test", fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
 
-        config.paste.random_url.enabled = true;
+        config.paste.random_url = Some(RandomURLConfig {
+            enabled: Some(true),
+            ..RandomURLConfig::default()
+        });
         let url = String::from("https://orhun.dev/");
         let paste = Paste {
             data: url.as_bytes().to_vec(),

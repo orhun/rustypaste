@@ -4,6 +4,6 @@ max_content_length = "10MB"
 upload_path = "./upload"
 
 [paste]
-random_url = { enabled = true, type = "alphanumeric", length = "6", suffix_mode = true }
+random_url = { type = "alphanumeric", length = "6", suffix_mode = true }
 default_extension = "txt"
 duplicate_files = true
