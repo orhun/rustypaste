@@ -245,9 +245,6 @@ impl Paste {
                     .to_string());
             }
         }
-
-        let file_name = process_filename_for_storage(file_name, &config);
-
         Ok(self.store_file(&file_name, expiry_date, &config)?)
     }
 
