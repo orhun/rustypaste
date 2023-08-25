@@ -82,15 +82,6 @@ pub struct Paste {
     pub type_: PasteType,
 }
 
-fn process_filename_for_storage(file_name: &str, config: &Config) -> String {
-    if let Some(ref handle_space_option) = config.server.handle_spaces {
-        if handle_space_option.as_str() == "replace" {
-            return file_name.replace(' ', "_");
-        }        
-    }
-    file_name.to_string()
-}
-
 impl Paste {
     /// Writes the bytes to a file in upload directory.
     ///
@@ -127,7 +118,7 @@ impl Paste {
             None => String::from("file"),
         };
 
-        let file_name = process_filename_for_storage(&file_name, config);
+        let file_name = util::process_filename(&file_name, config.server.handle_spaces);
 
         let mut path = self
             .type_
@@ -245,7 +236,7 @@ impl Paste {
                     .to_string());
             }
         }
-        Ok(self.store_file(&file_name, expiry_date, &config)?)
+        Ok(self.store_file(file_name, expiry_date, &config)?)
     }
 
     /// Writes an URL to a file in upload directory.
@@ -460,15 +451,5 @@ mod tests {
         }
 
         Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn test_filename_replace() {
-        let mut cfg = Config::default();
-        cfg.server.handle_spaces = Some(String::from("replace"));
-
-        let processed_filename = process_filename_for_storage("file with spaces.txt", &cfg);
-
-        assert_eq!(processed_filename, "file_with_spaces.txt"); // Check if the space is replaced with underscore
     }
 }

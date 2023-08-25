@@ -103,6 +103,29 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
         .collect::<String>())
 }
 
+/// Enum representing different strategies for handling spaces in filenames.
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SpaceHandling {
+    /// Represents encoding spaces (e.g., using "%20").
+    Encode,
+    /// Represents replacing spaces with underscores.
+    Replace,
+}
+
+/// Processes the given filename based on the provided space handling strategy.
+///
+/// If `handling` is `Some(SpaceHandling::Encode)`, spaces in the filename are replaced with "%20".
+/// If `handling` is `Some(SpaceHandling::Replace)`, spaces in the filename are replaced with underscores.
+/// If `handling` is `None`, the filename is returned unchanged.
+pub fn process_filename(file_name: &str, handling: Option<SpaceHandling>) -> String {
+    match handling {
+        Some(SpaceHandling::Encode) => file_name.replace(' ', "%20"),
+        Some(SpaceHandling::Replace) => file_name.replace(' ', "_"),
+        None => file_name.to_string(), // keep the filename unchanged
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -164,5 +187,26 @@ mod tests {
         fs::remove_file(path)?;
         assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
         Ok(())
+    }
+
+    #[test]
+    fn test_filename_replace() {
+        let handling = Some(SpaceHandling::Replace);
+        let processed_filename = process_filename("file with spaces.txt", handling);
+        assert_eq!(processed_filename, "file_with_spaces.txt"); // Check if the space is replaced with underscore
+    }
+
+    #[test]
+    fn test_url_encode() {
+        let handling = Some(SpaceHandling::Encode);
+        let encoded_filename = process_filename("file with spaces.txt", handling);
+        assert!(encoded_filename.contains("%20")); // Check if the space is encoded
+    }
+
+    #[test]
+    fn test_no_handling() {
+        let handling: Option<SpaceHandling> = None;
+        let unchanged_filename = process_filename("file with spaces.txt", handling);
+        assert_eq!(unchanged_filename, "file with spaces.txt"); // Check if the filename remains unchanged
     }
 }

@@ -167,16 +167,6 @@ async fn version(
     Ok(HttpResponse::Ok().body(version.to_owned() + "\n"))
 }
 
-fn process_filename_for_url(file_name: &str, config: &RwLock<Config>) -> String {
-    let config_read = config.read().expect("Failed to read the config");
-    if let Some(ref handle_space_option) = config_read.server.handle_spaces {
-        if handle_space_option.as_str() == "encode" {
-            return file_name.replace(' ', "%20");
-        }        
-    }
-    file_name.to_string()
-}
-
 /// Handles file upload by processing `multipart/form-data`.
 #[post("/")]
 async fn upload(
@@ -287,7 +277,12 @@ async fn upload(
                 Byte::from_bytes(paste.data.len() as u128).get_appropriate_unit(false),
                 host
             );
-            file_name = process_filename_for_url(&file_name, &config);
+            let handle_spaces_config = config
+                .read()
+                .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+                .server
+                .handle_spaces;
+            file_name = util::process_filename(&file_name, handle_spaces_config);
             urls.push(format!("{}/{}\n", server_url, file_name));
         } else {
             log::warn!("{} sent an invalid form field", host);
@@ -1083,16 +1078,5 @@ mod tests {
         fs::remove_dir_all(url_upload_path)?;
 
         Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn test_url_encode() {
-        // Setup configuration
-        let mut cfg = Config::default();
-        cfg.server.handle_spaces = Some(String::from("encode"));
-
-        let encoded_filename = process_filename_for_url("file with spaces.txt", &RwLock::new(cfg));
-
-        assert!(encoded_filename.contains("%20")); // Check if the space is encoded
     }
 }

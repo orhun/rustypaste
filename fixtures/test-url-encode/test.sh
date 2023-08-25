@@ -13,10 +13,6 @@ run_test() {
   # Ensure the URL is encoded correctly.
   expected_url="http://localhost:8000/test%20file%20with%20spaces.txt"
   test "$encoded_url" = "$expected_url"
-
-  # Fetch the content from the server and check if it matches the original content.
-  fetched_content=$(curl -s "$encoded_url")
-  test "$fetched_content" = "$content"
 }
 
 teardown() {

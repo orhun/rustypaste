@@ -5,6 +5,6 @@ upload_path="./upload"
 handle_spaces = "encode"
 
 [paste]
-random_url = { enabled = false, type = "alphanumeric", length = 6, suffix_mode = true }
+#random_url = { enabled = false, type = "alphanumeric", length = 6, suffix_mode = true }
 default_extension = "txt"
 duplicate_files = true

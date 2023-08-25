@@ -1,5 +1,6 @@
 use crate::mime::MimeMatcher;
 use crate::random::RandomURLConfig;
+use crate::util::SpaceHandling;
 use crate::AUTH_TOKEN_ENV;
 use byte_unit::Byte;
 use config::{self, ConfigError};
@@ -59,7 +60,7 @@ pub struct ServerConfig {
     #[deprecated(note = "use the [landing_page] table")]
     pub landing_page_content_type: Option<String>,
     /// Handle spaces either via encoding or replacing.
-    pub handle_spaces: Option<String>,
+    pub handle_spaces: Option<SpaceHandling>,
     /// Path of the JSON index.
     pub expose_list: Option<bool>,
 }

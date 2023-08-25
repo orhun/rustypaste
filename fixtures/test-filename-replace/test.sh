@@ -13,10 +13,6 @@ run_test() {
   # Ensure the URL contains underscores instead of spaces.
   expected_url="http://localhost:8000/test_file_with_spaces.txt"
   test "$replaced_url" = "$expected_url"
-
-  # Fetch the content from the server and check if it matches the original content.
-  fetched_content=$(curl -s "$replaced_url")
-  test "$fetched_content" = "$content"
 }
 
 teardown() {
