@@ -113,18 +113,19 @@ pub enum SpaceHandling {
     Replace,
 }
 
-/// Processes the given filename based on the provided space handling strategy.
-///
-/// If `handling` is `Some(SpaceHandling::Encode)`, spaces in the filename are replaced with "%20".
-/// If `handling` is `Some(SpaceHandling::Replace)`, spaces in the filename are replaced with underscores.
-/// If `handling` is `None`, the filename is returned unchanged.
-pub fn process_filename(file_name: &str, handling: Option<SpaceHandling>) -> String {
-    match handling {
-        Some(SpaceHandling::Encode) => file_name.replace(' ', "%20"),
-        Some(SpaceHandling::Replace) => file_name.replace(' ', "_"),
-        None => file_name.to_string(), // keep the filename unchanged
+impl SpaceHandling {
+    /// Processes the given filename based on the specified space handling strategy.
+    ///
+    /// If `self` is `SpaceHandling::Encode`, spaces in the filename are replaced with "%20".
+    /// If `self` is `SpaceHandling::Replace`, spaces in the filename are replaced with underscores.
+    pub fn process_filename(&self, file_name: &str) -> String {
+        match self {
+            SpaceHandling::Encode => file_name.replace(' ', "%20"),
+            SpaceHandling::Replace => file_name.replace(' ', "_"),
+        }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -191,22 +192,16 @@ mod tests {
 
     #[test]
     fn test_filename_replace() {
-        let handling = Some(SpaceHandling::Replace);
-        let processed_filename = process_filename("file with spaces.txt", handling);
-        assert_eq!(processed_filename, "file_with_spaces.txt"); // Check if the space is replaced with underscore
+        let handling = SpaceHandling::Replace;
+        let processed_filename = handling.process_filename("file with spaces.txt");
+        assert_eq!(processed_filename, "file_with_spaces.txt");
     }
-
+    
     #[test]
     fn test_url_encode() {
-        let handling = Some(SpaceHandling::Encode);
-        let encoded_filename = process_filename("file with spaces.txt", handling);
-        assert!(encoded_filename.contains("%20")); // Check if the space is encoded
+        let handling = SpaceHandling::Encode;
+        let encoded_filename = handling.process_filename("file with spaces.txt");
+        assert!(encoded_filename.contains("%20"));
     }
 
-    #[test]
-    fn test_no_handling() {
-        let handling: Option<SpaceHandling> = None;
-        let unchanged_filename = process_filename("file with spaces.txt", handling);
-        assert_eq!(unchanged_filename, "file with spaces.txt"); // Check if the filename remains unchanged
-    }
 }

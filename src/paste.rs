@@ -108,7 +108,7 @@ impl Paste {
                 }
             }
         }
-        let file_name = match PathBuf::from(file_name)
+        let mut file_name = match PathBuf::from(file_name)
             .file_name()
             .and_then(|v| v.to_str())
         {
@@ -118,7 +118,10 @@ impl Paste {
             None => String::from("file"),
         };
 
-        let file_name = util::process_filename(&file_name, config.server.handle_spaces);
+        if let Some(handle_spaces_config) = config.server.handle_spaces {
+            file_name = handle_spaces_config.process_filename(&file_name);
+        }
+        
 
         let mut path = self
             .type_
