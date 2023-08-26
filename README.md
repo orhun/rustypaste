@@ -78,6 +78,8 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
     - supports overriding and blacklisting
     - supports forcing to download via `?download=true`
   - no duplicate uploads (optional)
+  - listing files
+  - custom landing page
 - Single binary
   - [binary releases](https://github.com/orhun/rustypaste/releases)
 - Simple configuration

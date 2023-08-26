@@ -14,7 +14,7 @@ expose_list = false
 #  "super_secret_token1",
 #  "super_secret_token2",
 #]
-handle_spaces = "replace" # or "replace"
+handle_spaces = "replace" # or "encode"
 
 [landing_page]
 text = """

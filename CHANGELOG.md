@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2023-08-26
+
+### Added
+
+- Support handling spaces in filenames (#107)
+
+Now you can replace the whitespaces with either underscore or encoded space (`%20`) character in the filenames.
+
+For example:
+
+```toml
+[server]
+handle_spaces = "replace"
+```
+
+```sh
+$ curl -F "file=@test file.txt" <server_address>
+
+<server_address>/test_file.txt
+```
+
+Or you can use encoded spaces:
+
+```toml
+[server]
+handle_spaces = "encode"
+```
+
+```sh
+$ curl -F "file=@test file.txt" <server_address>
+
+<server_address>/test%20file.txt
+```
+
+Please note that `random_url` should not be configured to use the original file names.
+
+### Changed
+
+- Improve random_url config handling (#122)
+
+`[paste].random_url.enabled` is deprecated. You can now disable random URLs by commenting out `[paste].random_url`.
+
+```toml
+# enabled
+random_url = { type = "petname", words = 2, separator = "-" }
+
+# disabled
+# random_url = { type = "petname", words = 2, separator = "-" }
+```
+
+- Replace unmaintained actions (#116)
+- Bump Shuttle to `0.24.0`
+- Bump dependencies
+
+### Fixed
+
+- Don't log invalid token in release builds (#112)
+
+Before, invalid tokens were logged as follows:
+
+```
+[2023-08-13T19:24:30Z WARN  rustypaste::auth] authorization failure for a.b.c.d (header: invalid_token)
+```
+
+Now, we print the token only in debug mode. In release mode, the log entry will look like this:
+
+```
+[2023-08-13T19:24:30Z WARN  rustypaste::auth] authorization failure for a.b.c.d
+```
+
 ## [0.12.1] - 2023-08-11
 
 ### Fixed
