@@ -58,8 +58,30 @@ pub struct ServerConfig {
     /// Landing page content-type.
     #[deprecated(note = "use the [landing_page] table")]
     pub landing_page_content_type: Option<String>,
+    /// Handle spaces either via encoding or replacing.
+    pub handle_spaces: Option<SpaceHandlingConfig>,
     /// Path of the JSON index.
     pub expose_list: Option<bool>,
+}
+
+/// Enum representing different strategies for handling spaces in filenames.
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SpaceHandlingConfig {
+    /// Represents encoding spaces (e.g., using "%20").
+    Encode,
+    /// Represents replacing spaces with underscores.
+    Replace,
+}
+
+impl SpaceHandlingConfig {
+    /// Processes the given filename based on the specified space handling strategy.
+    pub fn process_filename(&self, file_name: &str) -> String {
+        match self {
+            Self::Encode => file_name.replace(' ', "%20"),
+            Self::Replace => file_name.replace(' ', "_"),
+        }
+    }
 }
 
 /// Landing page configuration.
@@ -179,5 +201,14 @@ mod tests {
         assert_eq!("0.0.1.1", config.server.address);
         config.warn_deprecation();
         Ok(())
+    }
+
+    #[test]
+    fn test_space_handling() {
+        let processed_filename =
+            SpaceHandlingConfig::Replace.process_filename("file with spaces.txt");
+        assert_eq!("file_with_spaces.txt", processed_filename);
+        let encoded_filename = SpaceHandlingConfig::Encode.process_filename("file with spaces.txt");
+        assert_eq!("file%20with%20spaces.txt", encoded_filename);
     }
 }

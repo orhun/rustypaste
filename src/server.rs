@@ -252,7 +252,7 @@ async fn upload(
                 data: bytes.to_vec(),
                 type_: paste_type,
             };
-            let file_name = match paste.type_ {
+            let mut file_name = match paste.type_ {
                 PasteType::File | PasteType::Oneshot => {
                     let config = config
                         .read()
@@ -277,6 +277,12 @@ async fn upload(
                 Byte::from_bytes(paste.data.len() as u128).get_appropriate_unit(false),
                 host
             );
+            let config = config
+                .read()
+                .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+            if let Some(handle_spaces_config) = config.server.handle_spaces {
+                file_name = handle_spaces_config.process_filename(&file_name);
+            }
             urls.push(format!("{}/{}\n", server_url, file_name));
         } else {
             log::warn!("{} sent an invalid form field", host);
