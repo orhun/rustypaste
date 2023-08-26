@@ -283,7 +283,7 @@ async fn upload(
 
             if let Some(handle_spaces_config) = config_ref.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
-                }
+            }
 
             urls.push(format!("{}/{}\n", server_url, file_name));
         } else {

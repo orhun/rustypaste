@@ -126,7 +126,6 @@ impl SpaceHandling {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -192,16 +191,13 @@ mod tests {
 
     #[test]
     fn test_filename_replace() {
-        let handling = SpaceHandling::Replace;
-        let processed_filename = handling.process_filename("file with spaces.txt");
+        let processed_filename = SpaceHandling::Replace.process_filename("file with spaces.txt");
         assert_eq!(processed_filename, "file_with_spaces.txt");
     }
-    
+
     #[test]
     fn test_url_encode() {
-        let handling = SpaceHandling::Encode;
-        let encoded_filename = handling.process_filename("file with spaces.txt");
+        let encoded_filename = SpaceHandling::Encode.process_filename("file with spaces.txt");
         assert!(encoded_filename.contains("%20"));
     }
-
 }

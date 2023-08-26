@@ -121,7 +121,6 @@ impl Paste {
         if let Some(handle_spaces_config) = config.server.handle_spaces {
             file_name = handle_spaces_config.process_filename(&file_name);
         }
-        
 
         let mut path = self
             .type_
