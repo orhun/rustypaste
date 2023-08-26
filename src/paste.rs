@@ -117,11 +117,9 @@ impl Paste {
             Some(v) => v.to_string(),
             None => String::from("file"),
         };
-
         if let Some(handle_spaces_config) = config.server.handle_spaces {
             file_name = handle_spaces_config.process_filename(&file_name);
         }
-
         let mut path = self
             .type_
             .get_path(&config.server.upload_path)

@@ -103,29 +103,6 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
         .collect::<String>())
 }
 
-/// Enum representing different strategies for handling spaces in filenames.
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum SpaceHandling {
-    /// Represents encoding spaces (e.g., using "%20").
-    Encode,
-    /// Represents replacing spaces with underscores.
-    Replace,
-}
-
-impl SpaceHandling {
-    /// Processes the given filename based on the specified space handling strategy.
-    ///
-    /// If `self` is `SpaceHandling::Encode`, spaces in the filename are replaced with "%20".
-    /// If `self` is `SpaceHandling::Replace`, spaces in the filename are replaced with underscores.
-    pub fn process_filename(&self, file_name: &str) -> String {
-        match self {
-            SpaceHandling::Encode => file_name.replace(' ', "%20"),
-            SpaceHandling::Replace => file_name.replace(' ', "_"),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,17 +164,5 @@ mod tests {
         fs::remove_file(path)?;
         assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
         Ok(())
-    }
-
-    #[test]
-    fn test_filename_replace() {
-        let processed_filename = SpaceHandling::Replace.process_filename("file with spaces.txt");
-        assert_eq!(processed_filename, "file_with_spaces.txt");
-    }
-
-    #[test]
-    fn test_url_encode() {
-        let encoded_filename = SpaceHandling::Encode.process_filename("file with spaces.txt");
-        assert!(encoded_filename.contains("%20"));
     }
 }
