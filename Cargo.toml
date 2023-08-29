@@ -27,7 +27,7 @@ shuttle = [
 actix-web = { version = "4.3.1" }
 actix-multipart = "0.6.0"
 actix-files = "0.6.2"
-awc = { version = "3.1.1" }
+awc = { version = "3.2.0" }
 env_logger = "0.10.0"
 log = "0.4.20"
 serde = "1.0.188"
