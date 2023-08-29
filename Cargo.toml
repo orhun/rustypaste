@@ -25,7 +25,7 @@ shuttle = [
 
 [dependencies]
 actix-web = { version = "4.3.1" }
-actix-multipart = "0.6.0"
+actix-multipart = "0.6.1"
 actix-files = "0.6.2"
 awc = { version = "3.1.1" }
 env_logger = "0.10.0"
