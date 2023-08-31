@@ -1,6 +1,6 @@
 use crate::mime::MimeMatcher;
 use crate::random::RandomURLConfig;
-use crate::AUTH_TOKEN_ENV;
+use crate::{AUTH_TOKEN_ENV, DELETE_TOKEN_ENV};
 use byte_unit::Byte;
 use config::{self, ConfigError};
 use std::env;
@@ -62,6 +62,8 @@ pub struct ServerConfig {
     pub handle_spaces: Option<SpaceHandlingConfig>,
     /// Path of the JSON index.
     pub expose_list: Option<bool>,
+    /// Authentication tokens for deleting.
+    pub delete_tokens: Option<Vec<String>>,
 }
 
 /// Enum representing different strategies for handling spaces in filenames.
@@ -137,14 +139,24 @@ impl Config {
             .try_deserialize()
     }
 
-    /// Retrieves all configured tokens.
+    /// Retrieves all configured auth tokens.
     #[allow(deprecated)]
-    pub fn get_tokens(&self) -> Option<Vec<String>> {
+    pub fn get_auth_tokens(&self) -> Option<Vec<String>> {
         let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
         if let Some(token) = &self.server.auth_token {
             tokens.insert(0, token.to_string());
         }
         if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
+            tokens.insert(0, env_token);
+        }
+        (!tokens.is_empty()).then_some(tokens)
+    }
+
+    /// Retrieves all configured delete tokens
+    pub fn get_delete_tokens(&self) -> Option<Vec<String>> {
+        let mut tokens = self.server.delete_tokens.clone().unwrap_or_default();
+
+        if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
             tokens.insert(0, env_token);
         }
         (!tokens.is_empty()).then_some(tokens)
