@@ -152,10 +152,9 @@ impl Config {
         (!tokens.is_empty()).then_some(tokens)
     }
 
-    /// Retrieves all configured delete tokens
+    /// Retrieves all configured delete tokens.
     pub fn get_delete_tokens(&self) -> Option<Vec<String>> {
         let mut tokens = self.server.delete_tokens.clone().unwrap_or_default();
-
         if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
             tokens.insert(0, env_token);
         }
