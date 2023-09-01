@@ -238,7 +238,7 @@ done
 
 #### Delete file from server
 
-Set `delete_tokens` array in [config.toml](./config.toml) to activate the DELETE endpoint and secure it with one (or more) auth token(s).
+Set `delete_tokens` array in [config.toml](./config.toml) to activate the [`DELETE`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE) endpoint and secure it with one (or more) auth token(s).
 
 ```sh
 $ curl -H "Authorization: <auth_token>" -X DELETE "<server_address>/file.txt"
