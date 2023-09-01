@@ -796,6 +796,32 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn test_delete_file_without_token_in_config() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "test_file.txt";
+        let request = TestRequest::delete()
+            .insert_header((AUTHORIZATION, header::HeaderValue::from_static("test")))
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(StatusCode::FORBIDDEN, response.status());
+        assert_body(response.into_body(), "endpoint is not exposed\n").await?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
     async fn test_upload_file() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
