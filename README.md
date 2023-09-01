@@ -50,8 +50,9 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
     - [URL shortening](#url-shortening)
     - [Paste file from remote URL](#paste-file-from-remote-url)
     - [Cleaning up expired files](#cleaning-up-expired-files)
+    - [Delete file from server](#delete-file-from-server)
   - [Server](#server)
-  - [List endpoint](#list-endpoint)
+    - [List endpoint](#list-endpoint)
     - [HTML Form](#html-form)
     - [Docker](#docker)
     - [Nginx](#nginx)
@@ -79,6 +80,7 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
     - supports forcing to download via `?download=true`
   - no duplicate uploads (optional)
   - listing files
+  - deleting files
   - custom landing page
 - Single binary
   - [binary releases](https://github.com/orhun/rustypaste/releases)
@@ -235,6 +237,14 @@ while read -r filename; do
 done
 ```
 
+#### Delete file from server
+
+Set `delete_tokens` array in [config.toml](./config.toml) to activate the DELETE endpoint and secure it with one (or more) auth token(s).
+
+```sh
+$ curl -H "Authorization: <auth_token>" -X DELETE "<server_address>/file.txt"
+```
+
 ### Server
 
 To start the server:
@@ -260,7 +270,7 @@ You can also set multiple auth tokens via the array field `[server].auth_tokens`
 
 See [config.toml](./config.toml) for configuration options.
 
-### List endpoint
+#### List endpoint
 
 Set `expose_list` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot URLs, or URLs.
 
