@@ -1,5 +1,5 @@
 use crate::auth;
-use crate::config::{Config, LandingPageConfig};
+use crate::config::{Config, LandingPageConfig, TokenType};
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
@@ -160,7 +160,7 @@ async fn delete(
     let path = util::glob_match_file(path)?;
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_delete_tokens();
+    let tokens = config.get_tokens(TokenType::Delete);
     if tokens.is_none() {
         log::warn!("delete endpoint not served because there are no delete_tokens set");
         return Err(error::ErrorForbidden("endpoint is not exposed\n"));
@@ -190,7 +190,7 @@ async fn version(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_auth_tokens();
+    let tokens = config.get_tokens(TokenType::Auth);
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
         log::warn!("server is not configured to expose version endpoint");
@@ -214,7 +214,7 @@ async fn upload(
         let config = config
             .read()
             .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-        let tokens = config.get_auth_tokens();
+        let tokens = config.get_tokens(TokenType::Auth);
         auth::check(host, request.headers(), tokens)?;
     }
     let server_url = match config
@@ -348,7 +348,7 @@ async fn list(
         .clone();
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_auth_tokens();
+    let tokens = config.get_tokens(TokenType::Auth);
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_list.unwrap_or(false) {
         log::warn!("server is not configured to expose list endpoint");

@@ -129,6 +129,14 @@ pub struct CleanupConfig {
     pub interval: Duration,
 }
 
+/// Type of access token.
+pub enum TokenType {
+    /// Token for authentication.
+    Auth,
+    /// Token for DELETE endpoint.
+    Delete,
+}
+
 impl Config {
     /// Parses the config file and returns the values.
     pub fn parse(path: &Path) -> Result<Config, ConfigError> {
@@ -139,25 +147,28 @@ impl Config {
             .try_deserialize()
     }
 
-    /// Retrieves all configured auth tokens.
-    #[allow(deprecated)]
-    pub fn get_auth_tokens(&self) -> Option<Vec<String>> {
-        let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
-        if let Some(token) = &self.server.auth_token {
-            tokens.insert(0, token.to_string());
-        }
-        if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
-            tokens.insert(0, env_token);
-        }
-        (!tokens.is_empty()).then_some(tokens)
-    }
-
-    /// Retrieves all configured delete tokens.
-    pub fn get_delete_tokens(&self) -> Option<Vec<String>> {
-        let mut tokens = self.server.delete_tokens.clone().unwrap_or_default();
-        if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
-            tokens.insert(0, env_token);
-        }
+    /// Retrieves all configured auth/delete tokens.
+    pub fn get_tokens(&self, token_type: TokenType) -> Option<Vec<String>> {
+        let tokens: Vec<String> = match token_type {
+            TokenType::Auth => {
+                let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
+                #[allow(deprecated)]
+                if let Some(token) = &self.server.auth_token {
+                    tokens.insert(0, token.to_string());
+                }
+                if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
+                    tokens.insert(0, env_token);
+                }
+                tokens
+            }
+            TokenType::Delete => {
+                let mut tokens = self.server.delete_tokens.clone().unwrap_or_default();
+                if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
+                    tokens.insert(0, env_token);
+                }
+                tokens
+            }
+        };
         (!tokens.is_empty()).then_some(tokens)
     }
 
