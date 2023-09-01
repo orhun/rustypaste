@@ -233,4 +233,21 @@ mod tests {
         let encoded_filename = SpaceHandlingConfig::Encode.process_filename("file with spaces.txt");
         assert_eq!("file%20with%20spaces.txt", encoded_filename);
     }
+
+    #[test]
+    fn test_get_tokens() -> Result<(), ConfigError> {
+        let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
+        let mut config = Config::parse(&config_path)?;
+        config.server.auth_tokens = Some(vec!["may_the_force_be_with_you".to_string()]);
+        config.server.delete_tokens = Some(vec!["i_am_your_father".to_string()]);
+        assert_eq!(
+            Some(vec!["may_the_force_be_with_you".to_string()]),
+            config.get_tokens(TokenType::Auth)
+        );
+        assert_eq!(
+            Some(vec!["i_am_your_father".to_string()]),
+            config.get_tokens(TokenType::Delete)
+        );
+        Ok(())
+    }
 }
