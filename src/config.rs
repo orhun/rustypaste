@@ -237,17 +237,27 @@ mod tests {
     #[test]
     fn test_get_tokens() -> Result<(), ConfigError> {
         let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
+        env::set_var("AUTH_TOKEN", "env_auth");
+        env::set_var("DELETE_TOKEN", "env_delete");
         let mut config = Config::parse(&config_path)?;
         config.server.auth_tokens = Some(vec!["may_the_force_be_with_you".to_string()]);
         config.server.delete_tokens = Some(vec!["i_am_your_father".to_string()]);
         assert_eq!(
-            Some(vec!["may_the_force_be_with_you".to_string()]),
+            Some(vec![
+                "env_auth".to_string(),
+                "may_the_force_be_with_you".to_string()
+            ]),
             config.get_tokens(TokenType::Auth)
         );
         assert_eq!(
-            Some(vec!["i_am_your_father".to_string()]),
+            Some(vec![
+                "env_delete".to_string(),
+                "i_am_your_father".to_string()
+            ]),
             config.get_tokens(TokenType::Delete)
         );
+        env::remove_var("AUTH_TOKEN");
+        env::remove_var("DELETE_TOKEN");
         Ok(())
     }
 }
