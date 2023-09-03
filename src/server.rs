@@ -162,7 +162,7 @@ async fn delete(
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
     let tokens = config.get_tokens(TokenType::Delete);
     if tokens.is_none() {
-        log::warn!("delete endpoint not served because there are no delete_tokens set");
+        log::warn!("delete endpoint is not served because there are no delete_tokens set");
         return Err(error::ErrorForbidden("endpoint is not exposed\n"));
     }
     auth::check(host, request.headers(), tokens)?;
@@ -170,13 +170,13 @@ async fn delete(
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
     match fs::remove_file(path) {
-        Ok(()) => log::info!("Deleted file: {:?}", file),
+        Ok(_) => log::info!("deleted file: {:?}", file),
         Err(e) => {
-            log::error!("Cannot delete file: {}", e);
+            log::error!("cannot delete file: {}", e);
             return Err(error::ErrorInternalServerError("cannot delete file"));
         }
     }
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().body(String::from("the file is deleted\n")))
 }
 
 /// Expose version endpoint
