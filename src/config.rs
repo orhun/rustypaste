@@ -149,7 +149,7 @@ impl Config {
 
     /// Retrieves all configured auth/delete tokens.
     pub fn get_tokens(&self, token_type: TokenType) -> Option<Vec<String>> {
-        let tokens: Vec<String> = match token_type {
+        let mut tokens = match token_type {
             TokenType::Auth => {
                 let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
                 #[allow(deprecated)]
@@ -169,6 +169,7 @@ impl Config {
                 tokens
             }
         };
+        tokens.retain(|v| !v.is_empty());
         (!tokens.is_empty()).then_some(tokens)
     }
 
