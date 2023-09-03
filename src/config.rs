@@ -1,6 +1,6 @@
 use crate::mime::MimeMatcher;
 use crate::random::RandomURLConfig;
-use crate::AUTH_TOKEN_ENV;
+use crate::{AUTH_TOKEN_ENV, DELETE_TOKEN_ENV};
 use byte_unit::Byte;
 use config::{self, ConfigError};
 use std::env;
@@ -62,6 +62,8 @@ pub struct ServerConfig {
     pub handle_spaces: Option<SpaceHandlingConfig>,
     /// Path of the JSON index.
     pub expose_list: Option<bool>,
+    /// Authentication tokens for deleting.
+    pub delete_tokens: Option<Vec<String>>,
 }
 
 /// Enum representing different strategies for handling spaces in filenames.
@@ -127,6 +129,14 @@ pub struct CleanupConfig {
     pub interval: Duration,
 }
 
+/// Type of access token.
+pub enum TokenType {
+    /// Token for authentication.
+    Auth,
+    /// Token for DELETE endpoint.
+    Delete,
+}
+
 impl Config {
     /// Parses the config file and returns the values.
     pub fn parse(path: &Path) -> Result<Config, ConfigError> {
@@ -137,16 +147,29 @@ impl Config {
             .try_deserialize()
     }
 
-    /// Retrieves all configured tokens.
-    #[allow(deprecated)]
-    pub fn get_tokens(&self) -> Option<Vec<String>> {
-        let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
-        if let Some(token) = &self.server.auth_token {
-            tokens.insert(0, token.to_string());
-        }
-        if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
-            tokens.insert(0, env_token);
-        }
+    /// Retrieves all configured auth/delete tokens.
+    pub fn get_tokens(&self, token_type: TokenType) -> Option<Vec<String>> {
+        let mut tokens = match token_type {
+            TokenType::Auth => {
+                let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
+                #[allow(deprecated)]
+                if let Some(token) = &self.server.auth_token {
+                    tokens.insert(0, token.to_string());
+                }
+                if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
+                    tokens.insert(0, env_token);
+                }
+                tokens
+            }
+            TokenType::Delete => {
+                let mut tokens = self.server.delete_tokens.clone().unwrap_or_default();
+                if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
+                    tokens.insert(0, env_token);
+                }
+                tokens
+            }
+        };
+        tokens.retain(|v| !v.is_empty());
         (!tokens.is_empty()).then_some(tokens)
     }
 
@@ -210,5 +233,32 @@ mod tests {
         assert_eq!("file_with_spaces.txt", processed_filename);
         let encoded_filename = SpaceHandlingConfig::Encode.process_filename("file with spaces.txt");
         assert_eq!("file%20with%20spaces.txt", encoded_filename);
+    }
+
+    #[test]
+    fn test_get_tokens() -> Result<(), ConfigError> {
+        let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
+        env::set_var("AUTH_TOKEN", "env_auth");
+        env::set_var("DELETE_TOKEN", "env_delete");
+        let mut config = Config::parse(&config_path)?;
+        config.server.auth_tokens = Some(vec!["may_the_force_be_with_you".to_string()]);
+        config.server.delete_tokens = Some(vec!["i_am_your_father".to_string()]);
+        assert_eq!(
+            Some(vec![
+                "env_auth".to_string(),
+                "may_the_force_be_with_you".to_string()
+            ]),
+            config.get_tokens(TokenType::Auth)
+        );
+        assert_eq!(
+            Some(vec![
+                "env_delete".to_string(),
+                "i_am_your_father".to_string()
+            ]),
+            config.get_tokens(TokenType::Delete)
+        );
+        env::remove_var("AUTH_TOKEN");
+        env::remove_var("DELETE_TOKEN");
+        Ok(())
     }
 }

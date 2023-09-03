@@ -36,3 +36,6 @@ pub const CONFIG_ENV: &str = "CONFIG";
 
 /// Environment variable for setting the authentication token.
 pub const AUTH_TOKEN_ENV: &str = "AUTH_TOKEN";
+
+/// Environment variable for setting the deletion token.
+pub const DELETE_TOKEN_ENV: &str = "DELETE_TOKEN";

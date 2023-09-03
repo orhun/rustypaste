@@ -1,5 +1,5 @@
 use crate::auth;
-use crate::config::{Config, LandingPageConfig};
+use crate::config::{Config, LandingPageConfig, TokenType};
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
@@ -7,7 +7,7 @@ use crate::paste::{Paste, PasteType};
 use crate::util;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
-use actix_web::{error, get, post, web, Error, HttpRequest, HttpResponse};
+use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
 use byte_unit::Byte;
 use futures_util::stream::StreamExt;
@@ -146,6 +146,39 @@ async fn serve(
     }
 }
 
+/// Remove a file from the upload directory.
+#[delete("/{file}")]
+async fn delete(
+    request: HttpRequest,
+    file: web::Path<String>,
+    config: web::Data<RwLock<Config>>,
+) -> Result<HttpResponse, Error> {
+    let config = config
+        .read()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let path = config.server.upload_path.join(&*file);
+    let path = util::glob_match_file(path)?;
+    let connection = request.connection_info().clone();
+    let host = connection.realip_remote_addr().unwrap_or("unknown host");
+    let tokens = config.get_tokens(TokenType::Delete);
+    if tokens.is_none() {
+        log::warn!("delete endpoint is not served because there are no delete_tokens set");
+        return Err(error::ErrorForbidden("endpoint is not exposed\n"));
+    }
+    auth::check(host, request.headers(), tokens)?;
+    if !path.is_file() || !path.exists() {
+        return Err(error::ErrorNotFound("file is not found or expired :(\n"));
+    }
+    match fs::remove_file(path) {
+        Ok(_) => log::info!("deleted file: {:?}", file),
+        Err(e) => {
+            log::error!("cannot delete file: {}", e);
+            return Err(error::ErrorInternalServerError("cannot delete file"));
+        }
+    }
+    Ok(HttpResponse::Ok().body(String::from("the file is deleted\n")))
+}
+
 /// Expose version endpoint
 #[get("/version")]
 async fn version(
@@ -157,7 +190,7 @@ async fn version(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_tokens();
+    let tokens = config.get_tokens(TokenType::Auth);
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
         log::warn!("server is not configured to expose version endpoint");
@@ -181,7 +214,7 @@ async fn upload(
         let config = config
             .read()
             .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-        let tokens = config.get_tokens();
+        let tokens = config.get_tokens(TokenType::Auth);
         auth::check(host, request.headers(), tokens)?;
     }
     let server_url = match config
@@ -315,7 +348,7 @@ async fn list(
         .clone();
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_tokens();
+    let tokens = config.get_tokens(TokenType::Auth);
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_list.unwrap_or(false) {
         log::warn!("server is not configured to expose list endpoint");
@@ -370,6 +403,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
         .service(list)
         .service(serve)
         .service(upload)
+        .service(delete)
         .route("", web::head().to(HttpResponse::MethodNotAllowed));
 }
 
@@ -382,6 +416,7 @@ mod tests {
     use actix_web::body::MessageBody;
     use actix_web::body::{BodySize, BoxBody};
     use actix_web::error::Error;
+    use actix_web::http::header::AUTHORIZATION;
     use actix_web::http::{header, StatusCode};
     use actix_web::test::{self, TestRequest};
     use actix_web::web::Data;
@@ -720,6 +755,68 @@ mod tests {
         .await;
         assert_eq!(StatusCode::PAYLOAD_TOO_LARGE, response.status());
         assert_body(response.into_body().boxed(), "upload limit exceeded").await?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_delete_file() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.delete_tokens = Some(vec!["test".to_string()]);
+        config.server.upload_path = env::current_dir()?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", file_name).to_request(),
+        )
+        .await;
+
+        let request = TestRequest::delete()
+            .insert_header((AUTHORIZATION, header::HeaderValue::from_static("test")))
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(StatusCode::OK, response.status());
+
+        let path = PathBuf::from(file_name);
+        assert!(!path.exists());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_delete_file_without_token_in_config() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "test_file.txt";
+        let request = TestRequest::delete()
+            .insert_header((AUTHORIZATION, header::HeaderValue::from_static("test")))
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(StatusCode::FORBIDDEN, response.status());
+        assert_body(response.into_body(), "endpoint is not exposed\n").await?;
 
         Ok(())
     }

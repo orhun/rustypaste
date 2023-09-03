@@ -14,6 +14,10 @@ expose_list = false
 #  "super_secret_token1",
 #  "super_secret_token2",
 #]
+#delete_tokens = [
+#  "super_secret_token1",
+#  "super_secret_token3",
+#]
 handle_spaces = "replace" # or "encode"
 
 [landing_page]
