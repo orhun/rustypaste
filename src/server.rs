@@ -176,7 +176,7 @@ async fn delete(
             return Err(error::ErrorInternalServerError("cannot delete file"));
         }
     }
-    Ok(HttpResponse::Ok().body(String::from("the file is deleted\n")))
+    Ok(HttpResponse::Ok().body(String::from("file deleted\n")))
 }
 
 /// Expose version endpoint
@@ -788,6 +788,7 @@ mod tests {
         let response = test::call_service(&app, request).await;
 
         assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), "file deleted\n").await?;
 
         let path = PathBuf::from(file_name);
         assert!(!path.exists());
