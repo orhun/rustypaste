@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2023-09-05
+
+### Added
+
+- Add delete endpoint (#136)
+
+Now you can delete files from the server with sending a [`DELETE`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE) request. To enable this, set the `delete_tokens` array in the configuration file or use the `DELETE_TOKEN` environment variable.
+
+```toml
+[server]
+delete_tokens = [ "may_the_force_be_with_you" ]
+```
+
+And then you can send a `DELETE` request as follows:
+
+```sh
+$ curl -H "Authorization: may_the_force_be_with_you" -X DELETE "<server_address>/file.txt"
+
+file deleted
+```
+
+You can also use [`rpaste`](https://github.com/orhun/rustypaste-cli#delete-files-from-server) (the command line tool) to delete files:
+
+```sh
+$ rpaste -d awesome.UA86.txt
+```
+
+### Changed
+
+- Update crates and rustls deps (#135)
+- Bump Shuttle to `0.25.0`
+
 ## [0.13.0] - 2023-08-26
 
 ### Added
