@@ -622,7 +622,7 @@ version = "6.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e959d788268e3bf9d35ace83e81b124190378e4c91c9067524675e33394b8ba"
 dependencies = [
- "crossterm",
+ "crossterm 0.26.1",
  "strum",
  "strum_macros",
  "unicode-width",
@@ -710,6 +710,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a84cda67535339806297f1b331d6dd6320470d2a0fe65381e79ee9e156dd3d13"
 dependencies = [
  "bitflags 1.3.2",
+ "crossterm_winapi",
+ "libc",
+ "mio",
+ "parking_lot",
+ "signal-hook",
+ "signal-hook-mio",
+ "winapi",
+]
+
+[[package]]
+name = "crossterm"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f476fe445d41c9e991fd07515a6f463074b782242ccf4a5b7b1d1012e70824df"
+dependencies = [
+ "bitflags 2.4.0",
  "crossterm_winapi",
  "libc",
  "mio",
@@ -954,12 +970,6 @@ checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
 dependencies = [
  "percent-encoding",
 ]
-
-[[package]]
-name = "fs_extra"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
 name = "fsevent-sys"
@@ -2320,7 +2330,6 @@ dependencies = [
  "serde_regex",
  "shuttle-actix-web",
  "shuttle-runtime",
- "shuttle-static-folder",
  "tokio",
  "url",
  "uts2ts",
@@ -2447,9 +2456,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-actix-web"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "458a61e8b63ebd4b87e03fd3c0b141602b05375ff50007b96704d9232b172510"
+checksum = "f98b0c393690fea0a3da6168ee249431aedb02b700856d5f772cd049794a4082"
 dependencies = [
  "actix-web",
  "num_cpus",
@@ -2458,9 +2467,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-codegen"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42b8ba55ed2ca6c5066e049e9c4ac91ba341ca0d59676858438b8028b9d84ae1"
+checksum = "20aa59e8ee75ff94b06d13763bb87d083262abe8f896e55ccbd5fd92207b8485"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -2470,9 +2479,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-common"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cf9e5fd064c4c4419e278503401ad40a05d06faa692c1aeaf2d328c9fe75d0a"
+checksum = "19e5f370ad24f777bd6f45f98d84607822993e4672af6b21b71158c6dc0c4b53"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2480,7 +2489,7 @@ dependencies = [
  "bytes",
  "chrono",
  "comfy-table",
- "crossterm",
+ "crossterm 0.27.0",
  "headers",
  "http",
  "http-body",
@@ -2512,12 +2521,13 @@ dependencies = [
 
 [[package]]
 name = "shuttle-proto"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fbced5923ae746e163c4d0132e6b5a9a247b0fe2fe9f3177cc085dfa251e84b"
+checksum = "b9239b46e75ee3d0266729e896e3d077939ab3724cc9bba58d060396149ec288"
 dependencies = [
  "anyhow",
  "chrono",
+ "dunce",
  "home",
  "prost",
  "prost-types",
@@ -2531,9 +2541,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-runtime"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5821f66337755804f83f52b2d4b1fc0d39f43a6b6c9fab799e23e8864fcc9e4"
+checksum = "3609e885b2c8115ff86d2a892d5f9e6421d8de5588197f7e020e06f55888d335"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2557,9 +2567,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-service"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f6d1b15c4945d1122637647148163f11c698ff2776303dcbfbbbece40beb735"
+checksum = "55d8e7379d5fcde2c1f309cd4f9042cfa425a18c9ee514c4aad78540034d2925"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2567,20 +2577,6 @@ dependencies = [
  "shuttle-common",
  "strfmt",
  "thiserror",
-]
-
-[[package]]
-name = "shuttle-static-folder"
-version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3496cce241847f59db64f56c4631abde560f4bfd620033750ee3fc1cbf58f2fb"
-dependencies = [
- "async-trait",
- "dunce",
- "fs_extra",
- "serde",
- "shuttle-service",
- "tracing",
 ]
 
 [[package]]

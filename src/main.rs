@@ -181,11 +181,9 @@ async fn main() -> IoResult<()> {
 
 #[cfg(feature = "shuttle")]
 #[shuttle_runtime::main]
-async fn actix_web(
-    #[shuttle_static_folder::StaticFolder(folder = "shuttle")] static_folder: PathBuf,
-) -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
+async fn actix_web() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     // Set up the application.
-    let (config, server_config, _hotwatch) = setup(&static_folder)?;
+    let (config, server_config, _hotwatch) = setup(Path::new("shuttle"))?;
 
     // Create the service.
     let service_config = move |cfg: &mut ServiceConfig| {
