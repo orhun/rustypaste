@@ -3,7 +3,9 @@ use actix_web::{error, Error as ActixError};
 use glob::glob;
 use lazy_regex::{lazy_regex, Lazy, Regex};
 use ring::digest::{Context, SHA256};
+use std::fmt::Write;
 use std::io::{BufReader, Read};
+use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -99,8 +101,11 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
         .iter()
         .collect::<Vec<&u8>>()
         .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>())
+        .try_fold::<String, _, IoResult<String>>(String::new(), |mut output, b| {
+            write!(output, "{b:02x}")
+                .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
+            Ok(output)
+        })?)
 }
 
 #[cfg(test)]
