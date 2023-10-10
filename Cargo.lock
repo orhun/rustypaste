@@ -2192,9 +2192,9 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.17.2"
+version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "911b295d2d302948838c8ac142da1ee09fa7863163b44e6715bc9357905878b8"
+checksum = "9babe80d5c16becf6594aa32ad2be8fe08498e7ae60b77de8df700e67f191d7e"
 dependencies = [
  "cc",
  "getrandom",
@@ -2339,7 +2339,7 @@ dependencies = [
  "petname",
  "rand",
  "regex",
- "ring 0.17.2",
+ "ring 0.17.3",
  "serde",
  "serde_regex",
  "shuttle-actix-web",
