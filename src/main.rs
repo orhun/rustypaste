@@ -18,6 +18,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{mpsc, RwLock};
 use std::thread;
 use std::time::Duration;
+#[cfg(not(feature = "shuttle"))]
+use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _, EnvFilter};
 #[cfg(feature = "shuttle")]
 use {
     actix_web::web::{self, ServiceConfig},
@@ -36,7 +38,10 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
 
     // Initialize logger.
     #[cfg(not(feature = "shuttle"))]
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env())
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // Parse configuration.
     let config_path = match env::var(CONFIG_ENV).ok() {
