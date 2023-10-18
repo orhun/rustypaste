@@ -69,7 +69,7 @@ where
             .and_then(|v| v.parse::<u128>().ok())
         {
             if content_length > self.max_bytes {
-                log::warn!("Upload rejected due to exceeded limit.");
+                tracing::warn!("Upload rejected due to exceeded limit.");
                 return Box::pin(async move {
                     // drain the body due to https://github.com/actix/actix-web/issues/2695
                     let mut payload = request.take_payload();

@@ -52,7 +52,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         None => config_folder.join("config.toml"),
     };
     let config = Config::parse(&config_path).expect("failed to parse config");
-    log::trace!("{:#?}", config);
+    tracing::trace!("{:#?}", config);
     config.warn_deprecation();
     let server_config = config.server.clone();
     let paste_config = RwLock::new(config.paste.clone());
@@ -85,18 +85,18 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
                 Ok(config) => match cloned_config.write() {
                     Ok(mut cloned_config) => {
                         *cloned_config = config.clone();
-                        log::info!("Configuration has been updated.");
+                        tracing::info!("Configuration has been updated.");
                         if let Err(e) = config_sender.send(config) {
-                            log::error!("Failed to send config for the cleanup routine: {}", e)
+                            tracing::error!("Failed to send config for the cleanup routine: {}", e)
                         }
                         cloned_config.warn_deprecation();
                     }
                     Err(e) => {
-                        log::error!("Failed to acquire config: {}", e);
+                        tracing::error!("Failed to acquire config: {}", e);
                     }
                 },
                 Err(e) => {
-                    log::error!("Failed to update config: {}", e);
+                    tracing::error!("Failed to update config: {}", e);
                 }
             }
         }
@@ -115,11 +115,11 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
             .and_then(|v| v.delete_expired_files.clone())
         {
             if cleanup_config.enabled {
-                log::debug!("Running cleanup...");
+                tracing::debug!("Running cleanup...");
                 for file in util::get_expired_files(&upload_path) {
                     match fs::remove_file(&file) {
-                        Ok(()) => log::info!("Removed expired file: {:?}", file),
-                        Err(e) => log::error!("Cannot remove expired file: {}", e),
+                        Ok(()) => tracing::info!("Removed expired file: {:?}", file),
+                        Err(e) => tracing::error!("Cannot remove expired file: {}", e),
                     }
                 }
                 thread::sleep(cleanup_config.interval);
@@ -136,7 +136,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
                     *paste_config = new_config.paste;
                 }
                 Err(e) => {
-                    log::error!("Failed to update config for the cleanup routine: {}", e);
+                    tracing::error!("Failed to update config for the cleanup routine: {}", e);
                 }
             }
         }
@@ -180,7 +180,7 @@ async fn main() -> IoResult<()> {
     }
 
     // Run the server.
-    log::info!("Server is running at {}", server_config.address);
+    tracing::info!("Server is running at {}", server_config.address);
     http_server.run().await
 }
 
