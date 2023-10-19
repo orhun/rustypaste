@@ -19,7 +19,9 @@ use std::sync::{mpsc, RwLock};
 use std::thread;
 use std::time::Duration;
 #[cfg(not(feature = "shuttle"))]
-use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _, EnvFilter};
+use tracing_subscriber::{
+    filter::LevelFilter, layer::SubscriberExt as _, util::SubscriberInitExt as _, EnvFilter,
+};
 #[cfg(feature = "shuttle")]
 use {
     actix_web::web::{self, ServiceConfig},
@@ -39,7 +41,11 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     // Initialize logger.
     #[cfg(not(feature = "shuttle"))]
     tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
