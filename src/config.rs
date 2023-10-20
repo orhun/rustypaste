@@ -177,19 +177,19 @@ impl Config {
     #[allow(deprecated)]
     pub fn warn_deprecation(&self) {
         if self.server.auth_token.is_some() {
-            log::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
+            tracing::warn!("[server].auth_token is deprecated, please use [server].auth_tokens");
         }
         if self.server.landing_page.is_some() {
-            log::warn!("[server].landing_page is deprecated, please use [landing_page].text");
+            tracing::warn!("[server].landing_page is deprecated, please use [landing_page].text");
         }
         if self.server.landing_page_content_type.is_some() {
-            log::warn!(
+            tracing::warn!(
                 "[server].landing_page_content_type is deprecated, please use [landing_page].content_type"
             );
         }
         if let Some(random_url) = &self.paste.random_url {
             if random_url.enabled.is_some() {
-                log::warn!(
+                tracing::warn!(
                     "[paste].random_url.enabled is deprecated, disable it by commenting out [paste].random_url"
                 );
             }
