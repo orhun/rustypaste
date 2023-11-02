@@ -18,7 +18,7 @@ pub struct ContentLengthLimiter {
 }
 
 impl ContentLengthLimiter {
-    /// Contructs a new instance.
+    /// Constructs a new instance.
     pub fn new(max_bytes: u128) -> Self {
         Self { max_bytes }
     }
