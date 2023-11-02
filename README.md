@@ -116,6 +116,12 @@ pacman -S rustypaste
 apk add rustypaste
 ```
 
+### FreeBSD
+
+```sh
+pkg install rustypaste
+```
+
 ### Binary releases
 
 See the available binaries on the [releases](https://github.com/orhun/rustypaste/releases/) page.
