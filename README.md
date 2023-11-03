@@ -36,6 +36,7 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
   - [From crates.io](#from-cratesio)
   - [Arch Linux](#arch-linux)
   - [Alpine Linux](#alpine-linux)
+  - [FreeBSD](#freebsd)
   - [Binary releases](#binary-releases)
   - [Build from source](#build-from-source)
     - [Feature flags](#feature-flags)
@@ -86,8 +87,8 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
 - Simple configuration
   - supports hot reloading
 - Easy to deploy
-  - [appjail images](https://github.com/AppJail-makejails/rustypaste)
   - [docker images](https://hub.docker.com/r/orhunp/rustypaste)
+  - [appjail images](https://github.com/AppJail-makejails/rustypaste)
 - No database
   - filesystem is used
 - Self-hosted
