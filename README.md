@@ -86,6 +86,7 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
 - Simple configuration
   - supports hot reloading
 - Easy to deploy
+  - [appjail images](https://github.com/AppJail-makejails/rustypaste)
   - [docker images](https://hub.docker.com/r/orhunp/rustypaste)
 - No database
   - filesystem is used
@@ -114,6 +115,12 @@ pacman -S rustypaste
 
 ```sh
 apk add rustypaste
+```
+
+### FreeBSD
+
+```sh
+pkg install rustypaste
 ```
 
 ### Binary releases
