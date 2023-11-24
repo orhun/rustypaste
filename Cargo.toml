@@ -49,7 +49,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 uts2ts = "0.4.1"
 
 [dependencies.config]
-version = "0.13.3"
+version = "0.13.4"
 default-features = false
 features = ["toml", "yaml"]
 
