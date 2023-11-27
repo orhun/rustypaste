@@ -54,7 +54,7 @@ default-features = false
 features = ["toml", "yaml"]
 
 [dependencies.byte-unit]
-version = "4.0.19"
+version = "5.0.3"
 features = ["serde"]
 
 [dependencies.infer]
