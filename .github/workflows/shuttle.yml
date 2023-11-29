@@ -40,8 +40,11 @@ jobs:
       - name: Build
         run: cargo build --locked --verbose
       - name: Deploy
-        if: ${{ startsWith(github.event.ref, 'refs/tags/v') || \
-          github.event_name == 'workflow_dispatch' || steps.changes.outputs.manifest == 'true' }}
+        if: |
+          ${{ startsWith(github.event.ref, 'refs/tags/v') ||
+            github.event_name == 'workflow_dispatch' ||
+            steps.changes.outputs.manifest == 'true'
+          }}
         run: |
           cargo shuttle login --api-key ${{ secrets.SHUTTLE_TOKEN }}
           cargo shuttle project restart
