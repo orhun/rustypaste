@@ -26,7 +26,7 @@
       form {
         margin: 20px 0;
       }
-      input[type="url"],
+      input[type="text"],
       input[type="file"] {
         border: none;
         border-radius: 5px;
@@ -67,13 +67,13 @@ by default, pastes expire every hour.
     >
     <h2>share url</h2>
     <form action="/" method="post" enctype="multipart/form-data">
-      <input type="url" name="url" />
+      <input type="text" name="url" />
       <input type="submit" value="share" />
     </form>
 
     <h2>share file from url</h2>
     <form action="/" method="post" enctype="multipart/form-data">
-      <input type="url" name="remote" />
+      <input type="text" name="remote" />
       <input type="submit" value="share" />
     </form>
 
@@ -88,5 +88,56 @@ by default, pastes expire every hour.
       <input type="file" name="oneshot" />
       <input type="submit" value="share" />
     </form>
+
+    <h2>share file with auth token</h2>
+    <div id="shareForm">
+      <input type="file" id="file" name="file" /><br>
+      <input type="text" id="authToken" placeholder="Auth Token" />
+      <input type="submit" value="share" onclick="shareFileWithAuth()" />
+    </form>
   </body>
+
+  <script>
+    function shareFileWithAuth() {
+      const fileInput = document.getElementById("file");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Please select a file");
+        return;
+      }
+
+      const authTokenInput = document.getElementById("authToken");
+      const authToken = authTokenInput.value;
+
+      if (!authToken) {
+        alert("Please provide an Auth Token");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      fetch("/", {
+        method: "POST",
+        headers: {
+          Authorization: authToken,
+        },
+        body: formData,
+      })
+        .then((response) => {
+          if (!response.ok) {
+            alert("Failed to upload");
+            throw new Error("Network response was not ok");
+          }
+          return response.text();
+        })
+        .then((data) => {
+          window.open(data, "_blank");
+        })
+        .catch((error) => {
+          console.error("There was an error uploading the file:", error);
+        });
+    }
+  </script>
 </html>
