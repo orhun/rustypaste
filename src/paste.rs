@@ -210,7 +210,6 @@ impl Paste {
             .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
             .server
             .max_content_length
-            .get_bytes()
             .try_into()
             .map_err(error::ErrorInternalServerError)?;
         let bytes = response
@@ -277,6 +276,7 @@ mod tests {
     use awc::ClientBuilder;
     use byte_unit::Byte;
     use std::env;
+    use std::str::FromStr;
     use std::time::Duration;
 
     #[actix_rt::test]
