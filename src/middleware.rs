@@ -70,10 +70,9 @@ where
             .and_then(|v| v.parse::<Byte>().ok())
         {
             if content_length > self.max_bytes {
-                tracing::warn!(
+                warn!(
                     "Upload rejected due to exceeded limit. ({:-#} > {:-#})",
-                    content_length,
-                    self.max_bytes
+                    content_length, self.max_bytes
                 );
                 return Box::pin(async move {
                     // drain the body due to https://github.com/actix/actix-web/issues/2695

@@ -162,7 +162,7 @@ async fn delete(
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
     let tokens = config.get_tokens(TokenType::Delete);
     if tokens.is_none() {
-        tracing::warn!("delete endpoint is not served because there are no delete_tokens set");
+        warn!("delete endpoint is not served because there are no delete_tokens set");
         return Err(error::ErrorForbidden("endpoint is not exposed\n"));
     }
     auth::check(host, request.headers(), tokens)?;
@@ -170,9 +170,9 @@ async fn delete(
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
     match fs::remove_file(path) {
-        Ok(_) => tracing::info!("deleted file: {:?}", file),
+        Ok(_) => info!("deleted file: {:?}", file),
         Err(e) => {
-            tracing::error!("cannot delete file: {}", e);
+            error!("cannot delete file: {}", e);
             return Err(error::ErrorInternalServerError("cannot delete file"));
         }
     }
@@ -193,7 +193,7 @@ async fn version(
     let tokens = config.get_tokens(TokenType::Auth);
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
-        tracing::warn!("server is not configured to expose version endpoint");
+        warn!("server is not configured to expose version endpoint");
         Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
     }
     let version = env!("CARGO_PKG_VERSION");
@@ -249,7 +249,7 @@ async fn upload(
                 bytes.append(&mut chunk?.to_vec());
             }
             if bytes.is_empty() {
-                tracing::warn!("{} sent zero bytes", host);
+                warn!("{} sent zero bytes", host);
                 return Err(error::ErrorBadRequest("invalid file size"));
             }
             if paste_type != PasteType::Oneshot
@@ -304,7 +304,7 @@ async fn upload(
                     paste.store_url(expiry_date, &config)?
                 }
             };
-            tracing::info!(
+            info!(
                 "{} ({}) is uploaded from {}",
                 file_name,
                 Byte::from_u128(paste.data.len() as u128)
@@ -320,7 +320,7 @@ async fn upload(
             }
             urls.push(format!("{}/{}\n", server_url, file_name));
         } else {
-            tracing::warn!("{} sent an invalid form field", host);
+            warn!("{} sent an invalid form field", host);
             return Err(error::ErrorBadRequest("invalid form field"));
         }
     }
@@ -353,7 +353,7 @@ async fn list(
     let tokens = config.get_tokens(TokenType::Auth);
     auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_list.unwrap_or(false) {
-        tracing::warn!("server is not configured to expose list endpoint");
+        warn!("server is not configured to expose list endpoint");
         Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
     }
     let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
@@ -367,7 +367,7 @@ async fn list(
                         metadata
                     }
                     Err(e) => {
-                        tracing::error!("failed to read metadata: {e}");
+                        error!("failed to read metadata: {e}");
                         return None;
                     }
                 };
