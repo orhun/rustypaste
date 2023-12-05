@@ -215,9 +215,7 @@ async fn actix_web() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send +
                 .wrap(Logger::new(
                     "%{r}a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T",
                 ))
-                .wrap(ContentLengthLimiter::new(
-                    server_config.max_content_length.get_bytes(),
-                ))
+                .wrap(ContentLengthLimiter::new(server_config.max_content_length))
                 .configure(server::configure_routes),
         );
     };
