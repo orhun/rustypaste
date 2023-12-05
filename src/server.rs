@@ -745,7 +745,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(Config::default())))
                 .app_data(Data::new(Client::default()))
-                .wrap(ContentLengthLimiter::new(1))
+                .wrap(ContentLengthLimiter::new(Byte::from_u64(1)))
                 .configure(configure_routes),
         )
         .await;
