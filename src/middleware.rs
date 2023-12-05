@@ -3,6 +3,7 @@ use actix_web::http::header::CONTENT_LENGTH;
 use actix_web::http::StatusCode;
 use actix_web::{body::EitherBody, Error};
 use actix_web::{HttpMessage, HttpResponseBuilder};
+use byte_unit::Byte;
 use futures_util::{Future, TryStreamExt};
 use std::{
     future::{ready, Ready},
@@ -14,12 +15,12 @@ use std::{
 #[derive(Debug)]
 pub struct ContentLengthLimiter {
     // Maximum amount of bytes to allow.
-    max_bytes: u128,
+    max_bytes: Byte,
 }
 
 impl ContentLengthLimiter {
     /// Constructs a new instance.
-    pub fn new(max_bytes: u128) -> Self {
+    pub fn new(max_bytes: Byte) -> Self {
         Self { max_bytes }
     }
 }
@@ -47,7 +48,7 @@ where
 #[derive(Debug)]
 pub struct ContentLengthLimiterMiddleware<S> {
     service: Rc<S>,
-    max_bytes: u128,
+    max_bytes: Byte,
 }
 
 impl<S, B> Service<ServiceRequest> for ContentLengthLimiterMiddleware<S>
@@ -66,10 +67,14 @@ where
             .headers()
             .get(CONTENT_LENGTH)
             .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u128>().ok())
+            .and_then(|v| v.parse::<Byte>().ok())
         {
             if content_length > self.max_bytes {
-                tracing::warn!("Upload rejected due to exceeded limit.");
+                tracing::warn!(
+                    "Upload rejected due to exceeded limit. ({:-#} > {:-#})",
+                    content_length,
+                    self.max_bytes
+                );
                 return Box::pin(async move {
                     // drain the body due to https://github.com/actix/actix-web/issues/2695
                     let mut payload = request.take_payload();

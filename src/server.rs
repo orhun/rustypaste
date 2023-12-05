@@ -9,7 +9,7 @@ use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
 use awc::Client;
-use byte_unit::Byte;
+use byte_unit::{Byte, UnitType};
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
 use serde::{Deserialize, Serialize};
@@ -307,7 +307,9 @@ async fn upload(
             tracing::info!(
                 "{} ({}) is uploaded from {}",
                 file_name,
-                Byte::from_bytes(paste.data.len() as u128).get_appropriate_unit(false),
+                Byte::from_u128(paste.data.len() as u128)
+                    .unwrap_or_default()
+                    .get_appropriate_unit(UnitType::Decimal),
                 host
             );
             let config = config
@@ -743,7 +745,7 @@ mod tests {
             App::new()
                 .app_data(Data::new(RwLock::new(Config::default())))
                 .app_data(Data::new(Client::default()))
-                .wrap(ContentLengthLimiter::new(1))
+                .wrap(ContentLengthLimiter::new(Byte::from_u64(1)))
                 .configure(configure_routes),
         )
         .await;
@@ -975,7 +977,7 @@ mod tests {
     async fn test_upload_remote_file() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
-        config.server.max_content_length = Byte::from_bytes(30000);
+        config.server.max_content_length = Byte::from_u128(30000).unwrap_or_default();
 
         let app = test::init_service(
             App::new()
