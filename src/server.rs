@@ -1,4 +1,4 @@
-use crate::auth;
+use crate::auth::{extract_tokens, handle_unauthorized_error, unauthorized_error};
 use crate::config::{Config, LandingPageConfig, TokenType};
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
@@ -7,7 +7,10 @@ use crate::paste::{Paste, PasteType};
 use crate::util;
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
+use actix_web::http::StatusCode;
+use actix_web::middleware::ErrorHandlers;
 use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
+use actix_web_grants::GrantsMiddleware;
 use awc::Client;
 use byte_unit::{Byte, UnitType};
 use futures_util::stream::StreamExt;
@@ -148,8 +151,8 @@ async fn serve(
 
 /// Remove a file from the upload directory.
 #[delete("/{file}")]
+#[actix_web_grants::protect("TokenType::Delete", ty = TokenType, error = unauthorized_error)]
 async fn delete(
-    request: HttpRequest,
     file: web::Path<String>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
@@ -158,14 +161,6 @@ async fn delete(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let path = config.server.upload_path.join(&*file);
     let path = util::glob_match_file(path)?;
-    let connection = request.connection_info().clone();
-    let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_tokens(TokenType::Delete);
-    if tokens.is_none() {
-        warn!("delete endpoint is not served because there are no delete_tokens set");
-        return Err(error::ErrorForbidden("endpoint is not exposed\n"));
-    }
-    auth::check(host, request.headers(), tokens)?;
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
@@ -181,27 +176,23 @@ async fn delete(
 
 /// Expose version endpoint
 #[get("/version")]
-async fn version(
-    request: HttpRequest,
-    config: web::Data<RwLock<Config>>,
-) -> Result<HttpResponse, Error> {
+#[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
+async fn version(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let connection = request.connection_info().clone();
-    let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_tokens(TokenType::Auth);
-    auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_version.unwrap_or(false) {
         warn!("server is not configured to expose version endpoint");
-        Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
+        Err(error::ErrorNotFound("endpoint is not exposed\n"))?;
     }
+
     let version = env!("CARGO_PKG_VERSION");
     Ok(HttpResponse::Ok().body(version.to_owned() + "\n"))
 }
 
 /// Handles file upload by processing `multipart/form-data`.
 #[post("/")]
+#[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
 async fn upload(
     request: HttpRequest,
     mut payload: Multipart,
@@ -210,13 +201,6 @@ async fn upload(
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    {
-        let config = config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-        let tokens = config.get_tokens(TokenType::Auth);
-        auth::check(host, request.headers(), tokens)?;
-    }
     let server_url = match config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
@@ -340,21 +324,15 @@ pub struct ListItem {
 
 /// Returns the list of files.
 #[get("/list")]
-async fn list(
-    request: HttpRequest,
-    config: web::Data<RwLock<Config>>,
-) -> Result<HttpResponse, Error> {
+#[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
+async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
         .clone();
-    let connection = request.connection_info().clone();
-    let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let tokens = config.get_tokens(TokenType::Auth);
-    auth::check(host, request.headers(), tokens)?;
     if !config.server.expose_list.unwrap_or(false) {
         warn!("server is not configured to expose list endpoint");
-        Err(error::ErrorForbidden("endpoint is not exposed\n"))?;
+        Err(error::ErrorNotFound("endpoint is not exposed\n"))?;
     }
     let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
@@ -400,13 +378,20 @@ async fn list(
 
 /// Configures the server routes.
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(index)
-        .service(version)
-        .service(list)
-        .service(serve)
-        .service(upload)
-        .service(delete)
-        .route("", web::head().to(HttpResponse::MethodNotAllowed));
+    cfg.service(
+        web::scope("")
+            .service(index)
+            .service(version)
+            .service(list)
+            .service(serve)
+            .service(upload)
+            .service(delete)
+            .route("", web::head().to(HttpResponse::MethodNotAllowed))
+            .wrap(GrantsMiddleware::with_extractor(extract_tokens))
+            .wrap(
+                ErrorHandlers::new().handler(StatusCode::UNAUTHORIZED, handle_unauthorized_error),
+            ),
+    );
 }
 
 #[cfg(test)]
@@ -566,7 +551,7 @@ mod tests {
     #[actix_web::test]
     async fn test_version_without_auth() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.auth_tokens = Some(vec!["test".to_string()]);
+        config.server.auth_tokens = Some(["test".to_string()].into());
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(RwLock::new(config)))
@@ -600,7 +585,7 @@ mod tests {
             .uri("/version")
             .to_request();
         let response = test::call_service(&app, request).await;
-        assert_eq!(StatusCode::FORBIDDEN, response.status());
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
         assert_body(response.into_body(), "endpoint is not exposed\n").await?;
         Ok(())
     }
@@ -721,7 +706,7 @@ mod tests {
     #[actix_web::test]
     async fn test_auth() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.auth_tokens = Some(vec!["test".to_string()]);
+        config.server.auth_tokens = Some(["test".to_string()].into());
 
         let app = test::init_service(
             App::new()
@@ -764,7 +749,7 @@ mod tests {
     #[actix_web::test]
     async fn test_delete_file() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.delete_tokens = Some(vec!["test".to_string()]);
+        config.server.delete_tokens = Some(["test".to_string()].into());
         config.server.upload_path = env::current_dir()?;
 
         let app = test::init_service(
@@ -818,7 +803,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
 
-        assert_eq!(StatusCode::FORBIDDEN, response.status());
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
         assert_body(response.into_body(), "endpoint is not exposed\n").await?;
 
         Ok(())
