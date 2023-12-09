@@ -151,7 +151,7 @@ impl Config {
 
     /// Retrieves all configured auth/delete tokens.
     pub fn get_tokens(&self, token_type: TokenType) -> Option<HashSet<String>> {
-        let tokens = match token_type {
+        let mut tokens = match token_type {
             TokenType::Auth => {
                 let mut tokens: HashSet<_> = self.server.auth_tokens.clone().unwrap_or_default();
 
@@ -159,27 +159,23 @@ impl Config {
                 if let Some(token) = &self.server.auth_token {
                     tokens.insert(token.to_string());
                 }
-                match env::var(AUTH_TOKEN_ENV) {
-                    Ok(env_token) if !env_token.is_empty() => {
-                        tokens.insert(env_token);
-                    }
-                    _ => {}
+                if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
+                    tokens.insert(env_token);
                 }
                 tokens
             }
             TokenType::Delete => {
                 let mut tokens: HashSet<_> = self.server.delete_tokens.clone().unwrap_or_default();
 
-                match env::var(DELETE_TOKEN_ENV) {
-                    Ok(env_token) if !env_token.is_empty() => {
-                        tokens.insert(env_token);
-                    }
-                    _ => {}
+                if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
+                    tokens.insert(env_token);
                 }
                 tokens
             }
         };
 
+        // filter out blank tokens
+        tokens.retain(|v| !v.trim().is_empty());
         Some(tokens).filter(|v| !v.is_empty())
     }
 
@@ -251,8 +247,10 @@ mod tests {
         env::set_var("AUTH_TOKEN", "env_auth");
         env::set_var("DELETE_TOKEN", "env_delete");
         let mut config = Config::parse(&config_path)?;
-        config.server.auth_tokens = Some(["may_the_force_be_with_you".to_string()].into());
-        config.server.delete_tokens = Some(["i_am_your_father".to_string()].into());
+        // empty tokens will be filtered
+        config.server.auth_tokens =
+            Some(["may_the_force_be_with_you".to_string(), "".to_string()].into());
+        config.server.delete_tokens = Some(["i_am_your_father".to_string(), "".to_string()].into());
         assert_eq!(
             Some(HashSet::from([
                 "env_auth".to_string(),
@@ -269,6 +267,13 @@ mod tests {
         );
         env::remove_var("AUTH_TOKEN");
         env::remove_var("DELETE_TOKEN");
+
+        // `get_tokens` returns `None` if no tokens are configured
+        config.server.auth_tokens = Some(["  ".to_string()].into());
+        config.server.delete_tokens = Some(HashSet::new());
+        assert_eq!(None, config.get_tokens(TokenType::Auth));
+        assert_eq!(None, config.get_tokens(TokenType::Delete));
+
         Ok(())
     }
 }
