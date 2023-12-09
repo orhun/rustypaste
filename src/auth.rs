@@ -45,6 +45,7 @@ pub(crate) async fn extract_tokens(req: &ServiceRequest) -> Result<HashSet<Token
     Ok(user_tokens)
 }
 
+/// Returns `HttpResponse` with unauthorized (`401`) error and `unauthorized\n` as body.
 pub(crate) fn unauthorized_error() -> actix_web::HttpResponse {
     error::ErrorUnauthorized("unauthorized\n").into()
 }
