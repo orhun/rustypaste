@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 setup() {
-  echo "$content" > file
+  :;
 }
 
 run_test() {
