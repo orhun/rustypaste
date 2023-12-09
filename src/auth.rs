@@ -38,7 +38,7 @@ pub(crate) async fn extract_tokens(req: &ServiceRequest) -> Result<HashSet<Token
         } else if token_type == TokenType::Delete && req.method() == Method::DELETE {
             // explicitly disable `DELETE` methods if no `delete_tokens` are set
             warn!("delete endpoints is not served because there are no delete_tokens set");
-            return Err(error::ErrorNotFound("endpoint is not exposed\n"));
+            Err(error::ErrorNotFound(""))?;
         }
     }
 

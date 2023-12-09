@@ -183,7 +183,7 @@ async fn version(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Erro
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     if !config.server.expose_version.unwrap_or(false) {
         warn!("server is not configured to expose version endpoint");
-        Err(error::ErrorNotFound("endpoint is not exposed\n"))?;
+        Err(error::ErrorNotFound(""))?;
     }
 
     let version = env!("CARGO_PKG_VERSION");
@@ -332,7 +332,7 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
         .clone();
     if !config.server.expose_list.unwrap_or(false) {
         warn!("server is not configured to expose list endpoint");
-        Err(error::ErrorNotFound("endpoint is not exposed\n"))?;
+        Err(error::ErrorNotFound(""))?;
     }
     let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
         .filter_map(|entry| {
@@ -586,7 +586,7 @@ mod tests {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
-        assert_body(response.into_body(), "endpoint is not exposed\n").await?;
+        assert_body(response.into_body(), "").await?;
         Ok(())
     }
 
@@ -804,7 +804,7 @@ mod tests {
         let response = test::call_service(&app, request).await;
 
         assert_eq!(StatusCode::NOT_FOUND, response.status());
-        assert_body(response.into_body(), "endpoint is not exposed\n").await?;
+        assert_body(response.into_body(), "").await?;
 
         Ok(())
     }
