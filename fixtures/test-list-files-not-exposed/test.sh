@@ -10,6 +10,5 @@ run_test() {
 }
 
 teardown() {
-  rm file
   rm -r upload
 }
