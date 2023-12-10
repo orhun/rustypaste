@@ -3,7 +3,7 @@
 setup() {
   touch emptyfile
   truncate -s 9KB smallfile
-#  fallocate -l 10000 normalfile
+  # On Linux, `fallocate -l 10000 normalfile` can be used for a better precision.
   dd if=/dev/random of=normalfile count=10000 bs=1024 status=none
   truncate -s 11KB bigfile
 }
