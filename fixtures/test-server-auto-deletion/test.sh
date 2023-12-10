@@ -11,10 +11,10 @@ run_test() {
   second_file_url=$(curl -s -F "file=@file" -H "expire:4s" localhost:8000)
   test "$content" = "$(curl -s $first_file_url)"
   test "$content" = "$(curl -s $second_file_url)"
-  sleep 3s
+  sleep 3
   test "file is not found or expired :(" = "$(curl -s $first_file_url)"
   test "$content" = "$(curl -s $second_file_url)"
-  sleep 1s
+  sleep 1
   test "file is not found or expired :(" = "$(curl -s $second_file_url)"
 }
 
