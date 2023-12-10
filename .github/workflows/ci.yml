@@ -59,7 +59,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v4
       - name: Install coreutils for MacOS
-        if: ${{ matrix.os.name }} == 'macOS'
+        if: matrix.os.name == 'macOS'
         run: brew install coreutils
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
