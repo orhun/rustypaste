@@ -51,15 +51,15 @@ jobs:
         os:
           - name: Ubuntu
             version: ubuntu-22.04
-          - name: MacOS
+          - name: macOS
             version: macos-12
-    name: Test fixtures [${{ matrix.os.version }}]
+    name: Test fixtures [${{ matrix.os.name }}]
     runs-on: ${{ matrix.os.version }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
       - name: Install coreutils for MacOS
-        if: ${{ matrix.os.version }} == 'macos-12'
+        if: ${{ matrix.os.name }} == 'macOS'
         run: brew install coreutils
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
