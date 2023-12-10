@@ -45,8 +45,16 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   fixtures:
-    name: Test fixtures
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - name: Ubuntu
+            version: ubuntu-22.04
+          - name: MacOS
+            version: macos-12
+    name: Test fixtures [${{ matrix.os.version }}]
+    runs-on: ${{ matrix.os.version }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
