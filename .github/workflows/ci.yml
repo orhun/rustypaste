@@ -58,6 +58,9 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
+      - name: Install coreutils for MacOS
+        if: ${{ matrix.os.version }} == 'macos-12'
+        run: brew install coreutils
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Build the project
