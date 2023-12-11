@@ -252,6 +252,8 @@ Set `delete_tokens` array in [config.toml](./config.toml) to activate the [`DELE
 $ curl -H "Authorization: <auth_token>" -X DELETE "<server_address>/file.txt"
 ```
 
+> The `DELETE` endpoint will not be exposed and will return `404` error if `delete_tokens` are not set.
+
 ### Server
 
 To start the server:
@@ -274,6 +276,10 @@ $ rustypaste
 ```
 
 You can also set multiple auth tokens via the array field `[server].auth_tokens` in your `config.toml`.
+
+> If neither `AUTH_TOKEN` nor `[server].auth_tokens` are set, the server will not require any authentication.
+>
+> Exception is the `DELETE` endpoint, which requires at least one token to be set. See [deleting files from server](#delete-file-from-server) for more information.
 
 See [config.toml](./config.toml) for configuration options.
 
