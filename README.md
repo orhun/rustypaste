@@ -279,7 +279,7 @@ You can also set multiple auth tokens via the array field `[server].auth_tokens`
 
 > If neither `AUTH_TOKEN` nor `[server].auth_tokens` are set, the server will not require any authentication.
 >
-> Exception is the `DELETE` endpoint, which requires at least one token to be set. See [deleting file from server](#delete-file-from-server) for more information.
+> Exception is the `DELETE` endpoint, which requires at least one token to be set. See [deleting files from server](#delete-file-from-server) for more information.
 
 See [config.toml](./config.toml) for configuration options.
 
