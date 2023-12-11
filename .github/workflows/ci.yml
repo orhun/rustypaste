@@ -45,11 +45,22 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   fixtures:
-    name: Test fixtures
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - name: Linux
+            runner: ubuntu-22.04
+          - name: macOS
+            runner: macos-12
+    name: Test fixtures [${{ matrix.os.name }}]
+    runs-on: ${{ matrix.os.runner }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
+      - name: Install coreutils for MacOS
+        if: matrix.os.name == 'macOS'
+        run: brew install coreutils
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Build the project
