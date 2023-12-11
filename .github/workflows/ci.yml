@@ -49,12 +49,12 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - name: Ubuntu
-            version: ubuntu-22.04
+          - name: Linux
+            runner: ubuntu-22.04
           - name: macOS
-            version: macos-12
+            runner: macos-12
     name: Test fixtures [${{ matrix.os.name }}]
-    runs-on: ${{ matrix.os.version }}
+    runs-on: ${{ matrix.os.runner }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
