@@ -270,6 +270,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-web-grants"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf5941a5bdf4cc022ca7721dae70d9818d7b13f93040b0543cb901410c8d3172"
+dependencies = [
+ "actix-web",
+ "protect-endpoints-proc-macro",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2015,6 +2025,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "protect-endpoints-proc-macro"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfff647917bb00f5e9c57a5c15d95db74db5387139ac03052358e38462c86a76"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.39",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2226,6 +2248,7 @@ dependencies = [
  "actix-multipart",
  "actix-rt",
  "actix-web",
+ "actix-web-grants",
  "awc",
  "byte-unit",
  "config",

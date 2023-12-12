@@ -3,6 +3,7 @@ use crate::random::RandomURLConfig;
 use crate::{AUTH_TOKEN_ENV, DELETE_TOKEN_ENV};
 use byte_unit::Byte;
 use config::{self, ConfigError};
+use std::collections::HashSet;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -49,7 +50,7 @@ pub struct ServerConfig {
     #[deprecated(note = "use [server].auth_tokens instead")]
     pub auth_token: Option<String>,
     /// Authentication tokens.
-    pub auth_tokens: Option<Vec<String>>,
+    pub auth_tokens: Option<HashSet<String>>,
     /// Expose version.
     pub expose_version: Option<bool>,
     /// Landing page text.
@@ -63,7 +64,7 @@ pub struct ServerConfig {
     /// Path of the JSON index.
     pub expose_list: Option<bool>,
     /// Authentication tokens for deleting.
-    pub delete_tokens: Option<Vec<String>>,
+    pub delete_tokens: Option<HashSet<String>>,
 }
 
 /// Enum representing different strategies for handling spaces in filenames.
@@ -130,6 +131,7 @@ pub struct CleanupConfig {
 }
 
 /// Type of access token.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum TokenType {
     /// Token for authentication.
     Auth,
@@ -148,29 +150,33 @@ impl Config {
     }
 
     /// Retrieves all configured auth/delete tokens.
-    pub fn get_tokens(&self, token_type: TokenType) -> Option<Vec<String>> {
+    pub fn get_tokens(&self, token_type: TokenType) -> Option<HashSet<String>> {
         let mut tokens = match token_type {
             TokenType::Auth => {
-                let mut tokens = self.server.auth_tokens.clone().unwrap_or_default();
+                let mut tokens: HashSet<_> = self.server.auth_tokens.clone().unwrap_or_default();
+
                 #[allow(deprecated)]
                 if let Some(token) = &self.server.auth_token {
-                    tokens.insert(0, token.to_string());
+                    tokens.insert(token.to_string());
                 }
                 if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
-                    tokens.insert(0, env_token);
+                    tokens.insert(env_token);
                 }
                 tokens
             }
             TokenType::Delete => {
-                let mut tokens = self.server.delete_tokens.clone().unwrap_or_default();
+                let mut tokens: HashSet<_> = self.server.delete_tokens.clone().unwrap_or_default();
+
                 if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
-                    tokens.insert(0, env_token);
+                    tokens.insert(env_token);
                 }
                 tokens
             }
         };
-        tokens.retain(|v| !v.is_empty());
-        (!tokens.is_empty()).then_some(tokens)
+
+        // filter out blank tokens
+        tokens.retain(|v| !v.trim().is_empty());
+        Some(tokens).filter(|v| !v.is_empty())
     }
 
     /// Print deprecation warnings.
@@ -241,24 +247,33 @@ mod tests {
         env::set_var("AUTH_TOKEN", "env_auth");
         env::set_var("DELETE_TOKEN", "env_delete");
         let mut config = Config::parse(&config_path)?;
-        config.server.auth_tokens = Some(vec!["may_the_force_be_with_you".to_string()]);
-        config.server.delete_tokens = Some(vec!["i_am_your_father".to_string()]);
+        // empty tokens will be filtered
+        config.server.auth_tokens =
+            Some(["may_the_force_be_with_you".to_string(), "".to_string()].into());
+        config.server.delete_tokens = Some(["i_am_your_father".to_string(), "".to_string()].into());
         assert_eq!(
-            Some(vec![
+            Some(HashSet::from([
                 "env_auth".to_string(),
                 "may_the_force_be_with_you".to_string()
-            ]),
+            ])),
             config.get_tokens(TokenType::Auth)
         );
         assert_eq!(
-            Some(vec![
+            Some(HashSet::from([
                 "env_delete".to_string(),
                 "i_am_your_father".to_string()
-            ]),
+            ])),
             config.get_tokens(TokenType::Delete)
         );
         env::remove_var("AUTH_TOKEN");
         env::remove_var("DELETE_TOKEN");
+
+        // `get_tokens` returns `None` if no tokens are configured
+        config.server.auth_tokens = Some(["  ".to_string()].into());
+        config.server.delete_tokens = Some(HashSet::new());
+        assert_eq!(None, config.get_tokens(TokenType::Auth));
+        assert_eq!(None, config.get_tokens(TokenType::Delete));
+
         Ok(())
     }
 }
