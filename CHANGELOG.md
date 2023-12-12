@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.3] - 2023-12-12
 
-### Added
-
 ### Changed
 
 - Return `404` for not exposed endpoints instead of `403`
