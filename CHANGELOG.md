@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.3] - 2023-12-12
+
+### Added
+
+### Changed
+
+- Return `404` for not exposed endpoints instead of `403`
+- Disallow blank `delete_tokens` and `auth_tokens`
+- Bump dependencies
+
 ## [0.14.2] - 2023-12-05
 
 ### Added
