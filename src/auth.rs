@@ -33,11 +33,10 @@ pub(crate) async fn extract_tokens(req: &ServiceRequest) -> Result<HashSet<Token
             }
         } else if token_type == TokenType::Auth {
             // not configured `auth_tokens` means that the user is allowed to access the endpoints
-            warn!("auth_tokens not configured, allowing the request without auth header");
             user_tokens.insert(token_type);
         } else if token_type == TokenType::Delete && req.method() == Method::DELETE {
             // explicitly disable `DELETE` methods if no `delete_tokens` are set
-            warn!("delete endpoints is not served because there are no delete_tokens set");
+            warn!("delete endpoint is not served because there are no delete_tokens set");
             Err(error::ErrorNotFound(""))?;
         }
     }
