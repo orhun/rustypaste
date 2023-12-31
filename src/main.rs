@@ -89,7 +89,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     let cloned_config = Data::clone(&config);
     let config_watcher = move |event: Event| {
         if let (EventKind::Modify(ModifyKind::Data(_)), Some(path)) =
-            (event.kind, event.paths.get(0))
+            (event.kind, event.paths.first())
         {
             match Config::parse(path) {
                 Ok(config) => match cloned_config.write() {
