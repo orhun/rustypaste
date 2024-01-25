@@ -24,7 +24,7 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: changes
         with:
           filters: |
