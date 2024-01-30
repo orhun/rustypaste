@@ -1,0 +1,9 @@
+[server]
+address = "127.0.0.1:8000"
+max_content_length = "10MB"
+upload_path = "./upload"
+
+[paste]
+random_url = { type = "alphanumeric", length = "4", suffix_mode = true }
+default_extension = "txt"
+duplicate_files = true

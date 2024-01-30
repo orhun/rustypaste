@@ -52,6 +52,7 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
     - [Paste file from remote URL](#paste-file-from-remote-url)
     - [Cleaning up expired files](#cleaning-up-expired-files)
     - [Delete file from server](#delete-file-from-server)
+    - [Override the filename when using `random_url`](#override-the-filename-when-using-random_url)
   - [Server](#server)
     - [List endpoint](#list-endpoint)
     - [HTML Form](#html-form)
@@ -72,6 +73,7 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
     - random suffix (e.g. `file.MRV5as.tar.gz`)
+    - supports overriding the filename
   - supports expiring links
     - auto-expiration of files (optional)
     - auto-deletion of expired files (optional)
@@ -253,6 +255,14 @@ $ curl -H "Authorization: <auth_token>" -X DELETE "<server_address>/file.txt"
 ```
 
 > The `DELETE` endpoint will not be exposed and will return `404` error if `delete_tokens` are not set.
+
+#### Override the filename when using `random_url`
+
+The generation of a random filename can be overridden by sending a header called `filename`:
+
+```sh
+curl -F "file=@x.txt" -H "filename: <file_name>" "<server_address>"
+```
 
 ### Server
 
