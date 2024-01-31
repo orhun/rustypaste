@@ -21,12 +21,6 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            manifest:
-              - 'Cargo.**'
       - name: Install cargo-binstall
         uses: taiki-e/install-action@cargo-binstall
       - name: Install cargo-shuttle
