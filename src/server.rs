@@ -165,7 +165,7 @@ async fn delete(
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
     match fs::remove_file(path) {
-        Ok(_) => info!("deleted file: {:?}", file),
+        Ok(_) => info!("deleted file: {:?}", file.to_string()),
         Err(e) => {
             error!("cannot delete file: {}", e);
             return Err(error::ErrorInternalServerError("cannot delete file"));
