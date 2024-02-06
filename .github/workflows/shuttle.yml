@@ -6,9 +6,6 @@ on:
       - master
     tags:
       - "v*.*.*"
-  pull_request:
-    branches:
-      - master
   workflow_dispatch:
 
 jobs:
@@ -24,12 +21,6 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-      - uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            manifest:
-              - 'Cargo.**'
       - name: Install cargo-binstall
         uses: taiki-e/install-action@cargo-binstall
       - name: Install cargo-shuttle
@@ -40,11 +31,7 @@ jobs:
       - name: Build
         run: cargo build --locked --verbose
       - name: Deploy
-        if: |
-          ${{ startsWith(github.event.ref, 'refs/tags/v') ||
-            github.event_name == 'workflow_dispatch' ||
-            steps.changes.outputs.manifest == 'true'
-          }}
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' }}
         run: |
           cargo shuttle login --api-key ${{ secrets.SHUTTLE_TOKEN }}
           cargo shuttle project restart
