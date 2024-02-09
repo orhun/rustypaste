@@ -37,7 +37,7 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
     );
     if let Some(glob_path) = glob(&format!("{}.[0-9]*", path.to_string_lossy()))
         .map_err(error::ErrorInternalServerError)?
-        .next()
+        .last()
     {
         let glob_path = glob_path.map_err(error::ErrorInternalServerError)?;
         if let Some(extension) = glob_path
