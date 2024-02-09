@@ -8,7 +8,7 @@ use std::time::Duration;
 pub const EXPIRE: &str = "expire";
 
 /// Custom HTTP header to override filename.
-pub const FILENAME: &str = "filename";
+const FILENAME: &str = "filename";
 
 /// Parses the expiry date from the [`custom HTTP header`](EXPIRE).
 pub fn parse_expiry_date(headers: &HeaderMap, time: Duration) -> Result<Option<u128>, ActixError> {
