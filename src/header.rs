@@ -7,12 +7,24 @@ use std::time::Duration;
 /// Custom HTTP header for expiry dates.
 pub const EXPIRE: &str = "expire";
 
+/// Custom HTTP header to override filename.
+const FILENAME: &str = "filename";
+
 /// Parses the expiry date from the [`custom HTTP header`](EXPIRE).
 pub fn parse_expiry_date(headers: &HeaderMap, time: Duration) -> Result<Option<u128>, ActixError> {
     if let Some(expire_time) = headers.get(EXPIRE).and_then(|v| v.to_str().ok()) {
         let expire_time =
             humantime::parse_duration(expire_time).map_err(error::ErrorInternalServerError)?;
         Ok(time.checked_add(expire_time).map(|t| t.as_millis()))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Parses the filename from the header.
+pub fn parse_header_filename(headers: &HeaderMap) -> Result<Option<String>, ActixError> {
+    if let Some(file_name) = headers.get(FILENAME).and_then(|v| v.to_str().ok()) {
+        Ok(Some(file_name.to_string()))
     } else {
         Ok(None)
     }

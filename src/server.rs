@@ -225,6 +225,7 @@ async fn upload(
     }
     let mut urls: Vec<String> = Vec::new();
     while let Some(item) = payload.next().await {
+        let header_filename = header::parse_header_filename(request.headers())?;
         let mut field = item?;
         let content = ContentDisposition::from(field.content_disposition().clone());
         if let Ok(paste_type) = PasteType::try_from(&content) {
@@ -274,7 +275,12 @@ async fn upload(
                     let config = config
                         .read()
                         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste.store_file(content.get_file_name()?, expiry_date, &config)?
+                    paste.store_file(
+                        content.get_file_name()?,
+                        expiry_date,
+                        header_filename,
+                        &config,
+                    )?
                 }
                 PasteType::RemoteFile => {
                     paste
@@ -846,6 +852,56 @@ mod tests {
         fs::remove_file(file_name)?;
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_file_override_filename() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "test_file.txt";
+        let header_filename = "fn_from_header.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        let response = test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", file_name)
+                .insert_header((
+                    header::HeaderName::from_static("filename"),
+                    header::HeaderValue::from_static("fn_from_header.txt"),
+                ))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(
+            response.into_body(),
+            &format!("http://localhost:8080/{header_filename}\n"),
+        )
+        .await?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{header_filename}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), &timestamp).await?;
+
+        fs::remove_file(header_filename)?;
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{header_filename}"))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());

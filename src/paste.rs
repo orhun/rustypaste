@@ -88,6 +88,7 @@ impl Paste {
     /// - If `file_name` does not have an extension, it is replaced with [`default_extension`].
     /// - If `file_name` is "-", it is replaced with "stdin".
     /// - If [`random_url.enabled`] is `true`, `file_name` is replaced with a pet name or random string.
+    /// - If `header_filename` is set, it will override the filename.
     ///
     /// [`default_extension`]: crate::config::PasteConfig::default_extension
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
@@ -95,6 +96,7 @@ impl Paste {
         &self,
         file_name: &str,
         expiry_date: Option<u128>,
+        header_filename: Option<String>,
         config: &Config,
     ) -> IoResult<String> {
         let file_type = infer::get(&self.data);
@@ -166,6 +168,10 @@ impl Paste {
         }
         path.set_file_name(file_name);
         path.set_extension(extension);
+        if let Some(header_filename) = header_filename {
+            file_name = header_filename;
+            path.set_file_name(file_name);
+        }
         let file_name = path
             .file_name()
             .map(|v| v.to_string_lossy())
@@ -235,7 +241,7 @@ impl Paste {
                     .to_string());
             }
         }
-        Ok(self.store_file(file_name, expiry_date, &config)?)
+        Ok(self.store_file(file_name, expiry_date, None, &config)?)
     }
 
     /// Writes an URL to a file in upload directory.
@@ -295,7 +301,7 @@ mod tests {
             data: vec![65, 66, 67],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("test.txt", None, &config)?;
+        let file_name = paste.store_file("test.txt", None, None, &config)?;
         assert_eq!("ABC", fs::read_to_string(&file_name)?);
         assert_eq!(
             Some("txt"),
@@ -315,7 +321,7 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("foo.tar.gz", None, &config)?;
+        let file_name = paste.store_file("foo.tar.gz", None, None, &config)?;
         assert_eq!("tessus", fs::read_to_string(&file_name)?);
         assert!(file_name.ends_with(".tar.gz"));
         assert!(file_name.starts_with("foo."));
@@ -331,7 +337,7 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file(".foo.tar.gz", None, &config)?;
+        let file_name = paste.store_file(".foo.tar.gz", None, None, &config)?;
         assert_eq!("tessus", fs::read_to_string(&file_name)?);
         assert!(file_name.ends_with(".tar.gz"));
         assert!(file_name.starts_with(".foo."));
@@ -347,7 +353,7 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("foo.tar.gz", None, &config)?;
+        let file_name = paste.store_file("foo.tar.gz", None, None, &config)?;
         assert_eq!("tessus", fs::read_to_string(&file_name)?);
         assert!(file_name.ends_with(".tar.gz"));
         fs::remove_file(file_name)?;
@@ -358,7 +364,7 @@ mod tests {
             data: vec![120, 121, 122],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file(".foo", None, &config)?;
+        let file_name = paste.store_file(".foo", None, None, &config)?;
         assert_eq!("xyz", fs::read_to_string(&file_name)?);
         assert_eq!(".foo.txt", file_name);
         fs::remove_file(file_name)?;
@@ -373,7 +379,7 @@ mod tests {
             data: vec![120, 121, 122],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("random", None, &config)?;
+        let file_name = paste.store_file("random", None, None, &config)?;
         assert_eq!("xyz", fs::read_to_string(&file_name)?);
         assert_eq!(
             Some("bin"),
@@ -381,6 +387,46 @@ mod tests {
                 .extension()
                 .and_then(|v| v.to_str())
         );
+        fs::remove_file(file_name)?;
+
+        config.paste.random_url = Some(RandomURLConfig {
+            length: Some(4),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(true),
+            ..RandomURLConfig::default()
+        });
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file(
+            "filename.txt",
+            None,
+            Some("fn_from_header.txt".to_string()),
+            &config,
+        )?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert_eq!("fn_from_header.txt", file_name);
+        fs::remove_file(file_name)?;
+
+        config.paste.random_url = Some(RandomURLConfig {
+            length: Some(4),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(true),
+            ..RandomURLConfig::default()
+        });
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file(
+            "filename.txt",
+            None,
+            Some("fn_from_header".to_string()),
+            &config,
+        )?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert_eq!("fn_from_header", file_name);
         fs::remove_file(file_name)?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
@@ -393,7 +439,7 @@ mod tests {
             type_: PasteType::Oneshot,
         };
         let expiry_date = util::get_system_time()?.as_millis() + 100;
-        let file_name = paste.store_file("test.file", Some(expiry_date), &config)?;
+        let file_name = paste.store_file("test.file", Some(expiry_date), None, &config)?;
         let file_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
             .join(format!("{file_name}.{expiry_date}"));
