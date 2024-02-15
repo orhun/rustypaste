@@ -4,7 +4,7 @@ use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType};
-use crate::util;
+use crate::util::{self, safe_path_join};
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::http::StatusCode;
@@ -89,12 +89,14 @@ async fn serve(
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let path = config.server.upload_path.join(&*file);
+    let path = safe_path_join(&config.server.upload_path, &*file)
+        .ok_or(error::ErrorInternalServerError("Invalid filename"))?;
     let mut path = util::glob_match_file(path)?;
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
         for type_ in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
-            let alt_path = type_.get_path(&config.server.upload_path).join(&*file);
+            let alt_path = safe_path_join(type_.get_path(&config.server.upload_path), &*file)
+                .ok_or(error::ErrorInternalServerError("Invalid filename"))?;
             let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
                 || path.file_name().and_then(|v| v.to_str()) == Some(&type_.get_dir())
@@ -159,7 +161,8 @@ async fn delete(
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let path = config.server.upload_path.join(&*file);
+    let path = safe_path_join(&config.server.upload_path, &*file)
+        .ok_or(error::ErrorInternalServerError("Invalid filename"))?;
     let path = util::glob_match_file(path)?;
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));

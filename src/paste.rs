@@ -63,7 +63,7 @@ impl PasteType {
         if dir.is_empty() {
             path.to_path_buf()
         } else {
-            path.join(dir)
+            util::safe_path_join(path, Path::new(&dir)).unwrap()
         }
     }
 
@@ -122,10 +122,12 @@ impl Paste {
         if let Some(handle_spaces_config) = config.server.handle_spaces {
             file_name = handle_spaces_config.process_filename(&file_name);
         }
-        let mut path = self
-            .type_
-            .get_path(&config.server.upload_path)
-            .join(&file_name);
+        let mut path =
+            util::safe_path_join(self.type_.get_path(&config.server.upload_path), &file_name)
+                .ok_or(IoError::new(
+                    IoErrorKind::Other,
+                    String::from("invalid filename"),
+                ))?;
         let mut parts: Vec<&str> = file_name.split('.').collect();
         let mut dotfile = false;
         let mut lower_bound = 1;
@@ -261,10 +263,12 @@ impl Paste {
                 file_name = random_text;
             }
         }
-        let mut path = self
-            .type_
-            .get_path(&config.server.upload_path)
-            .join(&file_name);
+        let mut path =
+            util::safe_path_join(self.type_.get_path(&config.server.upload_path), &file_name)
+                .ok_or(IoError::new(
+                    IoErrorKind::Other,
+                    String::from("Invalid filename"),
+                ))?;
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));
         }

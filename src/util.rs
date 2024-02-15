@@ -108,6 +108,21 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
         })?)
 }
 
+/// Joins the paths whilst ensuring the path doesn't drastically change
+pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> Option<PathBuf> {
+    if part.as_ref().to_string_lossy().contains("..") {
+        return None;
+    }
+
+    let new_path = base.as_ref().join(part);
+
+    if !new_path.starts_with(base) {
+        return None;
+    }
+
+    Some(new_path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,5 +184,19 @@ mod tests {
         fs::remove_file(path)?;
         assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
         Ok(())
+    }
+
+    #[test]
+    fn test_safe_join_path() {
+        assert!(safe_path_join("/foo", "bar").is_some());
+        assert_eq!(
+            safe_path_join("/foo/bar", "baz/"),
+            Some("/foo/bar/baz/".into())
+        );
+
+        assert!(safe_path_join("/foo", "/foobar").is_none());
+        assert!(safe_path_join("/foo", "/bar").is_none());
+        assert!(safe_path_join("/foo/bar", "..").is_none());
+        assert!(safe_path_join("/foo/bar", "../").is_none());
     }
 }
