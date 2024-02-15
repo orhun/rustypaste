@@ -5,11 +5,13 @@ use crate::util;
 use actix_web::{error, Error};
 use awc::Client;
 use std::convert::{TryFrom, TryInto};
-use std::fs::{self, File};
-use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
+use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::RwLock;
+use tokio::fs::{self, File};
+use tokio::io::AsyncWriteExt;
+use tokio::task::spawn_blocking;
 use url::Url;
 
 /// Type of the data to store.
@@ -92,7 +94,7 @@ impl Paste {
     ///
     /// [`default_extension`]: crate::config::PasteConfig::default_extension
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
-    pub fn store_file(
+    pub async fn store_file(
         &self,
         file_name: &str,
         expiry_date: Option<u128>,
@@ -179,8 +181,8 @@ impl Paste {
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));
         }
-        let mut buffer = File::create(&path)?;
-        buffer.write_all(&self.data)?;
+        let mut buffer = File::create(&path).await?;
+        buffer.write_all(&self.data).await?;
         Ok(file_name)
     }
 
@@ -229,9 +231,16 @@ impl Paste {
         let bytes_checksum = util::sha256_digest(&*bytes)?;
         self.data = bytes;
         if !config.paste.duplicate_files.unwrap_or(true) && expiry_date.is_none() {
-            if let Some(file) =
-                Directory::try_from(config.server.upload_path.as_path())?.get_file(bytes_checksum)
-            {
+            let upload_path = config.server.upload_path.clone();
+
+            let directory =
+                match spawn_blocking(move || Directory::try_from(upload_path.as_path())).await {
+                    Ok(Ok(d)) => d,
+                    Ok(Err(e)) => return Err(error::ErrorInternalServerError(e)),
+                    Err(e) => return Err(error::ErrorInternalServerError(e)),
+                };
+
+            if let Some(file) = directory.get_file(bytes_checksum) {
                 return Ok(file
                     .path
                     .file_name()
@@ -240,7 +249,9 @@ impl Paste {
                     .to_string());
             }
         }
-        Ok(self.store_file(file_name, expiry_date, None, &config)?)
+        Ok(self
+            .store_file(file_name, expiry_date, None, &config)
+            .await?)
     }
 
     /// Writes an URL to a file in upload directory.
@@ -250,7 +261,7 @@ impl Paste {
     ///
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
     #[allow(deprecated)]
-    pub fn store_url(&self, expiry_date: Option<u128>, config: &Config) -> IoResult<String> {
+    pub async fn store_url(&self, expiry_date: Option<u128>, config: &Config) -> IoResult<String> {
         let data = str::from_utf8(&self.data)
             .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
         let url = Url::parse(data).map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
@@ -265,7 +276,7 @@ impl Paste {
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));
         }
-        fs::write(&path, url.to_string())?;
+        fs::write(&path, url.to_string()).await?;
         Ok(file_name)
     }
 }
@@ -298,15 +309,15 @@ mod tests {
             data: vec![65, 66, 67],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("test.txt", None, None, &config)?;
-        assert_eq!("ABC", fs::read_to_string(&file_name)?);
+        let file_name = paste.store_file("test.txt", None, None, &config).await?;
+        assert_eq!("ABC", fs::read_to_string(&file_name).await?);
         assert_eq!(
             Some("txt"),
             PathBuf::from(&file_name)
                 .extension()
                 .and_then(|v| v.to_str())
         );
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -318,11 +329,11 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("foo.tar.gz", None, None, &config)?;
-        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        let file_name = paste.store_file("foo.tar.gz", None, None, &config).await?;
+        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
         assert!(file_name.ends_with(".tar.gz"));
         assert!(file_name.starts_with("foo."));
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -334,11 +345,11 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file(".foo.tar.gz", None, None, &config)?;
-        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        let file_name = paste.store_file(".foo.tar.gz", None, None, &config).await?;
+        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
         assert!(file_name.ends_with(".tar.gz"));
         assert!(file_name.starts_with(".foo."));
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -350,10 +361,10 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("foo.tar.gz", None, None, &config)?;
-        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        let file_name = paste.store_file("foo.tar.gz", None, None, &config).await?;
+        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
         assert!(file_name.ends_with(".tar.gz"));
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         config.paste.default_extension = String::from("txt");
         config.paste.random_url = None;
@@ -361,10 +372,10 @@ mod tests {
             data: vec![120, 121, 122],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file(".foo", None, None, &config)?;
-        assert_eq!("xyz", fs::read_to_string(&file_name)?);
+        let file_name = paste.store_file(".foo", None, None, &config).await?;
+        assert_eq!("xyz", fs::read_to_string(&file_name).await?);
         assert_eq!(".foo.txt", file_name);
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         config.paste.default_extension = String::from("bin");
         config.paste.random_url = Some(RandomURLConfig {
@@ -376,15 +387,15 @@ mod tests {
             data: vec![120, 121, 122],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file("random", None, None, &config)?;
-        assert_eq!("xyz", fs::read_to_string(&file_name)?);
+        let file_name = paste.store_file("random", None, None, &config).await?;
+        assert_eq!("xyz", fs::read_to_string(&file_name).await?);
         assert_eq!(
             Some("bin"),
             PathBuf::from(&file_name)
                 .extension()
                 .and_then(|v| v.to_str())
         );
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -396,15 +407,17 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file(
-            "filename.txt",
-            None,
-            Some("fn_from_header.txt".to_string()),
-            &config,
-        )?;
-        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        let file_name = paste
+            .store_file(
+                "filename.txt",
+                None,
+                Some("fn_from_header.txt".to_string()),
+                &config,
+            )
+            .await?;
+        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
         assert_eq!("fn_from_header.txt", file_name);
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -416,22 +429,25 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file(
-            "filename.txt",
-            None,
-            Some("fn_from_header".to_string()),
-            &config,
-        )?;
-        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        let file_name = paste
+            .store_file(
+                "filename.txt",
+                None,
+                Some("fn_from_header".to_string()),
+                &config,
+            )
+            .await?;
+        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
         assert_eq!("fn_from_header", file_name);
-        fs::remove_file(file_name)?;
+        fs::remove_file(file_name).await?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
             fs::create_dir_all(
                 paste_type
                     .get_path(&config.server.upload_path)
                     .expect("Bad upload path"),
-            )?;
+            )
+            .await?;
         }
 
         config.paste.random_url = None;
@@ -440,13 +456,15 @@ mod tests {
             type_: PasteType::Oneshot,
         };
         let expiry_date = util::get_system_time()?.as_millis() + 100;
-        let file_name = paste.store_file("test.file", Some(expiry_date), None, &config)?;
+        let file_name = paste
+            .store_file("test.file", Some(expiry_date), None, &config)
+            .await?;
         let file_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
             .expect("Bad upload path")
             .join(format!("{file_name}.{expiry_date}"));
-        assert_eq!("test", fs::read_to_string(&file_path)?);
-        fs::remove_file(file_path)?;
+        assert_eq!("test", fs::read_to_string(&file_path).await?);
+        fs::remove_file(file_path).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             enabled: Some(true),
@@ -457,20 +475,20 @@ mod tests {
             data: url.as_bytes().to_vec(),
             type_: PasteType::Url,
         };
-        let file_name = paste.store_url(None, &config)?;
+        let file_name = paste.store_url(None, &config).await?;
         let file_path = PasteType::Url
             .get_path(&config.server.upload_path)
             .expect("Bad upload path")
             .join(&file_name);
-        assert_eq!(url, fs::read_to_string(&file_path)?);
-        fs::remove_file(file_path)?;
+        assert_eq!(url, fs::read_to_string(&file_path).await?);
+        fs::remove_file(file_path).await?;
 
         let url = String::from("testurl.com");
         let paste = Paste {
             data: url.as_bytes().to_vec(),
             type_: PasteType::Url,
         };
-        assert!(paste.store_url(None, &config).is_err());
+        assert!(paste.store_url(None, &config).await.is_err());
 
         config.server.max_content_length = Byte::from_str("30k").expect("cannot parse byte");
         let url = String::from("https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg");
@@ -494,14 +512,15 @@ mod tests {
             "70ff72a2f7651b5fae3aa9834e03d2a2233c52036610562f7fa04e089e8198ed",
             util::sha256_digest(&*paste.data)?
         );
-        fs::remove_file(file_path)?;
+        fs::remove_file(file_path).await?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
             fs::remove_dir(
                 paste_type
                     .get_path(&config.server.upload_path)
                     .expect("Bad upload path"),
-            )?;
+            )
+            .await?;
         }
 
         Ok(())
