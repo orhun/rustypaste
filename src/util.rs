@@ -2,6 +2,7 @@ use crate::paste::PasteType;
 use actix_web::{error, Error as ActixError};
 use glob::glob;
 use lazy_regex::{lazy_regex, Lazy, Regex};
+use path_clean::PathClean;
 use ring::digest::{Context, SHA256};
 use std::fmt::Write;
 use std::io::{BufReader, Read};
@@ -108,15 +109,12 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
         })?)
 }
 
-/// Joins the paths whilst ensuring the path doesn't drastically change
+/// Joins the paths whilst ensuring the path doesn't drastically change.
+/// `base` is assumed to be a trusted value.
 pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> Option<PathBuf> {
-    if part.as_ref().to_string_lossy().contains("..") {
-        return None;
-    }
+    let new_path = base.as_ref().join(part).clean();
 
-    let new_path = base.as_ref().join(part);
-
-    if !new_path.starts_with(base) {
+    if !new_path.starts_with(base.as_ref().clean()) {
         return None;
     }
 
@@ -188,10 +186,16 @@ mod tests {
 
     #[test]
     fn test_safe_join_path() {
-        assert!(safe_path_join("/foo", "bar").is_some());
+        assert_eq!(safe_path_join("/foo", "bar"), Some("/foo/bar".into()));
+        assert_eq!(safe_path_join("/", "bar"), Some("/bar".into()));
+        assert_eq!(safe_path_join("/", "././bar"), Some("/bar".into()));
         assert_eq!(
             safe_path_join("/foo/bar", "baz/"),
             Some("/foo/bar/baz/".into())
+        );
+        assert_eq!(
+            safe_path_join("/foo/bar/../", "baz"),
+            Some("/foo/baz".into())
         );
 
         assert!(safe_path_join("/foo", "/foobar").is_none());
