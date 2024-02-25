@@ -19,19 +19,16 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
 use std::path::PathBuf;
-use std::sync::RwLock;
 use std::time::Duration;
 use tokio::fs;
+use tokio::sync::RwLock;
 use uts2ts;
 
 /// Shows the landing page.
 #[get("/")]
 #[allow(deprecated)]
 async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
-    let mut config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-        .clone();
+    let mut config = config.read().await.clone();
     let redirect = HttpResponse::Found()
         .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
         .finish();
@@ -86,9 +83,7 @@ async fn serve(
     options: Option<web::Query<ServeOptions>>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let config = config.read().await;
     let mut path =
         util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?).await?;
     let mut paste_type = PasteType::File;
@@ -158,9 +153,7 @@ async fn delete(
     file: web::Path<String>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let config = config.read().await;
     let path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?).await?;
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
@@ -179,9 +172,7 @@ async fn delete(
 #[get("/version")]
 #[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
 async fn version(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let config = config.read().await;
     if !config.server.expose_version.unwrap_or(false) {
         warn!("server is not configured to expose version endpoint");
         Err(error::ErrorNotFound(""))?;
@@ -202,13 +193,8 @@ async fn upload(
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let server_url = match config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-        .server
-        .url
-        .clone()
-    {
+    let config = config.read().await;
+    let server_url = match config.server.url.clone() {
         Some(v) => v,
         None => {
             format!("{}://{}", connection.scheme(), connection.host(),)
@@ -218,8 +204,6 @@ async fn upload(
     let mut expiry_date = header::parse_expiry_date(request.headers(), time)?;
     if expiry_date.is_none() {
         expiry_date = config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
             .paste
             .default_expiry
             .and_then(|v| time.checked_add(v).map(|t| t.as_millis()));
@@ -242,17 +226,9 @@ async fn upload(
                 && paste_type != PasteType::RemoteFile
                 && paste_type != PasteType::OneshotUrl
                 && expiry_date.is_none()
-                && !config
-                    .read()
-                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-                    .paste
-                    .duplicate_files
-                    .unwrap_or(true)
+                && !config.paste.duplicate_files.unwrap_or(true)
             {
                 let bytes_checksum = util::sha256_digest(&*bytes)?;
-                let config = config
-                    .read()
-                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
                 if let Some(file) = Directory::try_from(config.server.upload_path.as_path())
                     .map_err(error::ErrorInternalServerError)?
                     .get_file(bytes_checksum)
@@ -274,9 +250,6 @@ async fn upload(
             };
             let mut file_name = match paste.type_ {
                 PasteType::File | PasteType::Oneshot => {
-                    let config = config
-                        .read()
-                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
                     paste
                         .store_file(
                             content.get_file_name()?,
@@ -292,9 +265,6 @@ async fn upload(
                         .await?
                 }
                 PasteType::Url | PasteType::OneshotUrl => {
-                    let config = config
-                        .read()
-                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
                     paste.store_url(expiry_date, &config).await?
                 }
             };
@@ -306,9 +276,6 @@ async fn upload(
                     .get_appropriate_unit(UnitType::Decimal),
                 host
             );
-            let config = config
-                .read()
-                .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
             if let Some(handle_spaces_config) = config.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
             }
@@ -336,10 +303,7 @@ pub struct ListItem {
 #[get("/list")]
 #[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
 async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-        .clone();
+    let config = config.read().await;
 
     if !config.server.expose_list.unwrap_or(false) {
         warn!("server is not configured to expose list endpoint");
@@ -348,7 +312,7 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
 
     let mut entries: Vec<ListItem> = Vec::new();
 
-    let mut dir_contents = fs::read_dir(config.server.upload_path).await?;
+    let mut dir_contents = fs::read_dir(&config.server.upload_path).await?;
 
     let system_time = util::get_system_time()?;
 

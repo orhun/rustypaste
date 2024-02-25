@@ -8,7 +8,6 @@ use std::convert::{TryFrom, TryInto};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
 use std::path::{Path, PathBuf};
 use std::str;
-use std::sync::RwLock;
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use tokio::task::spawn_blocking;
@@ -198,7 +197,7 @@ impl Paste {
         &mut self,
         expiry_date: Option<u128>,
         client: &Client,
-        config: &RwLock<Config>,
+        config: &Config,
     ) -> Result<String, Error> {
         let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
         let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
@@ -213,8 +212,6 @@ impl Paste {
             .await
             .map_err(error::ErrorInternalServerError)?;
         let payload_limit = config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
             .server
             .max_content_length
             .try_into()
@@ -225,9 +222,6 @@ impl Paste {
             .await
             .map_err(error::ErrorInternalServerError)?
             .to_vec();
-        let config = config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
         let bytes_checksum = util::sha256_digest(&*bytes)?;
         self.data = bytes;
         if !config.paste.duplicate_files.unwrap_or(true) && expiry_date.is_none() {
@@ -250,7 +244,7 @@ impl Paste {
             }
         }
         Ok(self
-            .store_file(file_name, expiry_date, None, &config)
+            .store_file(file_name, expiry_date, None, config)
             .await?)
     }
 
@@ -501,9 +495,7 @@ mod tests {
                 .timeout(Duration::from_secs(30))
                 .finish(),
         );
-        let file_name = paste
-            .store_remote_file(None, &client_data, &RwLock::new(config.clone()))
-            .await?;
+        let file_name = paste.store_remote_file(None, &client_data, &config).await?;
         let file_path = PasteType::RemoteFile
             .get_path(&config.server.upload_path)
             .expect("Bad upload path")
