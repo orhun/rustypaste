@@ -267,7 +267,7 @@ impl Paste {
             util::safe_path_join(self.type_.get_path(&config.server.upload_path), &file_name)
                 .ok_or(IoError::new(
                     IoErrorKind::Other,
-                    String::from("Invalid filename"),
+                    String::from("invalid filename"),
                 ))?;
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));
