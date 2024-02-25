@@ -65,7 +65,8 @@ pub fn get_expired_files(base_path: &Path) -> Vec<PathBuf> {
         PasteType::OneshotUrl,
     ]
     .into_iter()
-    .filter_map(|v| glob(&v.get_path(base_path).join("*.[0-9]*").to_string_lossy()).ok())
+    .filter_map(|v| v.get_path(base_path))
+    .filter_map(|v| glob(&v.join("*.[0-9]*").to_string_lossy()).ok())
     .flat_map(|glob| glob.filter_map(|v| v.ok()).collect::<Vec<PathBuf>>())
     .filter(|path| {
         if let Some(extension) = path

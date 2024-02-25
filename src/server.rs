@@ -95,8 +95,13 @@ async fn serve(
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
         for type_ in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
-            let alt_path = safe_path_join(type_.get_path(&config.server.upload_path), &*file)
-                .ok_or(error::ErrorInternalServerError("Invalid filename"))?;
+            let alt_path = safe_path_join(
+                type_
+                    .get_path(&config.server.upload_path)
+                    .ok_or(error::ErrorInternalServerError("invalid filename"))?,
+                &*file,
+            )
+            .ok_or(error::ErrorInternalServerError("invalid filename"))?;
             let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
                 || path.file_name().and_then(|v| v.to_str()) == Some(&type_.get_dir())
@@ -1090,7 +1095,7 @@ mod tests {
         )
         .await;
 
-        let url_upload_path = PasteType::Url.get_path(&config.server.upload_path);
+        let url_upload_path = PasteType::Url.get_path(&config.server.upload_path).unwrap();
         fs::create_dir_all(&url_upload_path)?;
 
         let response = test::call_service(
@@ -1128,7 +1133,9 @@ mod tests {
         )
         .await;
 
-        let oneshot_upload_path = PasteType::Oneshot.get_path(&config.server.upload_path);
+        let oneshot_upload_path = PasteType::Oneshot
+            .get_path(&config.server.upload_path)
+            .unwrap();
         fs::create_dir_all(&oneshot_upload_path)?;
 
         let file_name = "oneshot.txt";
@@ -1188,7 +1195,9 @@ mod tests {
         )
         .await;
 
-        let url_upload_path = PasteType::OneshotUrl.get_path(&config.server.upload_path);
+        let url_upload_path = PasteType::OneshotUrl
+            .get_path(&config.server.upload_path)
+            .unwrap();
         fs::create_dir_all(&url_upload_path)?;
 
         let response = test::call_service(
