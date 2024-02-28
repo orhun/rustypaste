@@ -1095,7 +1095,9 @@ mod tests {
         )
         .await;
 
-        let url_upload_path = PasteType::Url.get_path(&config.server.upload_path).unwrap();
+        let url_upload_path = PasteType::Url
+            .get_path(&config.server.upload_path)
+            .expect("Bad upload path");
         fs::create_dir_all(&url_upload_path)?;
 
         let response = test::call_service(
@@ -1135,7 +1137,7 @@ mod tests {
 
         let oneshot_upload_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
-            .unwrap();
+            .expect("Bad upload path");
         fs::create_dir_all(&oneshot_upload_path)?;
 
         let file_name = "oneshot.txt";
@@ -1197,7 +1199,7 @@ mod tests {
 
         let url_upload_path = PasteType::OneshotUrl
             .get_path(&config.server.upload_path)
-            .unwrap();
+            .expect("Bad upload path");
         fs::create_dir_all(&url_upload_path)?;
 
         let response = test::call_service(

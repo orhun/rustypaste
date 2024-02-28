@@ -449,7 +449,11 @@ mod tests {
         fs::remove_file(file_name)?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
-            fs::create_dir_all(paste_type.get_path(&config.server.upload_path).unwrap())?;
+            fs::create_dir_all(
+                paste_type
+                    .get_path(&config.server.upload_path)
+                    .expect("Bad upload path"),
+            )?;
         }
 
         config.paste.random_url = None;
@@ -461,7 +465,7 @@ mod tests {
         let file_name = paste.store_file("test.file", Some(expiry_date), None, &config)?;
         let file_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
-            .unwrap()
+            .expect("Bad upload path")
             .join(format!("{file_name}.{expiry_date}"));
         assert_eq!("test", fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
@@ -478,7 +482,7 @@ mod tests {
         let file_name = paste.store_url(None, &config)?;
         let file_path = PasteType::Url
             .get_path(&config.server.upload_path)
-            .unwrap()
+            .expect("Bad upload path")
             .join(&file_name);
         assert_eq!(url, fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
@@ -506,7 +510,7 @@ mod tests {
             .await?;
         let file_path = PasteType::RemoteFile
             .get_path(&config.server.upload_path)
-            .unwrap()
+            .expect("Bad upload path")
             .join(file_name);
         assert_eq!(
             "8c712905b799905357b8202d0cb7a244cefeeccf7aa5eb79896645ac50158ffa",
@@ -515,7 +519,11 @@ mod tests {
         fs::remove_file(file_path)?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
-            fs::remove_dir(paste_type.get_path(&config.server.upload_path).unwrap())?;
+            fs::remove_dir(
+                paste_type
+                    .get_path(&config.server.upload_path)
+                    .expect("Bad upload path"),
+            )?;
         }
 
         Ok(())
