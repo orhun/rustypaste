@@ -13,7 +13,7 @@ use rustypaste::util;
 use rustypaste::CONFIG_ENV;
 use std::env;
 use std::fs;
-use std::io::Result as IoResult;
+use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, RwLock};
 use std::thread;
@@ -71,11 +71,13 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     // Create necessary directories.
     fs::create_dir_all(&server_config.upload_path)?;
     for paste_type in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
-        fs::create_dir_all(
-            paste_type
-                .get_path(&server_config.upload_path)
-                .expect("failed to get path for paste type"),
-        )?;
+        let _ = paste_type
+            .get_path(&server_config.upload_path)
+            .ok_or(IoError::new(
+                IoErrorKind::Other,
+                String::from("Invalid upload path"),
+            ))
+            .map(fs::create_dir_all)?;
     }
 
     // Set up a watcher for the configuration file changes.
