@@ -61,6 +61,13 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         }
         None => config_folder.join("config.toml"),
     };
+    if !config_path.exists() {
+        error!(
+            "{} is not found, please provide a configuration file.",
+            config_path.display()
+        );
+        std::process::exit(1);
+    }
     let config = Config::parse(&config_path).expect("failed to parse config");
     trace!("{:#?}", config);
     config.warn_deprecation();
