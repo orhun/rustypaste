@@ -58,10 +58,10 @@ impl PasteType {
     }
 
     /// Returns the given path with [`directory`](Self::get_dir) adjoined.
-    pub fn get_path(&self, path: &Path) -> Option<PathBuf> {
+    pub fn get_path(&self, path: &Path) -> IoResult<PathBuf> {
         let dir = self.get_dir();
         if dir.is_empty() {
-            Some(path.to_path_buf())
+            Ok(path.to_path_buf())
         } else {
             util::safe_path_join(path, Path::new(&dir))
         }
@@ -123,19 +123,8 @@ impl Paste {
             file_name = handle_spaces_config.process_filename(&file_name);
         }
 
-        let mut path = util::safe_path_join(
-            self.type_
-                .get_path(&config.server.upload_path)
-                .ok_or(IoError::new(
-                    IoErrorKind::Other,
-                    String::from("invalid filename"),
-                ))?,
-            &file_name,
-        )
-        .ok_or(IoError::new(
-            IoErrorKind::Other,
-            String::from("invalid filename"),
-        ))?;
+        let mut path =
+            util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
         let mut parts: Vec<&str> = file_name.split('.').collect();
         let mut dotfile = false;
         let mut lower_bound = 1;
@@ -271,19 +260,8 @@ impl Paste {
                 file_name = random_text;
             }
         }
-        let mut path = util::safe_path_join(
-            self.type_
-                .get_path(&config.server.upload_path)
-                .ok_or(IoError::new(
-                    IoErrorKind::Other,
-                    String::from("invalid filename"),
-                ))?,
-            &file_name,
-        )
-        .ok_or(IoError::new(
-            IoErrorKind::Other,
-            String::from("invalid filename"),
-        ))?;
+        let mut path =
+            util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));
         }

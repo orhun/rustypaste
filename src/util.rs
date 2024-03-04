@@ -65,7 +65,7 @@ pub fn get_expired_files(base_path: &Path) -> Vec<PathBuf> {
         PasteType::OneshotUrl,
     ]
     .into_iter()
-    .filter_map(|v| v.get_path(base_path))
+    .filter_map(|v| v.get_path(base_path).ok())
     .filter_map(|v| glob(&v.join("*.[0-9]*").to_string_lossy()).ok())
     .flat_map(|glob| glob.filter_map(|v| v.ok()).collect::<Vec<PathBuf>>())
     .filter(|path| {
@@ -112,14 +112,23 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
 
 /// Joins the paths whilst ensuring the path doesn't drastically change.
 /// `base` is assumed to be a trusted value.
-pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> Option<PathBuf> {
+pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> IoResult<PathBuf> {
     let new_path = base.as_ref().join(part).clean();
 
-    if !new_path.starts_with(base.as_ref().clean()) {
-        return None;
+    let cleaned_base = base.as_ref().clean();
+
+    if !new_path.starts_with(cleaned_base) {
+        return Err(IoError::new(
+            IoErrorKind::InvalidData,
+            format!(
+                "{} is outside of {}",
+                new_path.display(),
+                base.as_ref().display()
+            ),
+        ));
     }
 
-    Some(new_path)
+    Ok(new_path)
 }
 
 #[cfg(test)]
@@ -187,21 +196,21 @@ mod tests {
 
     #[test]
     fn test_safe_join_path() {
-        assert_eq!(safe_path_join("/foo", "bar"), Some("/foo/bar".into()));
-        assert_eq!(safe_path_join("/", "bar"), Some("/bar".into()));
-        assert_eq!(safe_path_join("/", "././bar"), Some("/bar".into()));
+        assert_eq!(safe_path_join("/foo", "bar").ok(), Some("/foo/bar".into()));
+        assert_eq!(safe_path_join("/", "bar").ok(), Some("/bar".into()));
+        assert_eq!(safe_path_join("/", "././bar").ok(), Some("/bar".into()));
         assert_eq!(
-            safe_path_join("/foo/bar", "baz/"),
+            safe_path_join("/foo/bar", "baz/").ok(),
             Some("/foo/bar/baz/".into())
         );
         assert_eq!(
-            safe_path_join("/foo/bar/../", "baz"),
+            safe_path_join("/foo/bar/../", "baz").ok(),
             Some("/foo/baz".into())
         );
 
-        assert!(safe_path_join("/foo", "/foobar").is_none());
-        assert!(safe_path_join("/foo", "/bar").is_none());
-        assert!(safe_path_join("/foo/bar", "..").is_none());
-        assert!(safe_path_join("/foo/bar", "../").is_none());
+        assert!(safe_path_join("/foo", "/foobar").is_err());
+        assert!(safe_path_join("/foo", "/bar").is_err());
+        assert!(safe_path_join("/foo/bar", "..").is_err());
+        assert!(safe_path_join("/foo/bar", "../").is_err());
     }
 }
