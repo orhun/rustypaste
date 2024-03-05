@@ -120,13 +120,20 @@ pub struct PasteConfig {
     pub delete_expired_files: Option<CleanupConfig>,
 }
 
+/// Default interval for cleanup
+pub const DEFAULT_CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
+
+const fn get_default_cleanup_interval() -> Duration {
+    DEFAULT_CLEANUP_INTERVAL
+}
+
 /// Cleanup configuration.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct CleanupConfig {
     /// Enable cleaning up.
     pub enabled: bool,
     /// Interval between clean-ups.
-    #[serde(default, with = "humantime_serde")]
+    #[serde(default = "get_default_cleanup_interval", with = "humantime_serde")]
     pub interval: Duration,
 }
 
