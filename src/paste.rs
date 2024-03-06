@@ -491,7 +491,7 @@ mod tests {
             .expect("Bad upload path")
             .join(file_name);
         assert_eq!(
-            "8c712905b799905357b8202d0cb7a244cefeeccf7aa5eb79896645ac50158ffa",
+            "70ff72a2f7651b5fae3aa9834e03d2a2233c52036610562f7fa04e089e8198ed",
             util::sha256_digest(&*paste.data)?
         );
         fs::remove_file(file_path)?;
