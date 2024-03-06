@@ -58,12 +58,12 @@ impl PasteType {
     }
 
     /// Returns the given path with [`directory`](Self::get_dir) adjoined.
-    pub fn get_path(&self, path: &Path) -> PathBuf {
+    pub fn get_path(&self, path: &Path) -> IoResult<PathBuf> {
         let dir = self.get_dir();
         if dir.is_empty() {
-            path.to_path_buf()
+            Ok(path.to_path_buf())
         } else {
-            path.join(dir)
+            util::safe_path_join(path, Path::new(&dir))
         }
     }
 
@@ -122,10 +122,9 @@ impl Paste {
         if let Some(handle_spaces_config) = config.server.handle_spaces {
             file_name = handle_spaces_config.process_filename(&file_name);
         }
-        let mut path = self
-            .type_
-            .get_path(&config.server.upload_path)
-            .join(&file_name);
+
+        let mut path =
+            util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
         let mut parts: Vec<&str> = file_name.split('.').collect();
         let mut dotfile = false;
         let mut lower_bound = 1;
@@ -261,10 +260,8 @@ impl Paste {
                 file_name = random_text;
             }
         }
-        let mut path = self
-            .type_
-            .get_path(&config.server.upload_path)
-            .join(&file_name);
+        let mut path =
+            util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));
         }
@@ -430,7 +427,11 @@ mod tests {
         fs::remove_file(file_name)?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
-            fs::create_dir_all(paste_type.get_path(&config.server.upload_path))?;
+            fs::create_dir_all(
+                paste_type
+                    .get_path(&config.server.upload_path)
+                    .expect("Bad upload path"),
+            )?;
         }
 
         config.paste.random_url = None;
@@ -442,6 +443,7 @@ mod tests {
         let file_name = paste.store_file("test.file", Some(expiry_date), None, &config)?;
         let file_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
+            .expect("Bad upload path")
             .join(format!("{file_name}.{expiry_date}"));
         assert_eq!("test", fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
@@ -458,6 +460,7 @@ mod tests {
         let file_name = paste.store_url(None, &config)?;
         let file_path = PasteType::Url
             .get_path(&config.server.upload_path)
+            .expect("Bad upload path")
             .join(&file_name);
         assert_eq!(url, fs::read_to_string(&file_path)?);
         fs::remove_file(file_path)?;
@@ -485,6 +488,7 @@ mod tests {
             .await?;
         let file_path = PasteType::RemoteFile
             .get_path(&config.server.upload_path)
+            .expect("Bad upload path")
             .join(file_name);
         assert_eq!(
             "8c712905b799905357b8202d0cb7a244cefeeccf7aa5eb79896645ac50158ffa",
@@ -493,7 +497,11 @@ mod tests {
         fs::remove_file(file_path)?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
-            fs::remove_dir(paste_type.get_path(&config.server.upload_path))?;
+            fs::remove_dir(
+                paste_type
+                    .get_path(&config.server.upload_path)
+                    .expect("Bad upload path"),
+            )?;
         }
 
         Ok(())

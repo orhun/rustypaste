@@ -78,7 +78,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     // Create necessary directories.
     fs::create_dir_all(&server_config.upload_path)?;
     for paste_type in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
-        fs::create_dir_all(paste_type.get_path(&server_config.upload_path))?;
+        fs::create_dir_all(paste_type.get_path(&server_config.upload_path)?)?;
     }
 
     // Set up a watcher for the configuration file changes.
