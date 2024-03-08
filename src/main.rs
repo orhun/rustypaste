@@ -98,6 +98,8 @@ async fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, Hotwatch
         if let (EventKind::Modify(ModifyKind::Data(_)), Some(path)) =
             (event.kind, event.paths.first())
         {
+            info!("Reloading configuration");
+
             match Config::parse(path) {
                 Ok(new_config) => {
                     let mut locked_config = config_watcher_config.blocking_write();
@@ -118,31 +120,28 @@ async fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, Hotwatch
 
     // Create a thread for cleaning up expired files.
     let expired_files_config = config_lock.clone();
+    let mut cleanup_interval = DEFAULT_CLEANUP_INTERVAL;
     thread::spawn(move || loop {
-        let upload_path = expired_files_config
-            .blocking_read()
-            .server
-            .upload_path
-            .clone();
-        if let Some(ref cleanup_config) = expired_files_config
-            .blocking_read()
-            .paste
-            .delete_expired_files
+        // Additional context block to ensure the config lock is dropped
         {
-            if cleanup_config.enabled {
-                debug!("Running cleanup...");
-                for file in util::get_expired_files(&upload_path) {
-                    match fs::remove_file(&file) {
-                        Ok(()) => info!("Removed expired file: {:?}", file),
-                        Err(e) => error!("Cannot remove expired file: {}", e),
+            let locked_config = expired_files_config.blocking_read();
+            let upload_path = locked_config.server.upload_path.clone();
+
+            if let Some(ref cleanup_config) = locked_config.paste.delete_expired_files {
+                if cleanup_config.enabled {
+                    debug!("Running cleanup...");
+                    for file in util::get_expired_files(&upload_path) {
+                        match fs::remove_file(&file) {
+                            Ok(()) => info!("Removed expired file: {:?}", file),
+                            Err(e) => error!("Cannot remove expired file: {}", e),
+                        }
                     }
+                    cleanup_interval = cleanup_config.interval;
                 }
-                thread::sleep(cleanup_config.interval);
             }
-        } else {
-            // Sleep for a bit when not configured to avoid a hot loop
-            thread::sleep(DEFAULT_CLEANUP_INTERVAL);
         }
+
+        thread::sleep(cleanup_interval);
     });
 
     Ok((config_lock, hotwatch))
@@ -154,7 +153,8 @@ async fn main() -> IoResult<()> {
     // Set up the application.
     let (config, _hotwatch) = setup(&PathBuf::new()).await?;
 
-    let server_config = config.read().await.server.clone();
+    // Extra context block ensures the lock is stopped
+    let server_config = { config.read().await.server.clone() };
 
     // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
@@ -193,7 +193,8 @@ async fn actix_web() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send +
     // Set up the application.
     let (config, _hotwatch) = setup(Path::new("shuttle"))?;
 
-    let server_config = config.read().await.server.clone();
+    // Extra context block ensures the lock is stopped
+    let server_config = { config.read().await.server.clone() };
 
     // Create the service.
     let service_config = move |cfg: &mut ServiceConfig| {

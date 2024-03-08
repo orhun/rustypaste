@@ -121,7 +121,7 @@ pub struct PasteConfig {
 }
 
 /// Default interval for cleanup
-pub const DEFAULT_CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
+pub const DEFAULT_CLEANUP_INTERVAL: Duration = Duration::from_secs(60);
 
 const fn get_default_cleanup_interval() -> Duration {
     DEFAULT_CLEANUP_INTERVAL
