@@ -98,14 +98,13 @@ impl Paste {
         expiry_date: Option<u128>,
         header_filename: Option<String>,
         config: &Config,
-    ) -> IoResult<String> {
+    ) -> Result<String, Error> {
         let file_type = infer::get(&self.data);
         if let Some(file_type) = file_type {
             for mime_type in &config.paste.mime_blacklist {
                 if mime_type == file_type.mime_type() {
-                    return Err(IoError::new(
-                        IoErrorKind::Other,
-                        String::from("this file type is not permitted"),
+                    return Err(error::ErrorUnsupportedMediaType(
+                        "this file type is not permitted",
                     ));
                 }
             }
@@ -179,10 +178,7 @@ impl Paste {
         let file_path = util::glob_match_file(path.clone())
             .map_err(|_| IoError::new(IoErrorKind::Other, String::from("path is not valid")))?;
         if file_path.is_file() && file_path.exists() {
-            return Err(IoError::new(
-                IoErrorKind::AlreadyExists,
-                String::from("file already exists\n"),
-            ));
+            return Err(error::ErrorConflict("file already exists\n"));
         }
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));

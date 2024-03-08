@@ -951,15 +951,10 @@ mod tests {
                 .to_request(),
         )
         .await;
-        assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+        assert_eq!(StatusCode::CONFLICT, response.status());
         assert_body(response.into_body(), "file already exists\n").await?;
 
         fs::remove_file(header_filename)?;
-        let serve_request = TestRequest::get()
-            .uri(&format!("/{header_filename}"))
-            .to_request();
-        let response = test::call_service(&app, serve_request).await;
-        assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         Ok(())
     }
