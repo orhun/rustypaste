@@ -244,7 +244,7 @@ impl Paste {
                     .to_string());
             }
         }
-        Ok(self.store_file(file_name, expiry_date, None, &config)?)
+        self.store_file(file_name, expiry_date, None, &config)
     }
 
     /// Writes an URL to a file in upload directory.
