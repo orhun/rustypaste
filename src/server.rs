@@ -908,6 +908,63 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn test_upload_same_filename() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "test_file.txt";
+        let header_filename = "fn_from_header.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        let response = test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", file_name)
+                .insert_header((
+                    header::HeaderName::from_static("filename"),
+                    header::HeaderValue::from_static("fn_from_header.txt"),
+                ))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(
+            response.into_body(),
+            &format!("http://localhost:8080/{header_filename}\n"),
+        )
+        .await?;
+
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        let response = test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", file_name)
+                .insert_header((
+                    header::HeaderName::from_static("filename"),
+                    header::HeaderValue::from_static("fn_from_header.txt"),
+                ))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+        assert_body(response.into_body(), "file already exists\n").await?;
+
+        fs::remove_file(header_filename)?;
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{header_filename}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
     #[allow(deprecated)]
     async fn test_upload_duplicate_file() -> Result<(), Error> {
         let test_upload_dir = "test_upload";
