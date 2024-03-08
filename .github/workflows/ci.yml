@@ -30,15 +30,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      - name: Setup cargo-tarpaulin
-        uses: taiki-e/install-action@cargo-tarpaulin
-      - name: Run tests
-        run: cargo tarpaulin --out xml --verbose -- --test-threads 1
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Generate code coverage
+        run: cargo llvm-cov --lcov --output-path lcov.info -- --test-threads 1
+        env:
+          OUT_DIR: target
       - name: Upload reports to codecov
         uses: codecov/codecov-action@v3
         with:
           name: code-coverage-report
-          file: cobertura.xml
+          file: lcov.info
           flags: unit-tests
           fail_ci_if_error: true
           verbose: true
