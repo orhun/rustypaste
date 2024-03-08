@@ -894,7 +894,6 @@ mod tests {
         let mut config = Config::default();
         config.server.upload_path = PathBuf::from(&test_upload_dir);
         config.paste.duplicate_files = Some(false);
-        config.paste.default_expiry = None;
         config.paste.random_url = Some(RandomURLConfig {
             enabled: Some(true),
             type_: RandomURLType::Alphanumeric,
