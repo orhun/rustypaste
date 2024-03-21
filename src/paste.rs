@@ -292,7 +292,7 @@ mod tests {
 
     #[actix_rt::test]
     #[allow(deprecated)]
-    async fn test_paste_data() -> Result<(), Error> {
+    async fn test_paste() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;
         config.paste.random_url = Some(RandomURLConfig {
@@ -316,6 +316,14 @@ mod tests {
         );
         fs::remove_file(file_name).await?;
 
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    #[allow(deprecated)]
+    async fn test_paste_random() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
@@ -363,6 +371,14 @@ mod tests {
         assert!(file_name.ends_with(".tar.gz"));
         fs::remove_file(file_name).await?;
 
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    #[allow(deprecated)]
+    async fn test_paste_with_extension() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
         config.paste.default_extension = String::from("txt");
         config.paste.random_url = None;
         let paste = Paste {
@@ -394,6 +410,14 @@ mod tests {
         );
         fs::remove_file(file_name).await?;
 
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    #[allow(deprecated)]
+    async fn test_paste_filename_from_header() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
@@ -438,16 +462,23 @@ mod tests {
         assert_eq!("fn_from_header", file_name);
         fs::remove_file(file_name).await?;
 
-        for paste_type in &[PasteType::Url, PasteType::Oneshot] {
-            fs::create_dir_all(
-                paste_type
-                    .get_path(&config.server.upload_path)
-                    .expect("Bad upload path"),
-            )
-            .await?;
-        }
+        Ok(())
+    }
 
+    #[actix_rt::test]
+    #[allow(deprecated)]
+    async fn test_paste_oneshot() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
         config.paste.random_url = None;
+
+        fs::create_dir_all(
+            PasteType::Oneshot
+                .get_path(&config.server.upload_path)
+                .expect("Bad upload path"),
+        )
+        .await?;
+
         let paste = Paste {
             data: vec![116, 101, 115, 116],
             type_: PasteType::Oneshot,
@@ -463,10 +494,26 @@ mod tests {
         assert_eq!("test", fs::read_to_string(&file_path).await?);
         fs::remove_file(file_path).await?;
 
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    #[allow(deprecated)]
+    async fn test_paste_url() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
         config.paste.random_url = Some(RandomURLConfig {
             enabled: Some(true),
             ..RandomURLConfig::default()
         });
+
+        fs::create_dir_all(
+            PasteType::Url
+                .get_path(&config.server.upload_path)
+                .expect("Bad upload path"),
+        )
+        .await?;
+
         let url = String::from("https://orhun.dev/");
         let paste = Paste {
             data: url.as_bytes().to_vec(),
@@ -487,7 +534,23 @@ mod tests {
         };
         assert!(paste.store_url(None, &config).await.is_err());
 
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    #[allow(deprecated)]
+    async fn test_paste_remote_url() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
         config.server.max_content_length = Byte::from_str("30k").expect("cannot parse byte");
+
+        fs::create_dir_all(
+            PasteType::Url
+                .get_path(&config.server.upload_path)
+                .expect("Bad upload path"),
+        )
+        .await?;
+
         let url = String::from("https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg");
         let mut paste = Paste {
             data: url.as_bytes().to_vec(),
