@@ -65,6 +65,7 @@ default-features = false
 
 [dev-dependencies]
 actix-rt = "2.9.0"
+tempfile = "3.10.1"
 
 [profile.dev]
 opt-level = 0

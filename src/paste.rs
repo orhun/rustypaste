@@ -286,15 +286,16 @@ mod tests {
     use actix_web::web::Data;
     use awc::ClientBuilder;
     use byte_unit::Byte;
-    use std::env;
     use std::str::FromStr;
     use std::time::Duration;
+    use tempfile::tempdir;
 
     #[actix_rt::test]
     #[allow(deprecated)]
     async fn test_paste() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
         config.paste.random_url = Some(RandomURLConfig {
             enabled: Some(true),
             words: Some(3),
@@ -307,14 +308,9 @@ mod tests {
             type_: PasteType::File,
         };
         let file_name = paste.store_file("test.txt", None, None, &config).await?;
-        assert_eq!("ABC", fs::read_to_string(&file_name).await?);
-        assert_eq!(
-            Some("txt"),
-            PathBuf::from(&file_name)
-                .extension()
-                .and_then(|v| v.to_str())
-        );
-        fs::remove_file(file_name).await?;
+        let file_path = temp_upload_path.path().join(file_name);
+        assert_eq!("ABC", fs::read_to_string(&file_path).await?);
+        assert_eq!(Some("txt"), file_path.extension().and_then(|v| v.to_str()));
 
         Ok(())
     }
@@ -322,8 +318,9 @@ mod tests {
     #[actix_rt::test]
     #[allow(deprecated)]
     async fn test_paste_random() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
@@ -335,10 +332,10 @@ mod tests {
             type_: PasteType::File,
         };
         let file_name = paste.store_file("foo.tar.gz", None, None, &config).await?;
-        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
+        let file_path = temp_upload_path.path().join(&file_name);
+        assert_eq!("tessus", fs::read_to_string(&file_path).await?);
         assert!(file_name.ends_with(".tar.gz"));
         assert!(file_name.starts_with("foo."));
-        fs::remove_file(file_name).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -351,10 +348,10 @@ mod tests {
             type_: PasteType::File,
         };
         let file_name = paste.store_file(".foo.tar.gz", None, None, &config).await?;
-        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
+        let file_path = temp_upload_path.path().join(&file_name);
+        assert_eq!("tessus", fs::read_to_string(&file_path).await?);
         assert!(file_name.ends_with(".tar.gz"));
         assert!(file_name.starts_with(".foo."));
-        fs::remove_file(file_name).await?;
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -367,9 +364,9 @@ mod tests {
             type_: PasteType::File,
         };
         let file_name = paste.store_file("foo.tar.gz", None, None, &config).await?;
-        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
+        let file_path = temp_upload_path.path().join(&file_name);
+        assert_eq!("tessus", fs::read_to_string(&file_path).await?);
         assert!(file_name.ends_with(".tar.gz"));
-        fs::remove_file(file_name).await?;
 
         Ok(())
     }
@@ -377,8 +374,9 @@ mod tests {
     #[actix_rt::test]
     #[allow(deprecated)]
     async fn test_paste_with_extension() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
         config.paste.default_extension = String::from("txt");
         config.paste.random_url = None;
         let paste = Paste {
@@ -386,9 +384,9 @@ mod tests {
             type_: PasteType::File,
         };
         let file_name = paste.store_file(".foo", None, None, &config).await?;
-        assert_eq!("xyz", fs::read_to_string(&file_name).await?);
+        let file_path = temp_upload_path.path().join(&file_name);
+        assert_eq!("xyz", fs::read_to_string(&file_path).await?);
         assert_eq!(".foo.txt", file_name);
-        fs::remove_file(file_name).await?;
 
         config.paste.default_extension = String::from("bin");
         config.paste.random_url = Some(RandomURLConfig {
@@ -401,14 +399,9 @@ mod tests {
             type_: PasteType::File,
         };
         let file_name = paste.store_file("random", None, None, &config).await?;
-        assert_eq!("xyz", fs::read_to_string(&file_name).await?);
-        assert_eq!(
-            Some("bin"),
-            PathBuf::from(&file_name)
-                .extension()
-                .and_then(|v| v.to_str())
-        );
-        fs::remove_file(file_name).await?;
+        let file_path = temp_upload_path.path().join(&file_name);
+        assert_eq!(Some("bin"), file_path.extension().and_then(|v| v.to_str()));
+        assert_eq!("xyz", fs::read_to_string(&file_path).await?);
 
         Ok(())
     }
@@ -416,8 +409,9 @@ mod tests {
     #[actix_rt::test]
     #[allow(deprecated)]
     async fn test_paste_filename_from_header() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
             type_: RandomURLType::Alphanumeric,
@@ -436,9 +430,9 @@ mod tests {
                 &config,
             )
             .await?;
-        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
         assert_eq!("fn_from_header.txt", file_name);
-        fs::remove_file(file_name).await?;
+        let file_path = temp_upload_path.path().join(&file_name);
+        assert_eq!("tessus", fs::read_to_string(&file_path).await?);
 
         config.paste.random_url = Some(RandomURLConfig {
             length: Some(4),
@@ -458,9 +452,9 @@ mod tests {
                 &config,
             )
             .await?;
-        assert_eq!("tessus", fs::read_to_string(&file_name).await?);
+        let file_path = temp_upload_path.path().join(&file_name);
+        assert_eq!("tessus", fs::read_to_string(&file_path).await?);
         assert_eq!("fn_from_header", file_name);
-        fs::remove_file(file_name).await?;
 
         Ok(())
     }
@@ -469,7 +463,7 @@ mod tests {
     #[allow(deprecated)]
     async fn test_paste_oneshot() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
         config.paste.random_url = None;
 
         fs::create_dir_all(
@@ -501,7 +495,7 @@ mod tests {
     #[allow(deprecated)]
     async fn test_paste_url() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
         config.paste.random_url = Some(RandomURLConfig {
             enabled: Some(true),
             ..RandomURLConfig::default()
@@ -541,7 +535,7 @@ mod tests {
     #[allow(deprecated)]
     async fn test_paste_remote_url() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
         config.server.max_content_length = Byte::from_str("30k").expect("cannot parse byte");
 
         fs::create_dir_all(
@@ -561,25 +555,12 @@ mod tests {
                 .timeout(Duration::from_secs(30))
                 .finish(),
         );
-        let file_name = paste.store_remote_file(None, &client_data, &config).await?;
-        let file_path = PasteType::RemoteFile
-            .get_path(&config.server.upload_path)
-            .expect("Bad upload path")
-            .join(file_name);
+        let _ = paste.store_remote_file(None, &client_data, &config).await?;
+
         assert_eq!(
             "70ff72a2f7651b5fae3aa9834e03d2a2233c52036610562f7fa04e089e8198ed",
             util::sha256_digest(&*paste.data)?
         );
-        fs::remove_file(file_path).await?;
-
-        for paste_type in &[PasteType::Url, PasteType::Oneshot] {
-            fs::remove_dir(
-                paste_type
-                    .get_path(&config.server.upload_path)
-                    .expect("Bad upload path"),
-            )
-            .await?;
-        }
 
         Ok(())
     }

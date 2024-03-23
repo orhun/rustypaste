@@ -398,6 +398,7 @@ mod tests {
     use std::str;
     use std::thread;
     use std::time::Duration;
+    use tempfile::tempdir;
 
     fn get_multipart_request(data: &str, name: &str, filename: &str) -> TestRequest {
         let multipart_data = format!(
@@ -730,9 +731,10 @@ mod tests {
 
     #[actix_web::test]
     async fn test_delete_file() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
         config.server.delete_tokens = Some(["test".to_string()].into());
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -759,8 +761,7 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), "file deleted\n").await?;
 
-        let path = PathBuf::from(file_name);
-        assert!(!path.exists());
+        assert!(!temp_upload_path.path().join(file_name).exists());
 
         Ok(())
     }
@@ -768,7 +769,7 @@ mod tests {
     #[actix_web::test]
     async fn test_delete_file_without_token_in_config() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -793,8 +794,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_file() -> Result<(), Error> {
+        let test_delete_file = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = test_delete_file.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -825,7 +827,7 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), &timestamp).await?;
 
-        fs::remove_file(file_name).await?;
+        fs::remove_file(test_delete_file.path().join(file_name)).await?;
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
             .to_request();
@@ -837,8 +839,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_file_override_filename() -> Result<(), Error> {
+        let test_delete_file = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = test_delete_file.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -875,7 +878,7 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), &timestamp).await?;
 
-        fs::remove_file(header_filename).await?;
+        fs::remove_file(test_delete_file.path().join(header_filename)).await?;
         let serve_request = TestRequest::get()
             .uri(&format!("/{header_filename}"))
             .to_request();
@@ -887,8 +890,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_same_filename() -> Result<(), Error> {
+        let temp_upload_dir = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_dir.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -932,7 +936,7 @@ mod tests {
         assert_eq!(StatusCode::CONFLICT, response.status());
         assert_body(response.into_body(), "file already exists\n").await?;
 
-        fs::remove_file(header_filename).await?;
+        fs::remove_file(temp_upload_dir.path().join(header_filename)).await?;
 
         Ok(())
     }
@@ -987,8 +991,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_expiring_file() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -1032,9 +1037,14 @@ mod tests {
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
-        if let Some(glob_path) = glob(&format!("{file_name}.[0-9]*"))
-            .map_err(error::ErrorInternalServerError)?
-            .next()
+        if let Some(glob_path) = glob(
+            &temp_upload_path
+                .path()
+                .join(format!("{file_name}.[0-9]*"))
+                .to_string_lossy(),
+        )
+        .map_err(error::ErrorInternalServerError)?
+        .next()
         {
             fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?).await?;
         }
@@ -1044,8 +1054,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_remote_file() -> Result<(), Error> {
+        let temp_upload_dir = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_dir.path().to_path_buf();
         config.server.max_content_length = Byte::from_u128(30000).unwrap_or_default();
 
         let app = test::init_service(
@@ -1091,7 +1102,7 @@ mod tests {
             util::sha256_digest(&*body_bytes)?
         );
 
-        fs::remove_file(file_name).await?;
+        fs::remove_file(temp_upload_dir.path().join(file_name)).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
@@ -1105,7 +1116,7 @@ mod tests {
     #[actix_web::test]
     async fn test_upload_url() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -1145,7 +1156,7 @@ mod tests {
     #[actix_web::test]
     async fn test_upload_oneshot() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -1205,7 +1216,7 @@ mod tests {
     #[actix_web::test]
     async fn test_upload_oneshot_url() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let oneshot_url_suffix = "oneshot_url";
 
