@@ -143,6 +143,8 @@ mod tests {
     use std::env;
     use std::fs;
     use std::thread;
+    use tempfile::tempdir;
+
     #[test]
     fn test_system_time() -> Result<(), ActixError> {
         let system_time = get_system_time()?.as_millis();
@@ -185,18 +187,16 @@ mod tests {
 
     #[test]
     fn test_get_expired_files() -> Result<(), ActixError> {
-        let current_dir = env::current_dir()?;
+        let test_temp_dir = tempdir()?;
+        let test_dir = test_temp_dir.path();
         let expiration_time = get_system_time()?.as_millis() + 50;
-        let path = PathBuf::from(format!("expired.file2.{expiration_time}"));
+        let path = test_dir.join(format!("expired.file2.{expiration_time}"));
         fs::write(&path, String::new())?;
-        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
+        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(test_dir));
         thread::sleep(Duration::from_millis(75));
-        assert_eq!(
-            vec![current_dir.join(&path)],
-            get_expired_files(&current_dir)
-        );
-        fs::remove_file(path)?;
-        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
+        assert_eq!(vec![path.clone()], get_expired_files(test_dir));
+        fs::remove_file(&path)?;
+        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(test_dir));
         Ok(())
     }
 
