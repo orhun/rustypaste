@@ -99,6 +99,13 @@ Here you can read the blog post about how it is deployed on Shuttle: [https://bl
 
 ## Installation
 
+<details>
+  <summary>Packaging status</summary>
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/rustypaste.svg)](https://repology.org/project/rustypaste/versions)
+
+</details>
+
 ### From crates.io
 
 ```sh
