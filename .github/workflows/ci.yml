@@ -37,7 +37,7 @@ jobs:
         env:
           OUT_DIR: target
       - name: Upload reports to codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           name: code-coverage-report
           file: lcov.info
