@@ -5,7 +5,7 @@ use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
 use hotwatch::notify::event::ModifyKind;
 use hotwatch::{Event, EventKind, Hotwatch};
-use rustypaste::config::{Config, ServerConfig};
+use rustypaste::config::{Config, DEFAULT_CLEANUP_INTERVAL};
 use rustypaste::middleware::ContentLengthLimiter;
 use rustypaste::paste::PasteType;
 use rustypaste::server;
@@ -15,9 +15,9 @@ use std::env;
 use std::fs;
 use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
-use std::sync::{mpsc, RwLock};
 use std::thread;
 use std::time::Duration;
+use tokio::sync::RwLock;
 #[cfg(not(feature = "shuttle"))]
 use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt as _, util::SubscriberInitExt as _, EnvFilter,
@@ -38,7 +38,7 @@ extern crate tracing;
 /// * initializes the logger
 /// * creates the necessary directories
 /// * spawns the threads
-fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, Hotwatch)> {
+async fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, Hotwatch)> {
     // Load the .env file.
     dotenvy::dotenv().ok();
 
@@ -61,6 +61,7 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         }
         None => config_folder.join("config.toml"),
     };
+
     if !config_path.exists() {
         error!(
             "{} is not found, please provide a configuration file.",
@@ -68,17 +69,15 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         );
         std::process::exit(1);
     }
+
     let config = Config::parse(&config_path).expect("failed to parse config");
     trace!("{:#?}", config);
     config.warn_deprecation();
-    let server_config = config.server.clone();
-    let paste_config = RwLock::new(config.paste.clone());
-    let (config_sender, config_receiver) = mpsc::channel::<Config>();
 
     // Create necessary directories.
-    fs::create_dir_all(&server_config.upload_path)?;
+    fs::create_dir_all(&config.server.upload_path)?;
     for paste_type in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
-        fs::create_dir_all(paste_type.get_path(&server_config.upload_path)?)?;
+        fs::create_dir_all(paste_type.get_path(&config.server.upload_path)?)?;
     }
 
     // Set up a watcher for the configuration file changes.
@@ -91,82 +90,71 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     )
     .expect("failed to initialize configuration file watcher");
 
+    let config_lock = Data::new(RwLock::new(config));
+
     // Hot-reload the configuration file.
-    let config = Data::new(RwLock::new(config));
-    let cloned_config = Data::clone(&config);
+    let config_watcher_config = config_lock.clone();
     let config_watcher = move |event: Event| {
         if let (EventKind::Modify(ModifyKind::Data(_)), Some(path)) =
             (event.kind, event.paths.first())
         {
+            info!("Reloading configuration");
+
             match Config::parse(path) {
-                Ok(config) => match cloned_config.write() {
-                    Ok(mut cloned_config) => {
-                        *cloned_config = config.clone();
-                        info!("Configuration has been updated.");
-                        if let Err(e) = config_sender.send(config) {
-                            error!("Failed to send config for the cleanup routine: {}", e)
-                        }
-                        cloned_config.warn_deprecation();
-                    }
-                    Err(e) => {
-                        error!("Failed to acquire config: {}", e);
-                    }
-                },
+                Ok(new_config) => {
+                    let mut locked_config = config_watcher_config.blocking_write();
+                    *locked_config = new_config;
+                    info!("Configuration has been updated.");
+                    locked_config.warn_deprecation();
+                }
                 Err(e) => {
                     error!("Failed to update config: {}", e);
                 }
             }
         }
     };
+
     hotwatch
         .watch(&config_path, config_watcher)
         .unwrap_or_else(|_| panic!("failed to watch {config_path:?}"));
 
     // Create a thread for cleaning up expired files.
-    let upload_path = server_config.upload_path.clone();
+    let expired_files_config = config_lock.clone();
+    let mut cleanup_interval = DEFAULT_CLEANUP_INTERVAL;
     thread::spawn(move || loop {
-        let mut enabled = false;
-        if let Some(ref cleanup_config) = paste_config
-            .read()
-            .ok()
-            .and_then(|v| v.delete_expired_files.clone())
+        // Additional context block to ensure the config lock is dropped
         {
-            if cleanup_config.enabled {
-                debug!("Running cleanup...");
-                for file in util::get_expired_files(&upload_path) {
-                    match fs::remove_file(&file) {
-                        Ok(()) => info!("Removed expired file: {:?}", file),
-                        Err(e) => error!("Cannot remove expired file: {}", e),
+            let locked_config = expired_files_config.blocking_read();
+            let upload_path = locked_config.server.upload_path.clone();
+
+            if let Some(ref cleanup_config) = locked_config.paste.delete_expired_files {
+                if cleanup_config.enabled {
+                    debug!("Running cleanup...");
+                    for file in util::get_expired_files(&upload_path) {
+                        match fs::remove_file(&file) {
+                            Ok(()) => info!("Removed expired file: {:?}", file),
+                            Err(e) => error!("Cannot remove expired file: {}", e),
+                        }
                     }
-                }
-                thread::sleep(cleanup_config.interval);
-            }
-            enabled = cleanup_config.enabled;
-        }
-        if let Some(new_config) = if enabled {
-            config_receiver.try_recv().ok()
-        } else {
-            config_receiver.recv().ok()
-        } {
-            match paste_config.write() {
-                Ok(mut paste_config) => {
-                    *paste_config = new_config.paste;
-                }
-                Err(e) => {
-                    error!("Failed to update config for the cleanup routine: {}", e);
+                    cleanup_interval = cleanup_config.interval;
                 }
             }
         }
+
+        thread::sleep(cleanup_interval);
     });
 
-    Ok((config, server_config, hotwatch))
+    Ok((config_lock, hotwatch))
 }
 
 #[cfg(not(feature = "shuttle"))]
 #[actix_web::main]
 async fn main() -> IoResult<()> {
     // Set up the application.
-    let (config, server_config, _hotwatch) = setup(&PathBuf::new())?;
+    let (config, _hotwatch) = setup(&PathBuf::new()).await?;
+
+    // Extra context block ensures the lock is stopped
+    let server_config = { config.read().await.server.clone() };
 
     // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
@@ -203,7 +191,10 @@ async fn main() -> IoResult<()> {
 #[shuttle_runtime::main]
 async fn actix_web() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
     // Set up the application.
-    let (config, server_config, _hotwatch) = setup(Path::new("shuttle"))?;
+    let (config, _hotwatch) = setup(Path::new("shuttle"))?;
+
+    // Extra context block ensures the lock is stopped
+    let server_config = { config.read().await.server.clone() };
 
     // Create the service.
     let service_config = move |cfg: &mut ServiceConfig| {
