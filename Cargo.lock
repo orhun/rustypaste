@@ -2201,7 +2201,7 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rustypaste"
-version = "0.14.4"
+version = "0.15.0"
 dependencies = [
  "actix-files",
  "actix-multipart",
