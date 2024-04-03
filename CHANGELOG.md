@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2024-03-27
+
+### Added
+
+- Allow to override filename when using `random_url` by @tessus in [#233](https://github.com/orhun/rustypaste/pull/233)
+
+Now you can use the `filename` header to override the name of the uploaded file.
+
+For example:
+
+```sh
+curl -F "file=@x.txt" -H "filename:override.txt" http://localhost:8000
+```
+
+Even if `random_url` is set, the filename will be override.txt
+
+[`rustypaste-cli`](https://github.com/orhun/rustypaste-cli) also has a new argument for overriding the file name:
+
+```sh
+rpaste -n filename-on-server.txt awesome.txt
+```
+
+- Use more specific HTTP status codes by @tessus in [#262](https://github.com/orhun/rustypaste/pull/262)
+
+`rustypaste` now returns more appropriate status codes in the following 2 cases (instead of a generic 500 code):
+
+- If the mime type is on the blacklist: `UnsupportedMediaType` (415)
+- If the file already exists: `Conflict` (409)
+
+### Changed
+
+- Do path joins more safely by @RealOrangeOne in [#247](https://github.com/orhun/rustypaste/pull/247)
+- Gracefully exit when there is no config file found by @orhun
+- Switch to cargo-llvm-cov for code coverage by @orhun in [#260](https://github.com/orhun/rustypaste/pull/260)
+- Replace unmaintained action by @tessus in [#266](https://github.com/orhun/rustypaste/pull/266)
+- Set up mergify by @orhun
+- Apply clippy suggestions by @orhun
+- Update funding options by @orhun
+- Update the copyright years by @orhun
+- Bump dependencies
+
+### Fixed
+
+- Improve logging for deleted file by @tessus in [#235](https://github.com/orhun/rustypaste/pull/235)
+- Fix deployment by @tessus in [#236](https://github.com/orhun/rustypaste/pull/236)
+- Return the correct file on multiple files with same name by @tessus in [#234](https://github.com/orhun/rustypaste/pull/234)
+- Update the hash of the example file by @tessus in [#254](https://github.com/orhun/rustypaste/pull/254)
+- Error on upload with the same filename by @tessus in [#258](https://github.com/orhun/rustypaste/pull/258)
+
+### New Contributors
+
+- @RealOrangeOne made their first contribution in [#247](https://github.com/orhun/rustypaste/pull/247)
+
 ## [0.14.4] - 2023-12-20
 
 ### Removed
