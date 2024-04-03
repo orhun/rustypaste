@@ -177,7 +177,7 @@ impl Paste {
             .unwrap_or_default()
             .to_string();
         let file_path = util::glob_match_file(path.clone())
-            .map_err(|_| IoError::new(IoErrorKind::Other, String::from("path is not valid")))?;
+            .await.map_err(|_| IoError::new(IoErrorKind::Other, String::from("path is not valid")))?;
         if file_path.is_file() && file_path.exists() {
             return Err(error::ErrorConflict("file already exists\n"));
         }
