@@ -20,8 +20,6 @@ $ curl https://paste.site.com/safe-toad.txt
 some text
 ```
 
-Here you can read the blog post about how it is deployed on Shuttle: [https://blog.orhun.dev/blazingly-fast-file-sharing](https://blog.orhun.dev/blazingly-fast-file-sharing)
-
 </details>
 
 <details>
