@@ -5,7 +5,7 @@ use actix_web::http::Method;
 use actix_web::middleware::ErrorHandlerResponse;
 use actix_web::{error, web, Error};
 use std::collections::HashSet;
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 
 /// Extracts the tokens from the authorization header by token type.
 ///
@@ -14,8 +14,8 @@ pub(crate) async fn extract_tokens(req: &ServiceRequest) -> Result<HashSet<Token
     let config = req
         .app_data::<web::Data<RwLock<Config>>>()
         .map(|cfg| cfg.read())
-        .and_then(Result::ok)
-        .ok_or_else(|| error::ErrorInternalServerError("cannot acquire config"))?;
+        .ok_or_else(|| error::ErrorInternalServerError("cannot acquire config"))?
+        .await;
 
     let mut user_tokens = HashSet::with_capacity(2);
 

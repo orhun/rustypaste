@@ -10,6 +10,7 @@ use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::task::spawn_blocking;
 
 /// Regex for matching the timestamp extension of a path.
 pub static TIMESTAMP_EXTENSION_REGEX: Lazy<Regex> = lazy_regex!(r#"\.[0-9]{10,}$"#);
@@ -24,7 +25,7 @@ pub fn get_system_time() -> Result<Duration, ActixError> {
 /// Returns the first _unexpired_ path matched by a custom glob pattern.
 ///
 /// The file extension is accepted as a timestamp that points to the expiry date.
-pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
+pub async fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
     path = PathBuf::from(
         TIMESTAMP_EXTENSION_REGEX
             .replacen(
@@ -36,10 +37,15 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
             )
             .to_string(),
     );
-    if let Some(glob_path) = glob(&format!("{}.[0-9]*", path.to_string_lossy()))
-        .map_err(error::ErrorInternalServerError)?
-        .last()
-    {
+
+    let path_string = path.to_string_lossy().into_owned();
+    let glob_match = match spawn_blocking(move || glob(&format!("{}.[0-9]*", path_string))).await {
+        Ok(Ok(m)) => m.last(),
+        Ok(Err(e)) => return Err(error::ErrorInternalServerError(e)),
+        Err(e) => return Err(error::ErrorInternalServerError(e)),
+    };
+
+    if let Some(glob_path) = glob_match {
         let glob_path = glob_path.map_err(error::ErrorInternalServerError)?;
         if let Some(extension) = glob_path
             .extension()
@@ -137,6 +143,8 @@ mod tests {
     use std::env;
     use std::fs;
     use std::thread;
+    use tempfile::tempdir;
+
     #[test]
     fn test_system_time() -> Result<(), ActixError> {
         let system_time = get_system_time()?.as_millis();
@@ -145,19 +153,19 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_glob_match() -> Result<(), ActixError> {
+    #[actix_rt::test]
+    async fn test_glob_match() -> Result<(), ActixError> {
         let path = PathBuf::from(format!(
             "expired.file1.{}",
             get_system_time()?.as_millis() + 50
         ));
         fs::write(&path, String::new())?;
-        assert_eq!(path, glob_match_file(PathBuf::from("expired.file1"))?);
+        assert_eq!(path, glob_match_file(PathBuf::from("expired.file1")).await?);
 
         thread::sleep(Duration::from_millis(75));
         assert_eq!(
             PathBuf::from("expired.file1"),
-            glob_match_file(PathBuf::from("expired.file1"))?
+            glob_match_file(PathBuf::from("expired.file1")).await?
         );
         fs::remove_file(path)?;
 
@@ -179,18 +187,16 @@ mod tests {
 
     #[test]
     fn test_get_expired_files() -> Result<(), ActixError> {
-        let current_dir = env::current_dir()?;
+        let test_temp_dir = tempdir()?;
+        let test_dir = test_temp_dir.path();
         let expiration_time = get_system_time()?.as_millis() + 50;
-        let path = PathBuf::from(format!("expired.file2.{expiration_time}"));
+        let path = test_dir.join(format!("expired.file2.{expiration_time}"));
         fs::write(&path, String::new())?;
-        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
+        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(test_dir));
         thread::sleep(Duration::from_millis(75));
-        assert_eq!(
-            vec![current_dir.join(&path)],
-            get_expired_files(&current_dir)
-        );
-        fs::remove_file(path)?;
-        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
+        assert_eq!(vec![path.clone()], get_expired_files(test_dir));
+        fs::remove_file(&path)?;
+        assert_eq!(Vec::<PathBuf>::new(), get_expired_files(test_dir));
         Ok(())
     }
 
