@@ -2229,6 +2229,7 @@ dependencies = [
  "serde_regex",
  "shuttle-actix-web",
  "shuttle-runtime",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",

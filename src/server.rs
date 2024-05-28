@@ -18,20 +18,17 @@ use mime::TEXT_PLAIN_UTF_8;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
-use std::fs;
 use std::path::PathBuf;
-use std::sync::RwLock;
 use std::time::Duration;
+use tokio::fs;
+use tokio::sync::RwLock;
 use uts2ts;
 
 /// Shows the landing page.
 #[get("/")]
 #[allow(deprecated)]
 async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
-    let mut config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-        .clone();
+    let mut config = config.read().await.clone();
     let redirect = HttpResponse::Found()
         .append_header(("Location", env!("CARGO_PKG_HOMEPAGE")))
         .finish();
@@ -53,7 +50,7 @@ async fn index(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error>
     }
     if let Some(mut landing_page) = config.landing_page {
         if let Some(file) = landing_page.file {
-            landing_page.text = fs::read_to_string(file).ok();
+            landing_page.text = fs::read_to_string(file).await.ok();
         }
         match landing_page.text {
             Some(page) => Ok(HttpResponse::Ok()
@@ -86,15 +83,14 @@ async fn serve(
     options: Option<web::Query<ServeOptions>>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let mut path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    let config = config.read().await;
+    let mut path =
+        util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?).await?;
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
         for type_ in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
             let alt_path = safe_path_join(type_.get_path(&config.server.upload_path)?, &*file)?;
-            let alt_path = util::glob_match_file(alt_path)?;
+            let alt_path = util::glob_match_file(alt_path).await?;
             if alt_path.exists()
                 || path.file_name().and_then(|v| v.to_str()) == Some(&type_.get_dir())
             {
@@ -128,21 +124,23 @@ async fn serve(
                         file,
                         util::get_system_time()?.as_millis()
                     )),
-                )?;
+                )
+                .await?;
             }
             Ok(response)
         }
         PasteType::Url => Ok(HttpResponse::Found()
-            .append_header(("Location", fs::read_to_string(&path)?))
+            .append_header(("Location", fs::read_to_string(&path).await?))
             .finish()),
         PasteType::OneshotUrl => {
             let resp = HttpResponse::Found()
-                .append_header(("Location", fs::read_to_string(&path)?))
+                .append_header(("Location", fs::read_to_string(&path).await?))
                 .finish();
             fs::rename(
                 &path,
                 path.with_file_name(format!("{}.{}", file, util::get_system_time()?.as_millis())),
-            )?;
+            )
+            .await?;
             Ok(resp)
         }
     }
@@ -155,14 +153,12 @@ async fn delete(
     file: web::Path<String>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    let config = config.read().await;
+    let path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?).await?;
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
-    match fs::remove_file(path) {
+    match fs::remove_file(path).await {
         Ok(_) => info!("deleted file: {:?}", file.to_string()),
         Err(e) => {
             error!("cannot delete file: {}", e);
@@ -176,9 +172,7 @@ async fn delete(
 #[get("/version")]
 #[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
 async fn version(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    let config = config.read().await;
     if !config.server.expose_version.unwrap_or(false) {
         warn!("server is not configured to expose version endpoint");
         Err(error::ErrorNotFound(""))?;
@@ -199,13 +193,8 @@ async fn upload(
 ) -> Result<HttpResponse, Error> {
     let connection = request.connection_info().clone();
     let host = connection.realip_remote_addr().unwrap_or("unknown host");
-    let server_url = match config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-        .server
-        .url
-        .clone()
-    {
+    let config = config.read().await;
+    let server_url = match config.server.url.clone() {
         Some(v) => v,
         None => {
             format!("{}://{}", connection.scheme(), connection.host(),)
@@ -215,8 +204,6 @@ async fn upload(
     let mut expiry_date = header::parse_expiry_date(request.headers(), time)?;
     if expiry_date.is_none() {
         expiry_date = config
-            .read()
-            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
             .paste
             .default_expiry
             .and_then(|v| time.checked_add(v).map(|t| t.as_millis()));
@@ -239,18 +226,11 @@ async fn upload(
                 && paste_type != PasteType::RemoteFile
                 && paste_type != PasteType::OneshotUrl
                 && expiry_date.is_none()
-                && !config
-                    .read()
-                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-                    .paste
-                    .duplicate_files
-                    .unwrap_or(true)
+                && !config.paste.duplicate_files.unwrap_or(true)
             {
                 let bytes_checksum = util::sha256_digest(&*bytes)?;
-                let config = config
-                    .read()
-                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                if let Some(file) = Directory::try_from(config.server.upload_path.as_path())?
+                if let Some(file) = Directory::try_from(config.server.upload_path.as_path())
+                    .map_err(error::ErrorInternalServerError)?
                     .get_file(bytes_checksum)
                 {
                     urls.push(format!(
@@ -270,15 +250,14 @@ async fn upload(
             };
             let mut file_name = match paste.type_ {
                 PasteType::File | PasteType::Oneshot => {
-                    let config = config
-                        .read()
-                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste.store_file(
-                        content.get_file_name()?,
-                        expiry_date,
-                        header_filename,
-                        &config,
-                    )?
+                    paste
+                        .store_file(
+                            content.get_file_name()?,
+                            expiry_date,
+                            header_filename,
+                            &config,
+                        )
+                        .await?
                 }
                 PasteType::RemoteFile => {
                     paste
@@ -286,10 +265,7 @@ async fn upload(
                         .await?
                 }
                 PasteType::Url | PasteType::OneshotUrl => {
-                    let config = config
-                        .read()
-                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste.store_url(expiry_date, &config)?
+                    paste.store_url(expiry_date, &config).await?
                 }
             };
             info!(
@@ -300,9 +276,6 @@ async fn upload(
                     .get_appropriate_unit(UnitType::Decimal),
                 host
             );
-            let config = config
-                .read()
-                .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
             if let Some(handle_spaces_config) = config.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
             }
@@ -330,53 +303,58 @@ pub struct ListItem {
 #[get("/list")]
 #[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
 async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
-    let config = config
-        .read()
-        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-        .clone();
+    let config = config.read().await;
+
     if !config.server.expose_list.unwrap_or(false) {
         warn!("server is not configured to expose list endpoint");
-        Err(error::ErrorNotFound(""))?;
+        return Err(error::ErrorNotFound(""));
     }
-    let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
-        .filter_map(|entry| {
-            entry.ok().and_then(|e| {
-                let metadata = match e.metadata() {
-                    Ok(metadata) => {
-                        if metadata.is_dir() {
-                            return None;
-                        }
-                        metadata
-                    }
-                    Err(e) => {
-                        error!("failed to read metadata: {e}");
-                        return None;
-                    }
-                };
-                let mut file_name = PathBuf::from(e.file_name());
-                let expires_at_utc = if let Some(expiration) = file_name
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .and_then(|v| v.parse::<i64>().ok())
-                {
-                    file_name.set_extension("");
-                    if util::get_system_time().ok()?
-                        > Duration::from_millis(expiration.try_into().ok()?)
-                    {
-                        return None;
-                    }
-                    Some(uts2ts::uts2ts(expiration / 1000).as_string())
-                } else {
-                    None
-                };
-                Some(ListItem {
-                    file_name,
-                    file_size: metadata.len(),
-                    expires_at_utc,
-                })
-            })
-        })
-        .collect();
+
+    let mut entries: Vec<ListItem> = Vec::new();
+
+    let mut dir_contents = fs::read_dir(&config.server.upload_path).await?;
+
+    let system_time = util::get_system_time()?;
+
+    while let Ok(Some(entry)) = dir_contents.next_entry().await {
+        let metadata = match entry.metadata().await {
+            Ok(metadata) if metadata.is_dir() => continue,
+            Ok(metadata) => metadata,
+            Err(e) => {
+                error!("failed to read metadata: {e}");
+                continue;
+            }
+        };
+
+        let mut file_name = PathBuf::from(entry.file_name());
+
+        let expires_at_utc = match file_name
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .and_then(|v| v.parse::<u64>().ok())
+        {
+            Some(expiration) if system_time > Duration::from_millis(expiration) => continue,
+            Some(expiration) => {
+                file_name.set_extension("");
+                Some(
+                    uts2ts::uts2ts(
+                        (expiration / 1000)
+                            .try_into()
+                            .map_err(|_| error::ErrorInternalServerError("Invalid timestamp"))?,
+                    )
+                    .as_string(),
+                )
+            }
+            None => None,
+        };
+
+        entries.push(ListItem {
+            file_name,
+            file_size: metadata.len(),
+            expires_at_utc,
+        });
+    }
+
     Ok(HttpResponse::Ok().json(entries))
 }
 
@@ -420,6 +398,7 @@ mod tests {
     use std::str;
     use std::thread;
     use std::time::Duration;
+    use tempfile::tempdir;
 
     fn get_multipart_request(data: &str, name: &str, filename: &str) -> TestRequest {
         let multipart_data = format!(
@@ -523,7 +502,7 @@ mod tests {
         let response = test::call_service(&app, request).await;
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), "landing page from file").await?;
-        fs::remove_file(filename)?;
+        fs::remove_file(filename).await?;
         Ok(())
     }
 
@@ -626,7 +605,7 @@ mod tests {
         config.server.expose_list = Some(true);
 
         let test_upload_dir = "test_upload";
-        fs::create_dir(test_upload_dir)?;
+        fs::create_dir(test_upload_dir).await?;
         config.server.upload_path = PathBuf::from(test_upload_dir);
 
         let app = test::init_service(
@@ -657,7 +636,7 @@ mod tests {
             PathBuf::from(filename)
         );
 
-        fs::remove_dir_all(test_upload_dir)?;
+        fs::remove_dir_all(test_upload_dir).await?;
 
         Ok(())
     }
@@ -668,7 +647,7 @@ mod tests {
         config.server.expose_list = Some(true);
 
         let test_upload_dir = "test_upload";
-        fs::create_dir(test_upload_dir)?;
+        fs::create_dir(test_upload_dir).await?;
         config.server.upload_path = PathBuf::from(test_upload_dir);
 
         let app = test::init_service(
@@ -702,7 +681,7 @@ mod tests {
 
         assert!(result.is_empty());
 
-        fs::remove_dir_all(test_upload_dir)?;
+        fs::remove_dir_all(test_upload_dir).await?;
 
         Ok(())
     }
@@ -752,9 +731,10 @@ mod tests {
 
     #[actix_web::test]
     async fn test_delete_file() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
         config.server.delete_tokens = Some(["test".to_string()].into());
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -781,8 +761,7 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), "file deleted\n").await?;
 
-        let path = PathBuf::from(file_name);
-        assert!(!path.exists());
+        assert!(!temp_upload_path.path().join(file_name).exists());
 
         Ok(())
     }
@@ -790,7 +769,7 @@ mod tests {
     #[actix_web::test]
     async fn test_delete_file_without_token_in_config() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -815,8 +794,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_file() -> Result<(), Error> {
+        let test_delete_file = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = test_delete_file.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -847,7 +827,7 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), &timestamp).await?;
 
-        fs::remove_file(file_name)?;
+        fs::remove_file(test_delete_file.path().join(file_name)).await?;
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
             .to_request();
@@ -859,8 +839,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_file_override_filename() -> Result<(), Error> {
+        let test_delete_file = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = test_delete_file.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -897,7 +878,7 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(response.into_body(), &timestamp).await?;
 
-        fs::remove_file(header_filename)?;
+        fs::remove_file(test_delete_file.path().join(header_filename)).await?;
         let serve_request = TestRequest::get()
             .uri(&format!("/{header_filename}"))
             .to_request();
@@ -909,8 +890,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_same_filename() -> Result<(), Error> {
+        let temp_upload_dir = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_dir.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -954,7 +936,7 @@ mod tests {
         assert_eq!(StatusCode::CONFLICT, response.status());
         assert_body(response.into_body(), "file already exists\n").await?;
 
-        fs::remove_file(header_filename)?;
+        fs::remove_file(temp_upload_dir.path().join(header_filename)).await?;
 
         Ok(())
     }
@@ -963,7 +945,7 @@ mod tests {
     #[allow(deprecated)]
     async fn test_upload_duplicate_file() -> Result<(), Error> {
         let test_upload_dir = "test_upload";
-        fs::create_dir(test_upload_dir)?;
+        fs::create_dir(test_upload_dir).await?;
 
         let mut config = Config::default();
         config.server.upload_path = PathBuf::from(&test_upload_dir);
@@ -1002,15 +984,16 @@ mod tests {
 
         assert_eq!(first_body_bytes, second_body_bytes);
 
-        fs::remove_dir_all(test_upload_dir)?;
+        fs::remove_dir_all(test_upload_dir).await?;
 
         Ok(())
     }
 
     #[actix_web::test]
     async fn test_upload_expiring_file() -> Result<(), Error> {
+        let temp_upload_path = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_path.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -1054,11 +1037,16 @@ mod tests {
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
-        if let Some(glob_path) = glob(&format!("{file_name}.[0-9]*"))
-            .map_err(error::ErrorInternalServerError)?
-            .next()
+        if let Some(glob_path) = glob(
+            &temp_upload_path
+                .path()
+                .join(format!("{file_name}.[0-9]*"))
+                .to_string_lossy(),
+        )
+        .map_err(error::ErrorInternalServerError)?
+        .next()
         {
-            fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?)?;
+            fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?).await?;
         }
 
         Ok(())
@@ -1066,8 +1054,9 @@ mod tests {
 
     #[actix_web::test]
     async fn test_upload_remote_file() -> Result<(), Error> {
+        let temp_upload_dir = tempdir()?;
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = temp_upload_dir.path().to_path_buf();
         config.server.max_content_length = Byte::from_u128(30000).unwrap_or_default();
 
         let app = test::init_service(
@@ -1113,7 +1102,7 @@ mod tests {
             util::sha256_digest(&*body_bytes)?
         );
 
-        fs::remove_file(file_name)?;
+        fs::remove_file(temp_upload_dir.path().join(file_name)).await?;
 
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
@@ -1127,7 +1116,7 @@ mod tests {
     #[actix_web::test]
     async fn test_upload_url() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -1140,7 +1129,7 @@ mod tests {
         let url_upload_path = PasteType::Url
             .get_path(&config.server.upload_path)
             .expect("Bad upload path");
-        fs::create_dir_all(&url_upload_path)?;
+        fs::create_dir_all(&url_upload_path).await?;
 
         let response = test::call_service(
             &app,
@@ -1154,8 +1143,8 @@ mod tests {
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::FOUND, response.status());
 
-        fs::remove_file(url_upload_path.join("url"))?;
-        fs::remove_dir(url_upload_path)?;
+        fs::remove_file(url_upload_path.join("url")).await?;
+        fs::remove_dir(url_upload_path).await?;
 
         let serve_request = TestRequest::get().uri("/url").to_request();
         let response = test::call_service(&app, serve_request).await;
@@ -1167,7 +1156,7 @@ mod tests {
     #[actix_web::test]
     async fn test_upload_oneshot() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let app = test::init_service(
             App::new()
@@ -1180,7 +1169,7 @@ mod tests {
         let oneshot_upload_path = PasteType::Oneshot
             .get_path(&config.server.upload_path)
             .expect("Bad upload path");
-        fs::create_dir_all(&oneshot_upload_path)?;
+        fs::create_dir_all(&oneshot_upload_path).await?;
 
         let file_name = "oneshot.txt";
         let timestamp = util::get_system_time()?.as_secs().to_string();
@@ -1217,9 +1206,9 @@ mod tests {
         .map_err(error::ErrorInternalServerError)?
         .next()
         {
-            fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?)?;
+            fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?).await?;
         }
-        fs::remove_dir(oneshot_upload_path)?;
+        fs::remove_dir(oneshot_upload_path).await?;
 
         Ok(())
     }
@@ -1227,7 +1216,7 @@ mod tests {
     #[actix_web::test]
     async fn test_upload_oneshot_url() -> Result<(), Error> {
         let mut config = Config::default();
-        config.server.upload_path = env::current_dir()?;
+        config.server.upload_path = tempdir()?.path().to_path_buf();
 
         let oneshot_url_suffix = "oneshot_url";
 
@@ -1242,7 +1231,7 @@ mod tests {
         let url_upload_path = PasteType::OneshotUrl
             .get_path(&config.server.upload_path)
             .expect("Bad upload path");
-        fs::create_dir_all(&url_upload_path)?;
+        fs::create_dir_all(&url_upload_path).await?;
 
         let response = test::call_service(
             &app,
@@ -1272,7 +1261,7 @@ mod tests {
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         // Cleanup
-        fs::remove_dir_all(url_upload_path)?;
+        fs::remove_dir_all(url_upload_path).await?;
 
         Ok(())
     }
