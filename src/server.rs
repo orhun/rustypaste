@@ -21,7 +21,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
-use std::time::Duration;
+use std::time::{Duration, UNIX_EPOCH};
 use uts2ts;
 
 /// Shows the landing page.
@@ -322,6 +322,8 @@ pub struct ListItem {
     pub file_name: PathBuf,
     /// Size of the file in bytes.
     pub file_size: u64,
+    /// ISO8601 formatted date-time of the moment the file was created (uploaded).
+    pub creation_date: Option<String>,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
     pub expires_at_utc: Option<String>,
 }
@@ -354,6 +356,17 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                     }
                 };
                 let mut file_name = PathBuf::from(e.file_name());
+
+                let creation_date = match metadata
+                    .created()
+                    .and_then(|v| Ok(v.duration_since(UNIX_EPOCH).unwrap().as_millis()))
+                {
+                    Ok(millis) => Some(
+                        uts2ts::uts2ts(i64::try_from(millis).unwrap() / 1000).as_string()
+                    ),
+                    Err(_) => None
+                };
+
                 let expires_at_utc = if let Some(expiration) = file_name
                     .extension()
                     .and_then(|ext| ext.to_str())
@@ -369,11 +382,14 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                 } else {
                     None
                 };
-                Some(ListItem {
-                    file_name,
-                    file_size: metadata.len(),
-                    expires_at_utc,
-                })
+                Some(
+                    ListItem {
+                        file_name,
+                        file_size: metadata.len(),
+                        creation_date,
+                        expires_at_utc,
+                    }
+                )
             })
         })
         .collect();
