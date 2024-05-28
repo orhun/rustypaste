@@ -359,10 +359,18 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
 
                 let creation_date = match metadata
                     .created()
-                    .and_then(|v| Ok(v.duration_since(UNIX_EPOCH).unwrap().as_millis()))
+                    .map(|v| v.duration_since(UNIX_EPOCH)
+                        .expect("Time since UNIX epoch should be valid.")
+                        .as_millis()
+                    )
                 {
                     Ok(millis) => Some(
-                        uts2ts::uts2ts(i64::try_from(millis).unwrap() / 1000).as_string()
+                        uts2ts::uts2ts(
+                            i64::try_from(millis)
+                                .expect("UNIX time should be smaller than i64::MAX")
+                            / 1000
+                        )
+                        .as_string()
                     ),
                     Err(_) => None
                 };
