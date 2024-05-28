@@ -323,7 +323,7 @@ pub struct ListItem {
     /// Size of the file in bytes.
     pub file_size: u64,
     /// ISO8601 formatted date-time of the moment the file was created (uploaded).
-    pub creation_date: Option<String>,
+    pub creation_date_utc: Option<String>,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
     pub expires_at_utc: Option<String>,
 }
@@ -357,7 +357,7 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                 };
                 let mut file_name = PathBuf::from(e.file_name());
 
-                let creation_date = match metadata
+                let creation_date_utc = match metadata
                     .created()
                     .map(|v| v.duration_since(UNIX_EPOCH)
                         .expect("Time since UNIX epoch should be valid.")
@@ -394,7 +394,7 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                     ListItem {
                         file_name,
                         file_size: metadata.len(),
-                        creation_date,
+                        creation_date_utc,
                         expires_at_utc,
                     }
                 )
