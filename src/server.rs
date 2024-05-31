@@ -357,23 +357,17 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                 };
                 let mut file_name = PathBuf::from(e.file_name());
 
-                let creation_date_utc = match metadata
-                    .created()
-                    .map(|v| v.duration_since(UNIX_EPOCH)
+                let creation_date_utc = metadata.created().ok().map(|v| {
+                    let millis = v
+                        .duration_since(UNIX_EPOCH)
                         .expect("Time since UNIX epoch should be valid.")
-                        .as_millis()
+                        .as_millis();
+                    uts2ts::uts2ts(
+                        i64::try_from(millis).expect("UNIX time should be smaller than i64::MAX")
+                            / 1000,
                     )
-                {
-                    Ok(millis) => Some(
-                        uts2ts::uts2ts(
-                            i64::try_from(millis)
-                                .expect("UNIX time should be smaller than i64::MAX")
-                            / 1000
-                        )
-                        .as_string()
-                    ),
-                    Err(_) => None
-                };
+                    .as_string()
+                });
 
                 let expires_at_utc = if let Some(expiration) = file_name
                     .extension()
