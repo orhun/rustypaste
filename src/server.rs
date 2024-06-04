@@ -384,14 +384,12 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                 } else {
                     None
                 };
-                Some(
-                    ListItem {
-                        file_name,
-                        file_size: metadata.len(),
-                        creation_date_utc,
-                        expires_at_utc,
-                    }
-                )
+                Some(ListItem {
+                    file_name,
+                    file_size: metadata.len(),
+                    creation_date_utc,
+                    expires_at_utc,
+                })
             })
         })
         .collect();
