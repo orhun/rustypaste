@@ -37,13 +37,10 @@ jobs:
         env:
           OUT_DIR: target
       - name: Upload reports to codecov
-        uses: codecov/codecov-action@v4
-        with:
-          name: code-coverage-report
-          file: lcov.info
-          flags: unit-tests
-          fail_ci_if_error: true
-          verbose: true
+        run: |
+          curl -Os https://uploader.codecov.io/latest/linux/codecov
+          chmod +x codecov
+          ./codecov -t ${CODECOV_TOKEN} -f lcov.info
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
