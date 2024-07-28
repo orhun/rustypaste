@@ -225,7 +225,14 @@ async fn upload(
     while let Some(item) = payload.next().await {
         let header_filename = header::parse_header_filename(request.headers())?;
         let mut field = item?;
-        let content = ContentDisposition::from(field.content_disposition().clone());
+        let content = ContentDisposition::from(
+            field
+                .content_disposition()
+                .ok_or_else(|| {
+                    error::ErrorInternalServerError("payload must contain content disposition")
+                })?
+                .clone(),
+        );
         if let Ok(paste_type) = PasteType::try_from(&content) {
             let mut bytes = Vec::<u8>::new();
             while let Some(chunk) = field.next().await {
