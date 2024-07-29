@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2024-07-29
+
+### Added
+
+- Include file creation date in the file list (`creation_date_utc`)
+
+```sh
+$ curl "http://<server_address>/list" | jq .
+
+[
+  {
+    "file_name": "immense-goose.txt",
+    "file_size": 416,
+    "creation_date_utc": "2024-06-12 19:21:56",
+    "expires_at_utc": null
+  }
+]
+```
+
+- Enable Docker ARM64 builds
+- Add @tessus as a maintainer
+
+### Removed
+
+- Remove public instance link and blog post from README.md
+
+### Fixed
+
+- Fix uploading reports to codecov
+
 ## [0.15.0] - 2024-03-27
 
 ### Added
