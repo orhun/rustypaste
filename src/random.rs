@@ -33,7 +33,7 @@ impl RandomURLConfig {
                     self.words.unwrap_or(2),
                     self.separator.as_deref().unwrap_or("-"),
                 )
-                .expect("no names"),
+                ?,
             RandomURLType::Alphanumeric => rand::thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(self.length.unwrap_or(8))
