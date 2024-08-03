@@ -28,12 +28,10 @@ impl RandomURLConfig {
             return None;
         }
         Some(match self.type_ {
-            RandomURLType::PetName => petname::Petnames::large()
-                .generate_one(
-                    self.words.unwrap_or(2),
-                    self.separator.as_deref().unwrap_or("-"),
-                )
-                ?,
+            RandomURLType::PetName => petname::Petnames::large().generate_one(
+                self.words.unwrap_or(2),
+                self.separator.as_deref().unwrap_or("-"),
+            )?,
             RandomURLType::Alphanumeric => rand::thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(self.length.unwrap_or(8))
