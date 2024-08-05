@@ -1,6 +1,5 @@
 use actix_web::middleware::Logger;
 use actix_web::web::Data;
-#[cfg(not(feature = "shuttle"))]
 use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
 use hotwatch::notify::event::ModifyKind;
@@ -18,14 +17,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{mpsc, RwLock};
 use std::thread;
 use std::time::Duration;
-#[cfg(not(feature = "shuttle"))]
 use tracing_subscriber::{
     filter::LevelFilter, layer::SubscriberExt as _, util::SubscriberInitExt as _, EnvFilter,
-};
-#[cfg(feature = "shuttle")]
-use {
-    actix_web::web::{self, ServiceConfig},
-    shuttle_actix_web::ShuttleActixWeb,
 };
 
 // Use macros from tracing crate.
@@ -43,7 +36,6 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     dotenvy::dotenv().ok();
 
     // Initialize logger.
-    #[cfg(not(feature = "shuttle"))]
     tracing_subscriber::registry()
         .with(
             EnvFilter::builder()
@@ -162,7 +154,6 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     Ok((config, server_config, hotwatch))
 }
 
-#[cfg(not(feature = "shuttle"))]
 #[actix_web::main]
 async fn main() -> IoResult<()> {
     // Set up the application.
@@ -197,35 +188,4 @@ async fn main() -> IoResult<()> {
     // Run the server.
     info!("Server is running at {}", server_config.address);
     http_server.run().await
-}
-
-#[cfg(feature = "shuttle")]
-#[shuttle_runtime::main]
-async fn actix_web() -> ShuttleActixWeb<impl FnOnce(&mut ServiceConfig) + Send + Clone + 'static> {
-    // Set up the application.
-    let (config, server_config, _hotwatch) = setup(Path::new("shuttle"))?;
-
-    // Create the service.
-    let service_config = move |cfg: &mut ServiceConfig| {
-        let http_client = ClientBuilder::new()
-            .timeout(
-                server_config
-                    .timeout
-                    .unwrap_or_else(|| Duration::from_secs(30)),
-            )
-            .disable_redirects()
-            .finish();
-        cfg.service(
-            web::scope("")
-                .app_data(Data::clone(&config))
-                .app_data(Data::new(http_client))
-                .wrap(Logger::new(
-                    "%{r}a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T",
-                ))
-                .wrap(ContentLengthLimiter::new(server_config.max_content_length))
-                .configure(server::configure_routes),
-        );
-    };
-
-    Ok(service_config.into())
 }
