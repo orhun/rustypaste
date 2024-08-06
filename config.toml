@@ -3,6 +3,7 @@ refresh_rate = "1s"
 
 [server]
 address = "127.0.0.1:8000"
+#url = "https://paste.example.com"
 #workers=4
 max_content_length = "10MB"
 upload_path = "./upload"
