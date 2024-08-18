@@ -131,6 +131,31 @@ pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> IoRes
     Ok(new_path)
 }
 
+/// Returns the size of the directory at the given path.
+///
+/// This function is recursive, and will calculate the size of all files and directories.
+/// If a symlink is encountered, the size of the symlink itself is counted, not its target.
+///
+/// Adopted from <https://docs.rs/fs_extra/latest/src/fs_extra/dir.rs.html>
+pub fn get_dir_size(path: &Path) -> IoResult<u64> {
+    let path_metadata = path.symlink_metadata()?;
+    let mut size_in_bytes = 0;
+    if path_metadata.is_dir() {
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
+            let entry_metadata = entry.metadata()?;
+            if entry_metadata.is_dir() {
+                size_in_bytes += get_dir_size(&entry.path())?;
+            } else {
+                size_in_bytes += entry_metadata.len();
+            }
+        }
+    } else {
+        size_in_bytes = path_metadata.len();
+    }
+    Ok(size_in_bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

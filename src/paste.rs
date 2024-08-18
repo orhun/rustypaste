@@ -4,12 +4,15 @@ use crate::header::ContentDisposition;
 use crate::util;
 use actix_web::{error, Error};
 use awc::Client;
-use std::convert::{TryFrom, TryInto};
 use std::fs::{self, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::RwLock;
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::Add,
+};
 use url::Url;
 
 /// Type of the data to store.
@@ -109,6 +112,21 @@ impl Paste {
                 }
             }
         }
+
+        if let Some(max_dir_size) = config.server.max_upload_dir_size {
+            let file_size = u64::try_from(self.data.len()).unwrap_or_default();
+            let upload_dir = self.type_.get_path(&config.server.upload_path)?;
+            let current_size_of_upload_dir = util::get_dir_size(&upload_dir).map_err(|e| {
+                error::ErrorInternalServerError(format!("could not get directory size: {e}"))
+            })?;
+            let expected_size_of_upload_dir = current_size_of_upload_dir.add(file_size);
+            if expected_size_of_upload_dir > max_dir_size {
+                return Err(error::ErrorInsufficientStorage(
+                    "upload directory size limit exceeded",
+                ));
+            }
+        }
+
         let mut file_name = match PathBuf::from(file_name)
             .file_name()
             .and_then(|v| v.to_str())
