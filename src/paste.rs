@@ -3,7 +3,7 @@ use crate::file::Directory;
 use crate::header::ContentDisposition;
 use crate::util;
 use actix_web::{error, Error};
-use awc::{body::MessageBody, Client};
+use awc::Client;
 use std::fs::{self, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
@@ -114,7 +114,8 @@ impl Paste {
         }
 
         if let Some(max_dir_size) = config.server.max_upload_dir_size {
-            let file_size = u64::try_from(self.data.len()).unwrap();
+            // The unwrap here should be fine as the max value of u64 will be within the limits
+            let file_size = u64::try_from(self.data.len()).unwrap_or_default();
             let upload_dir = self.type_.get_path(&config.server.upload_path)?;
             let current_size_of_upload_dir = fs_extra::dir::get_size(upload_dir)
                 .map_err(|_| error::ErrorInternalServerError("Internal server error occured"))?;
