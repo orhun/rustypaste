@@ -113,7 +113,7 @@ impl Paste {
             }
         }
 
-        if let Some(max_dir_size) = config.server.max_upload_dir_size {
+        if let Some(max_dir_size) = config.server.max_uploads {
             // The unwrap here should be fine as the max value of u64 will be within the limits
             let file_size = u64::try_from(self.data.len()).unwrap_or_default();
             let upload_dir = self.type_.get_path(&config.server.upload_path)?;
