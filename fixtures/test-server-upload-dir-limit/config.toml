@@ -1,7 +1,7 @@
 [server]
 address = "127.0.0.1:8000"
 max_content_length = "10KB"
-max_uploads = "20KB"
+max_upload_dir_size = "20KB"
 upload_path = "./upload"
 
 [paste]

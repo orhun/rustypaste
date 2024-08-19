@@ -44,7 +44,7 @@ pub struct ServerConfig {
     /// Storage path.
     pub upload_path: PathBuf,
     /// Maximum upload directory size.
-    pub max_uploads: Option<Byte>,
+    pub max_upload_dir_size: Option<Byte>,
     /// Request timeout.
     #[serde(default, with = "humantime_serde")]
     pub timeout: Option<Duration>,
