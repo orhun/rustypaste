@@ -289,7 +289,10 @@ $ rustypaste
 
 You can also set multiple auth tokens via the array field `[server].auth_tokens` in your `config.toml`.
 
-> If neither `AUTH_TOKEN` nor `[server].auth_tokens` are set, the server will not require any authentication.
+- Via the array field `[server].auth_tokens` in your `config.toml`.
+- Or by writing a newline separated list to a file and passing its path to rustypaste via `AUTH_TOKENS_FILE` and `DELETE_TOKENS_FILE` respectively.
+
+> If neither `AUTH_TOKEN`, `AUTH_TOKENS_FILE` nor `[server].auth_tokens` are set, the server will not require any authentication.
 >
 > Exception is the `DELETE` endpoint, which requires at least one token to be set. See [deleting files from server](#delete-file-from-server) for more information.
 
