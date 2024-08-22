@@ -280,6 +280,8 @@ If the configuration file is not found in the current directory, specify it via 
 $ CONFIG="$HOME/.rustypaste.toml" rustypaste
 ```
 
+#### Authentication
+
 To enable basic HTTP auth, set the `AUTH_TOKEN` environment variable (via `.env`):
 
 ```sh
@@ -287,7 +289,7 @@ $ echo "AUTH_TOKEN=$(openssl rand -base64 16)" > .env
 $ rustypaste
 ```
 
-You can also set multiple auth tokens via the array field `[server].auth_tokens` in your `config.toml`.
+There are 2 options for setting multiple auth tokens:
 
 - Via the array field `[server].auth_tokens` in your `config.toml`.
 - Or by writing a newline separated list to a file and passing its path to rustypaste via `AUTH_TOKENS_FILE` and `DELETE_TOKENS_FILE` respectively.
