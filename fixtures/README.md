@@ -30,7 +30,7 @@ test-file-upload/
 
 # Optional
 custom_env() {
-  # setting environment variables such as AUTH_TOKEN or AUTH_FILE
+  # setting environment variables such as AUTH_TOKEN or AUTH_TOKENS_FILE
 }
 
 setup() {
