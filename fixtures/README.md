@@ -7,7 +7,7 @@ This directory contains the [test fixtures](https://en.wikipedia.org/wiki/Test_f
 1. Build the project in debug mode: `cargo build`
 2. Execute the runner script in this directory: `./test-fixtures.sh`
 
-On `macOS` you need to have [coreutils](https://www.gnu.org/software/coreutils/) installed to run the script. 
+On `macOS` you need to have [coreutils](https://www.gnu.org/software/coreutils/) installed to run the script.
 The simplest way is to install it via [Homebrew](https://brew.sh/): `brew install coreutils`
 
 ### Adding new fixtures
@@ -27,6 +27,11 @@ test-file-upload/
 
 ```sh
 #!/usr/bin/env bash
+
+# Optional
+custom_env() {
+  # setting environment variables such as AUTH_TOKEN or AUTH_FILE
+}
 
 setup() {
   # preparation
