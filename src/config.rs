@@ -1,10 +1,11 @@
 use crate::mime::MimeMatcher;
 use crate::random::RandomURLConfig;
-use crate::{AUTH_TOKEN_ENV, DELETE_TOKEN_ENV};
+use crate::{AUTH_TOKENS_FILE_ENV, AUTH_TOKEN_ENV, DELETE_TOKENS_FILE_ENV, DELETE_TOKEN_ENV};
 use byte_unit::Byte;
 use config::{self, ConfigError};
 use std::collections::HashSet;
 use std::env;
+use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -162,6 +163,21 @@ impl Config {
                 if let Ok(env_token) = env::var(AUTH_TOKEN_ENV) {
                     tokens.insert(env_token);
                 }
+                if let Ok(env_path) = env::var(AUTH_TOKENS_FILE_ENV) {
+                    match read_to_string(&env_path) {
+                        Ok(s) => {
+                            s.lines().filter(|l| !l.trim().is_empty()).for_each(|l| {
+                                tokens.insert(l.to_string());
+                            });
+                        }
+                        Err(e) => {
+                            error!(
+                                "failed to read tokens from authentication file ({env_path}) ({e})"
+                            );
+                        }
+                    };
+                }
+
                 tokens
             }
             TokenType::Delete => {
@@ -170,6 +186,20 @@ impl Config {
                 if let Ok(env_token) = env::var(DELETE_TOKEN_ENV) {
                     tokens.insert(env_token);
                 }
+
+                if let Ok(env_path) = env::var(DELETE_TOKENS_FILE_ENV) {
+                    match read_to_string(&env_path) {
+                        Ok(s) => {
+                            s.lines().filter(|l| !l.trim().is_empty()).for_each(|l| {
+                                tokens.insert(l.to_string());
+                            });
+                        }
+                        Err(e) => {
+                            error!("failed to read deletion tokens from file ({env_path}) ({e})");
+                        }
+                    };
+                }
+
                 tokens
             }
         };
