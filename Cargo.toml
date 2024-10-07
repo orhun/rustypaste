@@ -46,6 +46,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 uts2ts = "0.4.1"
 path-clean = "1.0.1"
+fs_extra = "1.3.0"
 
 [dependencies.config]
 version = "0.14.0"
