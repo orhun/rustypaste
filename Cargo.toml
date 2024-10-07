@@ -24,7 +24,7 @@ actix-multipart = "0.7.2"
 actix-files = "0.6.6"
 awc = { version = "3.5.1" }
 serde = "1.0.210"
-futures-util = "0.3.30"
+futures-util = "0.3.31"
 petname = { version = "2.0.2", default-features = false, features = [
   "default-rng",
   "default-words",
