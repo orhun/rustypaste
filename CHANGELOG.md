@@ -444,7 +444,7 @@ Also, there is an ongoing discussion about refactoring the usage of landing page
 
 ## [0.9.0] - 2023-05-17
 
-The public instance is now available at [https://rustypaste.shuttleapp.rs](https://rustypaste.shuttleapp.rs) 🚀
+The public instance is now available. 🚀
 
 Read the blog post about `rustypaste` and Shuttle deployments: [https://blog.orhun.dev/blazingly-fast-file-sharing](https://blog.orhun.dev/blazingly-fast-file-sharing)
 
@@ -466,7 +466,7 @@ If you are using `rustypaste` with a redirect or reverse proxy, it is now possib
 
 ```toml
 [server]
-url = "https://rustypaste.shuttleapp.rs"
+url = "https://paste.example.com"
 ```
 
 - Add instructions for installing on Alpine Linux
@@ -602,7 +602,7 @@ For users who want to have this feature disabled, there is an alternative [shell
 
 ### Added
 
-- Add instructions for installing [rustypaste](https://archlinux.org/packages/community/x86_64/rustypaste/) on Arch Linux
+- Add instructions for installing [rustypaste](https://archlinux.org/packages/extra/x86_64/rustypaste/) on Arch Linux
   - `pacman -S rustypaste` 🎉
 
 ### Fixed
