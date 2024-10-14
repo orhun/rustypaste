@@ -105,7 +105,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v4
       - name: Check the links
-        uses: lycheeverse/lychee-action@v1
+        uses: lycheeverse/lychee-action@v2
         with:
           args: --exclude "example.com|site.com|localhost|awesome.txt|x.txt" -v *.md
         env:

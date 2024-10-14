@@ -602,7 +602,7 @@ For users who want to have this feature disabled, there is an alternative [shell
 
 ### Added
 
-- Add instructions for installing [rustypaste](https://archlinux.org/packages/community/x86_64/rustypaste/) on Arch Linux
+- Add instructions for installing [rustypaste](https://archlinux.org/packages/extra/x86_64/rustypaste/) on Arch Linux
   - `pacman -S rustypaste` 🎉
 
 ### Fixed
