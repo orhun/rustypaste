@@ -31,7 +31,7 @@ petname = { version = "2.0.2", default-features = false, features = [
 ] }
 rand = "0.8.5"
 dotenvy = "0.15.7"
-url = "2.5.3"
+url = "2.5.4"
 mime = "0.3.17"
 regex = "1.11.1"
 serde_regex = "1.1.0"
