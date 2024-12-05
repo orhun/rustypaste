@@ -24,20 +24,29 @@ run_fixture() {
   return "$result"
 }
 
+proc_fixture() {
+  # Since we are creating a subshell, all environment variables created by custom_env will be lost
+  # Return code is preserved
+  fixture="$1"
+  (run_fixture "$fixture")
+  exit_status=$?
+  if [ "$exit_status" -eq 0 ]; then
+    echo -e "[${GREEN}ok${NC}] $fixture"
+  else
+    echo -e "[${RED}fail${NC}] $fixture"
+    exit "$exit_status"
+  fi
+}
+
 main() {
+  [ $# -ne 0 ] && for fixture in "$@"; do
+    proc_fixture "$fixture"
+  done && exit 0
+
   find * -maxdepth 0 -type d -print0 | while IFS= read -r -d '' fixture; do
-    # Since we are creating a subshell, all environment variables created by custom_env will be lost
-    # Return code is preserved
-    (run_fixture "$fixture")
-    exit_status=$?
-    if [ "$exit_status" -eq 0 ]; then
-      echo -e "[${GREEN}ok${NC}] $fixture"
-    else
-      echo -e "[${RED}fail${NC}] $fixture"
-      exit "$exit_status"
-    fi
+    proc_fixture "$fixture"
   done
 }
 
 [ "$DEBUG" == 'true' ] && set -x && export RUST_LOG=debug
-main
+main "$@"
