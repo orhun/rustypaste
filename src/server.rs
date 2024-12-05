@@ -296,7 +296,7 @@ async fn upload(
                     let config = config
                         .read()
                         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste.store_url(expiry_date, &config)?
+                    paste.store_url(expiry_date, header_filename, &config)?
                 }
             };
             info!(
