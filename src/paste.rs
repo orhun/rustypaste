@@ -254,7 +254,12 @@ impl Paste {
     ///
     /// [`random_url.enabled`]: crate::random::RandomURLConfig::enabled
     #[allow(deprecated)]
-    pub fn store_url(&self, expiry_date: Option<u128>, config: &Config) -> IoResult<String> {
+    pub fn store_url(
+        &self,
+        expiry_date: Option<u128>,
+        header_filename: Option<String>,
+        config: &Config,
+    ) -> IoResult<String> {
         let data = str::from_utf8(&self.data)
             .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
         let url = Url::parse(data).map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
@@ -263,6 +268,9 @@ impl Paste {
             if let Some(random_text) = random_url.generate() {
                 file_name = random_text;
             }
+        }
+        if let Some(header_filename) = header_filename {
+            file_name = header_filename;
         }
         let mut path =
             util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
@@ -461,7 +469,7 @@ mod tests {
             data: url.as_bytes().to_vec(),
             type_: PasteType::Url,
         };
-        let file_name = paste.store_url(None, &config)?;
+        let file_name = paste.store_url(None, None, &config)?;
         let file_path = PasteType::Url
             .get_path(&config.server.upload_path)
             .expect("Bad upload path")
@@ -474,7 +482,21 @@ mod tests {
             data: url.as_bytes().to_vec(),
             type_: PasteType::Url,
         };
-        assert!(paste.store_url(None, &config).is_err());
+        assert!(paste.store_url(None, None, &config).is_err());
+
+        let url = String::from("https://orhun.dev/");
+        let paste = Paste {
+            data: url.as_bytes().to_vec(),
+            type_: PasteType::Url,
+        };
+        let prepared_result = paste.store_url(None, Some("prepared-name".to_string()), &config)?;
+        let file_path = PasteType::Url
+            .get_path(&config.server.upload_path)
+            .expect("Bad upload path")
+            .join(&prepared_result);
+        assert_eq!(prepared_result, "prepared-name");
+        assert_eq!(url, fs::read_to_string(&file_path)?);
+        fs::remove_file(file_path)?;
 
         config.server.max_content_length = Byte::from_str("30k").expect("cannot parse byte");
         let url = String::from("https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg");
