@@ -24,6 +24,7 @@ run_fixture() {
   return "$result"
 }
 
+# Run the fixture and print the result
 process_fixture() {
   # Since we are creating a subshell, all environment variables created by custom_env will be lost
   # Return code is preserved
@@ -39,10 +40,12 @@ process_fixture() {
 }
 
 main() {
+  # If arguments are passed, run only those fixtures
   [ $# -ne 0 ] && for fixture in "$@"; do
     process_fixture "$fixture"
   done && exit 0
 
+  # Otherwise, run all fixtures
   find * -maxdepth 0 -type d -print0 | while IFS= read -r -d '' fixture; do
     process_fixture "$fixture"
   done
