@@ -141,7 +141,7 @@ pub fn get_dir_size(path: &Path) -> IoResult<u64> {
     let path_metadata = path.symlink_metadata()?;
     let mut size_in_bytes = 0;
     if path_metadata.is_dir() {
-        for entry in std::fs::read_dir(&path)? {
+        for entry in std::fs::read_dir(path)? {
             let entry = entry?;
             let entry_metadata = entry.metadata()?;
             if entry_metadata.is_dir() {
