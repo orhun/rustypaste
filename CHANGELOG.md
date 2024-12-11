@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2024-12-11
+
+### Added
+
+- Support `max_upload_dir_size` by @Narayanbhat166
+
+Now you can configure the server to limit the total size of the uploaded files as follows:
+
+```toml
+[server]
+max_upload_dir_size = "100G"
+```
+
+This would help with e.g. public instances in terms of avoiding a storage attack where a single user uploads a bunch of big/small files.
+
+- Add support for multiple auth tokens via env vars by @nydragon in [#339](https://github.com/orhun/rustypaste/pull/339)
+
+In addition to `[server].auth_tokens` and `[server].delete_tokens` in the configuration file, it has been made possible to set multiple tokens for authentication and deletion via their respective environment variables.
+
+- `AUTH_TOKENS_FILE`: Points to a file containing a list of tokens for authentication, one per line.
+- `DELETE_TOKENS_FILE`: Points to a file containing a list of tokens for deletion, one per line.
+
+For example:
+
+`export AUTH_TOKENS_FILE=./auth_file`
+
+and `auth_file` contains:
+
+```plaintext
+bread
+brioche
+baguette
+naan
+```
+
+### Changed
+
+- Allow shortening URLs with a filename by @Vaelatern in [#373](https://github.com/orhun/rustypaste/pull/373)
+
+This enable naming shortened URLs beyond using a random string or the text "url". For example:
+
+```sh
+$ curl -s -F "url=https://shorten.this" -H "filename: abc" "<server_address>"
+```
+
+The shortened URL will be saved as `abc` in the server.
+
+- Update all dependencies
+
+### Removed
+
+- Remove shuttle code and deps by @tessus in [#328](https://github.com/orhun/rustypaste/pull/328)
+
+I'm looking for a service to publicly host a rustypaste instance.
+If you have any suggestions or want to sponsor this, please let me know [in this issue](https://github.com/orhun/rustypaste/issues/326)!
+
+## New Contributors
+
+- @Narayanbhat166 made their first contribution
+- @Vaelatern made their first contribution in [#374](https://github.com/orhun/rustypaste/pull/374)
+- @nydragon made their first contribution in [#339](https://github.com/orhun/rustypaste/pull/339)
+
 ## [0.15.1] - 2024-07-29
 
 ### Added
