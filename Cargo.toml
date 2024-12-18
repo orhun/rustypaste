@@ -48,7 +48,7 @@ uts2ts = "0.4.1"
 path-clean = "1.0.1"
 
 [dependencies.config]
-version = "0.14.1"
+version = "0.15.0"
 default-features = false
 features = ["toml", "yaml"]
 
