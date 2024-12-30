@@ -28,9 +28,6 @@ pub mod mime;
 /// Helper functions.
 pub mod util;
 
-/// Custom middleware implementation.
-pub mod middleware;
-
 // Use macros from tracing crate.
 #[macro_use]
 extern crate tracing;
