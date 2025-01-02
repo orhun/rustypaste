@@ -1,0 +1,2 @@
+# use fully locked system account on systemd 257+ (note the !)
+u! rustypaste - "Minimal file upload/pastebin service" /var/lib/rustypaste
