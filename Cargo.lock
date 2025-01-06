@@ -274,9 +274,9 @@ dependencies = [
 
 [[package]]
 name = "actix-web-grants"
-version = "4.1.1"
+version = "4.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "080195a204218d5104e1c761172db9128cbcec5b60a76d6bb6b1061be496931b"
+checksum = "e219c908910b6daa44bf95dbd5e4a8d8e1bea6c246a5c74e5e0ce54374812fe3"
 dependencies = [
  "actix-web",
  "protect-endpoints-proc-macro",
@@ -1682,9 +1682,9 @@ dependencies = [
 
 [[package]]
 name = "protect-endpoints-proc-macro"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b29997cba9d7a0f5cb3e4b520786e9246cc32f3b3eaa3e23547ad6068631b948"
+checksum = "5e0c9e70bf8d728e85b2c849d1ccf7d6ffa757d86d1cb90e94eca8aca9e87231"
 dependencies = [
  "darling",
  "proc-macro2",

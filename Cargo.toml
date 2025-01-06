@@ -19,7 +19,7 @@ rustls = ["actix-web/rustls-0_21", "awc/rustls-0_21"]
 
 [dependencies]
 actix-web = { version = "4.9.0" }
-actix-web-grants = { version = "4.1.1" }
+actix-web-grants = { version = "4.1.2" }
 actix-multipart = "0.7.2"
 actix-files = "0.6.6"
 awc = { version = "3.5.1" }
