@@ -472,7 +472,7 @@ mod tests {
 
     async fn assert_body(body: BoxBody, expected: &str) -> Result<(), Error> {
         if let BodySize::Sized(size) = body.size() {
-            assert_eq!(size, expected.as_bytes().len() as u64);
+            assert_eq!(size, expected.len() as u64);
             let body_bytes = actix_web::body::to_bytes(body).await?;
             let body_text = str::from_utf8(&body_bytes)?;
             assert_eq!(expected, body_text);
