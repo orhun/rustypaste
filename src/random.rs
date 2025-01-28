@@ -1,5 +1,5 @@
 use petname::Generator;
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distr::Alphanumeric, Rng};
 
 /// Random URL configuration.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -32,7 +32,7 @@ impl RandomURLConfig {
                 self.words.unwrap_or(2),
                 self.separator.as_deref().unwrap_or("-"),
             )?,
-            RandomURLType::Alphanumeric => rand::thread_rng()
+            RandomURLType::Alphanumeric => rand::rng()
                 .sample_iter(&Alphanumeric)
                 .take(self.length.unwrap_or(8))
                 .map(char::from)
