@@ -1105,11 +1105,12 @@ mod tests {
         )
         .await;
 
-        let file_name = "Example.jpg";
+        let file_name =
+            "rp_test_3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f.png";
         let response = test::call_service(
             &app,
             get_multipart_request(
-                "https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg",
+                "https://raw.githubusercontent.com/orhun/rustypaste/refs/heads/master/img/rp_test_3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f.png",
                 "remote",
                 file_name,
             )
@@ -1132,7 +1133,7 @@ mod tests {
         let body = response.into_body();
         let body_bytes = actix_web::body::to_bytes(body).await?;
         assert_eq!(
-            "70ff72a2f7651b5fae3aa9834e03d2a2233c52036610562f7fa04e089e8198ed",
+            "3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f",
             util::sha256_digest(&*body_bytes)?
         );
 
