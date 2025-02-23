@@ -56,6 +56,7 @@ some text
     - [Nginx](#nginx)
   - [Contributing](#contributing)
     - [License](#license)
+- [3rd party clients](#3rd-party-clients)
 
 <!-- vim-markdown-toc -->
 
@@ -371,12 +372,6 @@ http {
 }
 ```
 
-## 3rd party clients
-Here are few third party app and UIs for rustypaste
-1. [dobohdan/ferripaste](https://github.com/dbohdan/ferripaste) - Alternative rustypaste CLI client
-2. [rukh-debug/droidypaste](https://github.com/rukh-debug/droidypaste) - Android client built with React Native and Expo
-3. [rukh-debug/rustypaste-gui.sh](https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58) - Linux's Minimal GUI client prowered by zenity
-
 ### Contributing
 
 Pull requests are welcome!
@@ -388,3 +383,9 @@ Consider submitting your ideas via [issues](https://github.com/orhun/rustypaste/
 <sup>
 All code is licensed under <a href="LICENSE">The MIT License</a>.
 </sup>
+
+## 3rd party clients
+
+1. [dobohdan/ferripaste](https://github.com/dbohdan/ferripaste) - Alternative rustypaste CLI client
+2. [rukh-debug/droidypaste](https://github.com/rukh-debug/droidypaste) - Android client built with React Native and Expo
+3. [rukh-debug/rustypaste-gui.sh](https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58) - Linux's Minimal GUI client prowered by zenity
