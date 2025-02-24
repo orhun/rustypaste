@@ -56,7 +56,7 @@ some text
     - [Nginx](#nginx)
   - [Contributing](#contributing)
     - [License](#license)
-- [3rd party clients](#3rd-party-clients)
+- [Third party clients](#third-party-clients)
 
 <!-- vim-markdown-toc -->
 
