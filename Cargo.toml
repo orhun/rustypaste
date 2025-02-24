@@ -39,7 +39,7 @@ lazy-regex = "3.4.1"
 humantime = "2.1.0"
 humantime-serde = "1.1.1"
 glob = "0.3.2"
-ring = "0.17.9"
+ring = "0.17.11"
 hotwatch = "0.5.0"
 tokio = { version = "1.43.0", optional = true }
 tracing = "0.1.41"
