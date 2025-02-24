@@ -384,7 +384,7 @@ Consider submitting your ideas via [issues](https://github.com/orhun/rustypaste/
 All code is licensed under <a href="LICENSE">The MIT License</a>.
 </sup>
 
-## 3rd party clients
+### Third Party Clients
 
 1. [dobohdan/ferripaste](https://github.com/dbohdan/ferripaste) - Alternative rustypaste CLI client
 2. [rukh-debug/droidypaste](https://github.com/rukh-debug/droidypaste) - Android client built with React Native and Expo
