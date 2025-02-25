@@ -50,13 +50,14 @@ some text
     - [Delete file from server](#delete-file-from-server)
     - [Override the filename when using `random_url`](#override-the-filename-when-using-random_url)
   - [Server](#server)
+    - [Authentication](#authentication)
     - [List endpoint](#list-endpoint)
     - [HTML Form](#html-form)
     - [Docker](#docker)
     - [Nginx](#nginx)
+  - [Third Party Clients](#third-party-clients)
   - [Contributing](#contributing)
     - [License](#license)
-- [Third party clients](#third-party-clients)
 
 <!-- vim-markdown-toc -->
 
@@ -372,6 +373,12 @@ http {
 }
 ```
 
+### Third Party Clients
+
+- [dobohdan/ferripaste](https://github.com/dbohdan/ferripaste) - Alternative rustypaste CLI client
+- [rukh-debug/droidypaste](https://github.com/rukh-debug/droidypaste) - Android client built with React Native and Expo
+- [rukh-debug/rustypaste-gui.sh](https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58) - Linux's Minimal GUI client powered by zenity
+
 ### Contributing
 
 Pull requests are welcome!
@@ -383,9 +390,3 @@ Consider submitting your ideas via [issues](https://github.com/orhun/rustypaste/
 <sup>
 All code is licensed under <a href="LICENSE">The MIT License</a>.
 </sup>
-
-### Third Party Clients
-
-- [dobohdan/ferripaste](https://github.com/dbohdan/ferripaste) - Alternative rustypaste CLI client
-- [rukh-debug/droidypaste](https://github.com/rukh-debug/droidypaste) - Android client built with React Native and Expo
-- [rukh-debug/rustypaste-gui.sh](https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58) - Linux's Minimal GUI client powered by zenity
