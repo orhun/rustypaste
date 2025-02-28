@@ -243,7 +243,9 @@ mod tests {
     #[test]
     fn test_parse_config() -> Result<(), ConfigError> {
         let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
-        env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        unsafe {
+            env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        }
         let config = Config::parse(&config_path)?;
         assert_eq!("0.0.1.1", config.server.address);
         Ok(())
@@ -253,7 +255,9 @@ mod tests {
     #[allow(deprecated)]
     fn test_parse_deprecated_config() -> Result<(), ConfigError> {
         let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
-        env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        unsafe {
+            env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        }
         let mut config = Config::parse(&config_path)?;
         config.paste.random_url = Some(RandomURLConfig {
             enabled: Some(true),
@@ -276,8 +280,10 @@ mod tests {
     #[test]
     fn test_get_tokens() -> Result<(), ConfigError> {
         let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
-        env::set_var("AUTH_TOKEN", "env_auth");
-        env::set_var("DELETE_TOKEN", "env_delete");
+        unsafe {
+            env::set_var("AUTH_TOKEN", "env_auth");
+            env::set_var("DELETE_TOKEN", "env_delete");
+        }
         let mut config = Config::parse(&config_path)?;
         // empty tokens will be filtered
         config.server.auth_tokens =
@@ -297,8 +303,10 @@ mod tests {
             ])),
             config.get_tokens(TokenType::Delete)
         );
-        env::remove_var("AUTH_TOKEN");
-        env::remove_var("DELETE_TOKEN");
+        unsafe {
+            env::remove_var("AUTH_TOKEN");
+            env::remove_var("DELETE_TOKEN");
+        }
 
         // `get_tokens` returns `None` if no tokens are configured
         config.server.auth_tokens = Some(["  ".to_string()].into());
