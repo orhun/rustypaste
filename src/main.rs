@@ -48,7 +48,9 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     // Parse configuration.
     let config_path = match env::var(CONFIG_ENV).ok() {
         Some(path) => {
-            env::remove_var(CONFIG_ENV);
+            unsafe {
+                env::remove_var(CONFIG_ENV);
+            }
             PathBuf::from(path)
         }
         None => config_folder.join("config.toml"),
