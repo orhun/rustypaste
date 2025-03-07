@@ -1,0 +1,9 @@
+# Example and local links
+example\.com
+site\.com
+localhost
+awesome\.txt
+x\.txt
+# Links that sometimes timeout (e.g. due to rate limiting, ...), but we know that they are valid.
+https://repology.org/badge/vertical-allrepos/rustypaste.svg
+https://repology.org/project/rustypaste/versions
