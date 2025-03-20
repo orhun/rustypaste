@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1] - 2025-03-20
+
+### Added
+- Add .lycheeignore with new links by @tessus in [#414](https://github.com/orhun/rustypaste/pull/414)
+- Add unofficial clients by @rukh-debug in [#407](https://github.com/orhun/rustypaste/pull/407)
+- Add image for tests by @tessus in [#392](https://github.com/orhun/rustypaste/pull/392)
+
+### Changed
+- Prepare for rust edition 2024 by @tessus in [#409](https://github.com/orhun/rustypaste/pull/409)
+- Update borsh by @tessus in [#400](https://github.com/orhun/rustypaste/pull/400)
+- Optimize image by @tessus in [#393](https://github.com/orhun/rustypaste/pull/393)
+- Use fully locked system accounts on systemd257 by @inglor in [#382](https://github.com/orhun/rustypaste/pull/382)
+- Bump actix-service to 2.0.3 by @tessus in [#424](https://github.com/orhun/rustypaste/pull/424)
+- Bump config from 0.15.9 to 0.15.11 by @dependabot[bot] in [#423](https://github.com/orhun/rustypaste/pull/423)
+- Bump tokio from 1.44.0 to 1.44.1 by @dependabot[bot] in [#422](https://github.com/orhun/rustypaste/pull/422)
+- Bump humantime from 2.1.0 to 2.2.0 by @dependabot[bot] in [#421](https://github.com/orhun/rustypaste/pull/421)
+- Bump ring from 0.17.13 to 0.17.14 by @dependabot[bot] in [#420](https://github.com/orhun/rustypaste/pull/420)
+- Bump awc from 3.5.1 to 3.6.0 by @dependabot[bot] in [#417](https://github.com/orhun/rustypaste/pull/417)
+- Bump tokio from 1.43.0 to 1.44.0 by @dependabot[bot] in [#419](https://github.com/orhun/rustypaste/pull/419)
+- Bump serde from 1.0.218 to 1.0.219 by @dependabot[bot] in [#418](https://github.com/orhun/rustypaste/pull/418)
+- Bump actix-web from 4.9.0 to 4.10.2 by @dependabot[bot] in [#416](https://github.com/orhun/rustypaste/pull/416)
+- Bump ring from 0.17.12 to 0.17.13 by @dependabot[bot] in [#413](https://github.com/orhun/rustypaste/pull/413)
+- Bump config from 0.15.8 to 0.15.9 by @dependabot[bot] in [#412](https://github.com/orhun/rustypaste/pull/412)
+- Bump ring from 0.17.11 to 0.17.12 by @dependabot[bot] in [#411](https://github.com/orhun/rustypaste/pull/411)
+- Bump ring from 0.17.9 to 0.17.11 by @dependabot[bot] in [#408](https://github.com/orhun/rustypaste/pull/408)
+- Bump serde from 1.0.217 to 1.0.218 by @dependabot[bot] in [#405](https://github.com/orhun/rustypaste/pull/405)
+- Bump ring from 0.17.8 to 0.17.9 by @dependabot[bot] in [#402](https://github.com/orhun/rustypaste/pull/402)
+- Bump config from 0.15.7 to 0.15.8 by @dependabot[bot] in [#401](https://github.com/orhun/rustypaste/pull/401)
+- Bump openssl to 0.10.70 by @tessus in [#399](https://github.com/orhun/rustypaste/pull/399)
+- Bump infer from 0.16.0 to 0.19.0 by @dependabot[bot] in [#396](https://github.com/orhun/rustypaste/pull/396)
+- Bump config from 0.15.6 to 0.15.7 by @dependabot[bot] in [#395](https://github.com/orhun/rustypaste/pull/395)
+- Bump rand to 0.9.0 by @tessus in [#390](https://github.com/orhun/rustypaste/pull/390)
+- Bump config from 0.15.5 to 0.15.6 by @dependabot[bot] in [#388](https://github.com/orhun/rustypaste/pull/388)
+- Bump config from 0.15.4 to 0.15.5 by @dependabot[bot] in [#386](https://github.com/orhun/rustypaste/pull/386)
+- Bump tokio from 1.42.0 to 1.43.0 by @dependabot[bot] in [#384](https://github.com/orhun/rustypaste/pull/384)
+- Bump actix-web-grants from 4.1.1 to 4.1.2 by @dependabot[bot] in [#383](https://github.com/orhun/rustypaste/pull/383)
+- Bump serde from 1.0.216 to 1.0.217 by @dependabot[bot] in [#381](https://github.com/orhun/rustypaste/pull/381)
+- Bump glob from 0.3.1 to 0.3.2 by @dependabot[bot] in [#380](https://github.com/orhun/rustypaste/pull/380)
+- Bump lazy-regex from 3.3.0 to 3.4.1 by @dependabot[bot] in [#379](https://github.com/orhun/rustypaste/pull/379)
+- Bump config from 0.15.3 to 0.15.4 by @dependabot[bot] in [#378](https://github.com/orhun/rustypaste/pull/378)
+- Bump config from 0.15.0 to 0.15.3 by @dependabot[bot] in [#377](https://github.com/orhun/rustypaste/pull/377)
+- Bump config from 0.14.1 to 0.15.0 by @dependabot[bot] in [#376](https://github.com/orhun/rustypaste/pull/376)
+
+### Fixed
+- Fix heading level for new contributors by @tessus in [#425](https://github.com/orhun/rustypaste/pull/425)
+- Fix typo by @tessus in [#410](https://github.com/orhun/rustypaste/pull/410)
+- Change URL of remote image by @tessus in [#394](https://github.com/orhun/rustypaste/pull/394)
+- Len() can be called directly on strings by @tessus in [#385](https://github.com/orhun/rustypaste/pull/385)
+
+### New Contributors
+- @rukh-debug made their first contribution in [#407](https://github.com/orhun/rustypaste/pull/407)
+
 ## [0.16.0] - 2024-12-11
 
 ### Added
@@ -813,3 +865,43 @@ Under the hood, it checks the SHA256 digest of the uploaded files.
 ## [0.1.1] - 2021-07-27
 
 Initial release.
+
+[0.16.1]: https://github.com/orhun/rustypaste/compare/v0.16.0..v0.16.1
+[0.16.0]: https://github.com/orhun/rustypaste/compare/v0.15.1..v0.16.0
+[0.15.1]: https://github.com/orhun/rustypaste/compare/v0.15.0..v0.15.1
+[0.15.0]: https://github.com/orhun/rustypaste/compare/v0.14.4..v0.15.0
+[0.14.4]: https://github.com/orhun/rustypaste/compare/v0.14.3..v0.14.4
+[0.14.3]: https://github.com/orhun/rustypaste/compare/v0.14.2..v0.14.3
+[0.14.2]: https://github.com/orhun/rustypaste/compare/v0.14.1..v0.14.2
+[0.14.1]: https://github.com/orhun/rustypaste/compare/v0.14.0..v0.14.1
+[0.14.0]: https://github.com/orhun/rustypaste/compare/v0.12.1..v0.14.0
+[0.12.1]: https://github.com/orhun/rustypaste/compare/v0.12.0..v0.12.1
+[0.12.0]: https://github.com/orhun/rustypaste/compare/v0.11.1..v0.12.0
+[0.11.1]: https://github.com/orhun/rustypaste/compare/v0.11.0..v0.11.1
+[0.11.0]: https://github.com/orhun/rustypaste/compare/v0.10.1..v0.11.0
+[0.10.1]: https://github.com/orhun/rustypaste/compare/v0.10.0..v0.10.1
+[0.10.0]: https://github.com/orhun/rustypaste/compare/v0.9.1..v0.10.0
+[0.9.1]: https://github.com/orhun/rustypaste/compare/v0.9.0..v0.9.1
+[0.9.0]: https://github.com/orhun/rustypaste/compare/v0.8.4..v0.9.0
+[0.8.4]: https://github.com/orhun/rustypaste/compare/v0.8.3..v0.8.4
+[0.8.3]: https://github.com/orhun/rustypaste/compare/v0.8.2..v0.8.3
+[0.8.2]: https://github.com/orhun/rustypaste/compare/v0.8.1..v0.8.2
+[0.8.1]: https://github.com/orhun/rustypaste/compare/v0.8.0..v0.8.1
+[0.8.0]: https://github.com/orhun/rustypaste/compare/v0.7.1..v0.8.0
+[0.7.1]: https://github.com/orhun/rustypaste/compare/v0.7.0..v0.7.1
+[0.7.0]: https://github.com/orhun/rustypaste/compare/v0.6.5..v0.7.0
+[0.6.5]: https://github.com/orhun/rustypaste/compare/v0.6.4..v0.6.5
+[0.6.4]: https://github.com/orhun/rustypaste/compare/v0.6.3..v0.6.4
+[0.6.3]: https://github.com/orhun/rustypaste/compare/v0.6.2..v0.6.3
+[0.6.2]: https://github.com/orhun/rustypaste/compare/v0.6.1..v0.6.2
+[0.6.1]: https://github.com/orhun/rustypaste/compare/v0.6.0..v0.6.1
+[0.6.0]: https://github.com/orhun/rustypaste/compare/v0.5.0..v0.6.0
+[0.5.0]: https://github.com/orhun/rustypaste/compare/v0.4.1..v0.5.0
+[0.4.1]: https://github.com/orhun/rustypaste/compare/v0.4.0..v0.4.1
+[0.4.0]: https://github.com/orhun/rustypaste/compare/v0.3.1..v0.4.0
+[0.3.1]: https://github.com/orhun/rustypaste/compare/v0.3.0..v0.3.1
+[0.3.0]: https://github.com/orhun/rustypaste/compare/v0.2.0..v0.3.0
+[0.2.0]: https://github.com/orhun/rustypaste/compare/v0.1.3..v0.2.0
+[0.1.3]: https://github.com/orhun/rustypaste/compare/v0.1.2..v0.1.3
+[0.1.2]: https://github.com/orhun/rustypaste/compare/v0.1.1..v0.1.2
+[0.1.1]: https://github.com/orhun/rustypaste/compare/v0.1.0..v0.1.1
