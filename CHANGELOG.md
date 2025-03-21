@@ -41,7 +41,6 @@ GitHub: <https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58>
 
 - @rukh-debug made their first contribution in [#407](https://github.com/orhun/rustypaste/pull/407)
 
-[0.16.1]: https://github.com/orhun/rustypaste/compare/v0.16.0..0.16.1
 ## [0.16.0] - 2024-12-11
 
 ### Added
