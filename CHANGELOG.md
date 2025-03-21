@@ -5,29 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.16.1] - 2025-03-20
+## [0.16.1] - 2025-03-21
 
 ### Added
-- Add .lycheeignore with new links by @tessus in [#414](https://github.com/orhun/rustypaste/pull/414)
-- Add unofficial clients by @rukh-debug in [#407](https://github.com/orhun/rustypaste/pull/407)
-- Add image for tests by @tessus in [#392](https://github.com/orhun/rustypaste/pull/392)
+
+- Add unofficial clients to the documentation
+
+1. Droidypaste
+
+Yes, you heard it right! `rustypaste` now has an Android client!
+
+![](https://raw.githubusercontent.com/rukh-debug/droidypaste/main/assets/1.png)
+
+GitHub: <https://github.com/rukh-debug/droidypaste>
+
+2. Ferripaste
+
+An alternative Rustypaste client
+
+GitHub: <https://github.com/dbohdan/ferripaste>
+
+3. Rustypaste-GUI
+
+A script for a mininal GUI client for `rustypaste` (powered by zenity)
+
+GitHub: <https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58>
 
 ### Changed
-- Prepare for rust edition 2024 by @tessus in [#409](https://github.com/orhun/rustypaste/pull/409)
-- Update borsh by @tessus in [#400](https://github.com/orhun/rustypaste/pull/400)
-- Optimize image by @tessus in [#393](https://github.com/orhun/rustypaste/pull/393)
-- Use fully locked system accounts on systemd257 by @inglor in [#382](https://github.com/orhun/rustypaste/pull/382)
-- Bump dependencies
 
-### Fixed
-- Fix heading level for new contributors by @tessus in [#425](https://github.com/orhun/rustypaste/pull/425)
-- Fix typo by @tessus in [#410](https://github.com/orhun/rustypaste/pull/410)
-- Change URL of remote image by @tessus in [#394](https://github.com/orhun/rustypaste/pull/394)
-- Len() can be called directly on strings by @tessus in [#385](https://github.com/orhun/rustypaste/pull/385)
+- Use fully locked system accounts on systemd257
+- Bump to Rust 2024 edition
+- Update dependencies
 
 ### New Contributors
+
 - @rukh-debug made their first contribution in [#407](https://github.com/orhun/rustypaste/pull/407)
 
+[0.16.1]: https://github.com/orhun/rustypaste/compare/v0.16.0..0.16.1
 ## [0.16.0] - 2024-12-11
 
 ### Added
