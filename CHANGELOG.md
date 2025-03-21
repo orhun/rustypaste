@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update borsh by @tessus in [#400](https://github.com/orhun/rustypaste/pull/400)
 - Optimize image by @tessus in [#393](https://github.com/orhun/rustypaste/pull/393)
 - Use fully locked system accounts on systemd257 by @inglor in [#382](https://github.com/orhun/rustypaste/pull/382)
+- Bump dependencies
 
 ### Fixed
 - Fix heading level for new contributors by @tessus in [#425](https://github.com/orhun/rustypaste/pull/425)
