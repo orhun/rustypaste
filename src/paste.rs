@@ -224,7 +224,7 @@ impl Paste {
         let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
         let file_name = url
             .path_segments()
-            .and_then(|segments| segments.last())
+            .and_then(|mut segments| segments.next_back())
             .and_then(|name| if name.is_empty() { None } else { Some(name) })
             .unwrap_or("file");
         let mut response = client
