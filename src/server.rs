@@ -454,7 +454,7 @@ mod tests {
              --multipart_bound--\r\n",
             name,
             filename,
-            data.bytes().len(),
+            data.len(),
             data,
         );
         TestRequest::post()
@@ -464,7 +464,7 @@ mod tests {
             ))
             .insert_header((
                 header::CONTENT_LENGTH,
-                header::HeaderValue::from_str(&data.bytes().len().to_string())
+                header::HeaderValue::from_str(&data.len().to_string())
                     .expect("cannot create header value"),
             ))
             .set_payload(multipart_data)
