@@ -29,7 +29,7 @@ petname = { version = "2.0.2", default-features = false, features = [
   "default-rng",
   "default-words",
 ] }
-rand = "0.9.0"
+rand = "0.9.1"
 dotenvy = "0.15.7"
 url = "2.5.4"
 mime = "0.3.17"
