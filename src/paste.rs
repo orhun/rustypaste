@@ -474,12 +474,7 @@ mod tests {
             data: vec![116, 101, 115, 115, 117, 115],
             type_: PasteType::File,
         };
-        let file_name = paste.store_file(
-            "filename.txt",
-            None,
-            None,
-            &config,
-        )?;
+        let file_name = paste.store_file("filename.txt", None, None, &config)?;
         assert_eq!("tessus", fs::read_to_string(&file_name)?);
         assert_eq!(8, file_name.len());
         fs::remove_file(file_name)?;
