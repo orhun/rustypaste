@@ -71,6 +71,7 @@ some text
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
     - random suffix (e.g. `file.MRV5as.tar.gz`)
+    - no extension
   - supports expiring links
     - auto-expiration of files (optional)
     - auto-deletion of expired files (optional)
@@ -266,6 +267,14 @@ The generation of a random filename can be overridden by sending a header called
 
 ```sh
 curl -F "file=@x.txt" -H "filename: <file_name>" "<server_address>"
+```
+
+#### No extension when using `random_url`
+
+Rustypaste adds the filename's extension to the url. This can be changed by setting `no_extension` to `true`:
+
+```toml
+random_url = { type = "alphanumeric", length = 8, no_extension = true }
 ```
 
 ### Server
