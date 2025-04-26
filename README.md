@@ -71,7 +71,6 @@ some text
     - pet name (e.g. `capital-mosquito.txt`)
     - alphanumeric string (e.g. `yB84D2Dv.txt`)
     - random suffix (e.g. `file.MRV5as.tar.gz`)
-    - no extension
   - supports expiring links
     - auto-expiration of files (optional)
     - auto-deletion of expired files (optional)
