@@ -41,14 +41,16 @@ process_fixture() {
 
 main() {
   # If arguments are passed, run only those fixtures
-  [ $# -ne 0 ] && for fixture in "$@"; do
-    process_fixture "$fixture"
-  done && exit 0
-
+  if [ $# -ne 0 ]; then
+    for fixture in "$@"; do
+      process_fixture "$fixture"
+    done
+  else
   # Otherwise, run all fixtures
-  find * -maxdepth 0 -type d -print0 | while IFS= read -r -d '' fixture; do
-    process_fixture "$fixture"
-  done
+    find * -maxdepth 0 -type d -print0 | while IFS= read -r -d '' fixture; do
+      process_fixture "$fixture"
+    done
+  fi
 }
 
 [ "$DEBUG" == 'true' ] && set -x && export RUST_LOG=debug
