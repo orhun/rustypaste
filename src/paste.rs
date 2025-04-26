@@ -182,11 +182,7 @@ impl Paste {
                     file_name = random_text;
                 }
             }
-            if let Some(no_ext) = random_url.no_extension {
-                if no_ext {
-                    no_extension = true;
-                }
-            }
+            no_extension = random_url.no_extension.unwrap_or(false);
         }
         path.set_file_name(file_name);
         if !no_extension {
