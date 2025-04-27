@@ -268,14 +268,6 @@ The generation of a random filename can be overridden by sending a header called
 curl -F "file=@x.txt" -H "filename: <file_name>" "<server_address>"
 ```
 
-#### No extension when using `random_url`
-
-Rustypaste adds the filename's extension to the url. This can be changed by setting `no_extension` to `true`:
-
-```toml
-random_url = { type = "alphanumeric", length = 8, no_extension = true }
-```
-
 ### Server
 
 To start the server:
