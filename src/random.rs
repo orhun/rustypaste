@@ -18,6 +18,8 @@ pub struct RandomURLConfig {
     pub type_: RandomURLType,
     /// Append a random string to the original filename.
     pub suffix_mode: Option<bool>,
+    /// Do not add or keep an extension.
+    pub no_extension: Option<bool>,
 }
 
 #[allow(deprecated)]

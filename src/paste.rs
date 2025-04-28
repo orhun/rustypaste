@@ -169,6 +169,7 @@ impl Paste {
                 .unwrap_or(&config.paste.default_extension)
                 .to_string()
         };
+        let mut no_extension = false;
         if let Some(random_url) = &config.paste.random_url {
             if let Some(random_text) = random_url.generate() {
                 if let Some(suffix_mode) = random_url.suffix_mode {
@@ -181,9 +182,12 @@ impl Paste {
                     file_name = random_text;
                 }
             }
+            no_extension = random_url.no_extension.unwrap_or(false);
         }
         path.set_file_name(file_name);
-        path.set_extension(extension);
+        if !no_extension {
+            path.set_extension(extension);
+        }
         if let Some(header_filename) = header_filename {
             file_name = header_filename;
             path.set_file_name(file_name);
@@ -454,6 +458,21 @@ mod tests {
         )?;
         assert_eq!("tessus", fs::read_to_string(&file_name)?);
         assert_eq!("fn_from_header", file_name);
+        fs::remove_file(file_name)?;
+
+        config.paste.random_url = Some(RandomURLConfig {
+            length: Some(8),
+            type_: RandomURLType::Alphanumeric,
+            no_extension: Some(true),
+            ..RandomURLConfig::default()
+        });
+        let paste = Paste {
+            data: vec![116, 101, 115, 115, 117, 115],
+            type_: PasteType::File,
+        };
+        let file_name = paste.store_file("filename.txt", None, None, &config)?;
+        assert_eq!("tessus", fs::read_to_string(&file_name)?);
+        assert_eq!(8, file_name.len());
         fs::remove_file(file_name)?;
 
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
