@@ -5,7 +5,7 @@ use crate::util;
 use actix_web::{error, Error};
 use awc::Client;
 use std::fs::{self, File};
-use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
+use std::io::{Error as IoError, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::RwLock;
@@ -198,7 +198,7 @@ impl Paste {
             .unwrap_or_default()
             .to_string();
         let file_path = util::glob_match_file(path.clone())
-            .map_err(|_| IoError::new(IoErrorKind::Other, String::from("path is not valid")))?;
+            .map_err(|_| IoError::other(String::from("path is not valid")))?;
         if file_path.is_file() && file_path.exists() {
             return Err(error::ErrorConflict("file already exists\n"));
         }
@@ -282,9 +282,8 @@ impl Paste {
         header_filename: Option<String>,
         config: &Config,
     ) -> IoResult<String> {
-        let data = str::from_utf8(&self.data)
-            .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
-        let url = Url::parse(data).map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
+        let data = str::from_utf8(&self.data).map_err(|e| IoError::other(e.to_string()))?;
+        let url = Url::parse(data).map_err(|e| IoError::other(e.to_string()))?;
         let mut file_name = self.type_.get_dir();
         if let Some(random_url) = &config.paste.random_url {
             if let Some(random_text) = random_url.generate() {

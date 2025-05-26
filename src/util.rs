@@ -104,8 +104,7 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
         .collect::<Vec<&u8>>()
         .iter()
         .try_fold::<String, _, IoResult<String>>(String::new(), |mut output, b| {
-            write!(output, "{b:02x}")
-                .map_err(|e| IoError::new(IoErrorKind::Other, e.to_string()))?;
+            write!(output, "{b:02x}").map_err(|e| IoError::other(e.to_string()))?;
             Ok(output)
         })?)
 }
