@@ -378,6 +378,7 @@ http {
 - [dbohdan/ferripaste](https://github.com/dbohdan/ferripaste) - Alternative rustypaste CLI client
 - [rukh-debug/droidypaste](https://github.com/rukh-debug/droidypaste) - Android client built with React Native and Expo
 - [rukh-debug/rustypaste-gui.sh](https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58) - Linux's Minimal GUI client powered by zenity
+- [ShareX](https://gist.github.com/Null-Kelvin/c726a080762781a603cbc1b713d36cc6) - ShareX as handy GUI client for rustypaste
 
 ### Contributing
 
