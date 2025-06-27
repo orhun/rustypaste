@@ -1281,17 +1281,17 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(
             response.into_body(),
-            &format!("http://localhost:8080/{}\n", oneshot_url_suffix),
+            &format!("http://localhost:8080/{oneshot_url_suffix}\n"),
         )
         .await?;
 
         // Make the oneshot_url request, ensure it is found.
-        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let serve_request = TestRequest::with_uri(&format!("/{oneshot_url_suffix}")).to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::FOUND, response.status());
 
         // Make the same request again, and ensure that the oneshot_url is not found.
-        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let serve_request = TestRequest::with_uri(&format!("/{oneshot_url_suffix}")).to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
