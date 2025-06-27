@@ -313,7 +313,7 @@ async fn upload(
             if let Some(handle_spaces_config) = config.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
             }
-            urls.push(format!("{}/{}\n", server_url, file_name));
+            urls.push(format!("{server_url}/{file_name}\n"));
         } else {
             warn!("{} sent an invalid form field", host);
             return Err(error::ErrorBadRequest("invalid form field"));

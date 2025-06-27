@@ -174,7 +174,7 @@ impl Paste {
             if let Some(random_text) = random_url.generate() {
                 if let Some(suffix_mode) = random_url.suffix_mode {
                     if suffix_mode {
-                        extension = format!("{}.{}", random_text, extension);
+                        extension = format!("{random_text}.{extension}");
                     } else {
                         file_name = random_text;
                     }
