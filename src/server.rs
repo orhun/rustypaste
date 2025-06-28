@@ -313,7 +313,7 @@ async fn upload(
             if let Some(handle_spaces_config) = config.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
             }
-            urls.push(format!("{}/{}\n", server_url, file_name));
+            urls.push(format!("{server_url}/{file_name}\n"));
         } else {
             warn!("{} sent an invalid form field", host);
             return Err(error::ErrorBadRequest("invalid form field"));
@@ -1281,17 +1281,17 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(
             response.into_body(),
-            &format!("http://localhost:8080/{}\n", oneshot_url_suffix),
+            &format!("http://localhost:8080/{oneshot_url_suffix}\n"),
         )
         .await?;
 
         // Make the oneshot_url request, ensure it is found.
-        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let serve_request = TestRequest::with_uri(&format!("/{oneshot_url_suffix}")).to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::FOUND, response.status());
 
         // Make the same request again, and ensure that the oneshot_url is not found.
-        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let serve_request = TestRequest::with_uri(&format!("/{oneshot_url_suffix}")).to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
