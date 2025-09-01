@@ -21,7 +21,7 @@ rustls = ["actix-web/rustls-0_21", "awc/rustls-0_21"]
 actix-web = { version = "4.11.0" }
 actix-web-grants = { version = "4.1.2" }
 actix-multipart = "0.7.2"
-actix-files = "0.6.6"
+actix-files = "0.6.7"
 awc = { version = "3.7.0" }
 serde = "1.0.219"
 futures-util = "0.3.31"
