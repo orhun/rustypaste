@@ -42,7 +42,11 @@ body = """
             {%- if contributor.pr_number %} in \
             [#{{ contributor.pr_number }}]({{ self::remote_url() }}/pull/{{ contributor.pr_number }}) \
             {%- endif %}
-{%- endfor %}\n\n
+{%- endfor %}\n
+
+{%- if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
+{% endif %}
+
 """
 # template for the changelog footer
 footer = """
