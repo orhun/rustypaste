@@ -44,8 +44,7 @@ body = """
             {%- endif %}
 {%- endfor %}\n
 
-{%- if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
-{% endif %}
+{%- if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}{% raw %}\n{% endraw -%}{% endif %}
 
 """
 # template for the changelog footer
