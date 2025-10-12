@@ -379,6 +379,7 @@ http {
 - [rukh-debug/droidypaste](https://github.com/rukh-debug/droidypaste) - Android client built with React Native and Expo
 - [rukh-debug/rustypaste-gui.sh](https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58) - Linux's Minimal GUI client powered by zenity
 - [ShareX](https://github.com/ShareX/ShareX) - ShareX as handy GUI client for rustypaste ([.sxcu profile example](https://gist.github.com/Null-Kelvin/c726a080762781a603cbc1b713d36cc6))
+- [Silvenga/rustypaste-ui](https://github.com/Silvenga/rustypaste-ui) - A modern, single file, web UI to interact with the rustypaste server.
 
 ### Contributing
 
