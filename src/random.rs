@@ -46,17 +46,13 @@ impl RandomURLConfig {
 /// Type of the random URL.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum RandomURLType {
     /// Generate a random pet name.
+    #[default]
     PetName,
     /// Generate a random alphanumeric string.
     Alphanumeric,
-}
-
-impl Default for RandomURLType {
-    fn default() -> Self {
-        Self::PetName
-    }
 }
 
 #[cfg(test)]
