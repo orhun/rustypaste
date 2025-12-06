@@ -48,7 +48,7 @@ some text
     - [Paste file from remote URL](#paste-file-from-remote-url)
     - [Cleaning up expired files](#cleaning-up-expired-files)
     - [Delete file from server](#delete-file-from-server)
-    - [Override the filename when using `random_url`](#override-the-filename-when-using-random_url)
+    - [Override the filename when using `random_url` or pasting from remote URL](#override-the-filename-when-using-random_url-or-pasting-from-remote-url)
   - [Server](#server)
     - [Authentication](#authentication)
     - [List endpoint](#list-endpoint)
@@ -260,12 +260,14 @@ $ curl -H "Authorization: <auth_token>" -X DELETE "<server_address>/file.txt"
 
 > The `DELETE` endpoint will not be exposed and will return `404` error if `delete_tokens` are not set.
 
-#### Override the filename when using `random_url`
+#### Override the filename when using `random_url` or pasting from remote URL
 
-The generation of a random filename can be overridden by sending a header called `filename`:
+When using the `random_url` config option, or when pasting a file [from remote URL](#paste-file-from-remote-url), rustypaste automatically selects a filename.
+This can be overridden by sending a header called `filename`:
 
 ```sh
 curl -F "file=@x.txt" -H "filename: <file_name>" "<server_address>"
+curl -F "remote=https://example.com/file.png" -H "filename: <file_name>" "<server_address>"
 ```
 
 ### Server
