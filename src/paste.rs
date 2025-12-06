@@ -221,6 +221,7 @@ impl Paste {
     pub async fn store_remote_file(
         &mut self,
         expiry_date: Option<u128>,
+        header_filename: Option<String>,
         client: &Client,
         config: &RwLock<Config>,
     ) -> Result<String, Error> {
@@ -266,7 +267,7 @@ impl Paste {
                     .to_string());
             }
         }
-        self.store_file(file_name, expiry_date, None, &config)
+        self.store_file(file_name, expiry_date, header_filename, &config)
     }
 
     /// Writes an URL to a file in upload directory.
@@ -546,7 +547,7 @@ mod tests {
                 .finish(),
         );
         let file_name = paste
-            .store_remote_file(None, &client_data, &RwLock::new(config.clone()))
+            .store_remote_file(None, None, &client_data, &RwLock::new(config.clone()))
             .await?;
         let file_path = PasteType::RemoteFile
             .get_path(&config.server.upload_path)

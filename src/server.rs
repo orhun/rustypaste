@@ -289,7 +289,7 @@ async fn upload(
                 }
                 PasteType::RemoteFile => {
                     paste
-                        .store_remote_file(expiry_date, &client, &config)
+                        .store_remote_file(expiry_date, header_filename, &client, &config)
                         .await?
                 }
                 PasteType::Url | PasteType::OneshotUrl => {
