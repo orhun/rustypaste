@@ -559,6 +559,36 @@ mod tests {
         );
         fs::remove_file(file_path)?;
 
+        config.server.max_content_length = Byte::from_str("30k").expect("cannot parse byte");
+        let url = String::from("https://raw.githubusercontent.com/orhun/rustypaste/refs/heads/master/img/rp_test_3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f.png");
+        let mut paste = Paste {
+            data: url.as_bytes().to_vec(),
+            type_: PasteType::RemoteFile,
+        };
+        let client_data = Data::new(
+            ClientBuilder::new()
+                .timeout(Duration::from_secs(30))
+                .finish(),
+        );
+        let file_name = paste
+            .store_remote_file(
+                None,
+                Some("fn_from_header.txt".to_string()),
+                &client_data,
+                &RwLock::new(config.clone()),
+            )
+            .await?;
+        assert_eq!("fn_from_header.txt", file_name);
+        let file_path = PasteType::RemoteFile
+            .get_path(&config.server.upload_path)
+            .expect("Bad upload path")
+            .join(file_name);
+        assert_eq!(
+            "3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f",
+            util::sha256_digest(&*paste.data)?
+        );
+        fs::remove_file(file_path)?;
+
         for paste_type in &[PasteType::Url, PasteType::Oneshot] {
             fs::remove_dir(
                 paste_type
