@@ -1,0 +1,9 @@
+[server]
+address = "127.0.0.1:8000"
+max_content_length = "10MB"
+upload_path = "./upload"
+timeout = "60s"
+
+[paste]
+default_extension = "txt"
+duplicate_files = false

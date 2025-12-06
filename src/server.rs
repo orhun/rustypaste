@@ -289,7 +289,7 @@ async fn upload(
                 }
                 PasteType::RemoteFile => {
                     paste
-                        .store_remote_file(expiry_date, &client, &config)
+                        .store_remote_file(expiry_date, header_filename, &client, &config)
                         .await?
                 }
                 PasteType::Url | PasteType::OneshotUrl => {
@@ -1114,6 +1114,70 @@ mod tests {
                 "remote",
                 file_name,
             )
+            .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(
+            response.into_body().boxed(),
+            &format!("http://localhost:8080/{file_name}\n"),
+        )
+        .await?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::OK, response.status());
+
+        let body = response.into_body();
+        let body_bytes = actix_web::body::to_bytes(body).await?;
+        assert_eq!(
+            "3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f",
+            util::sha256_digest(&*body_bytes)?
+        );
+
+        fs::remove_file(file_name)?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_remote_file_override_filename() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.max_content_length = Byte::from_u128(30000).unwrap_or_default();
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(
+                    ClientBuilder::new()
+                        .timeout(Duration::from_secs(30))
+                        .finish(),
+                ))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "fn_from_header.txt";
+        let response = test::call_service(
+            &app,
+            get_multipart_request(
+                "https://raw.githubusercontent.com/orhun/rustypaste/refs/heads/master/img/rp_test_3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f.png",
+                "remote",
+                file_name,
+            )
+            .insert_header((
+                header::HeaderName::from_static("filename"),
+                header::HeaderValue::from_static(file_name),
+            ))
             .to_request(),
         )
         .await;
