@@ -31,6 +31,9 @@ pub mod util;
 /// Custom middleware implementation.
 pub mod middleware;
 
+/// Password hashing and verification.
+pub mod password;
+
 // Use macros from tracing crate.
 #[macro_use]
 extern crate tracing;

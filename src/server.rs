@@ -12,6 +12,7 @@ use actix_web::middleware::ErrorHandlers;
 use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
 use actix_web_grants::GrantsMiddleware;
 use awc::Client;
+use base64::Engine;
 use byte_unit::{Byte, UnitType};
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
@@ -23,6 +24,23 @@ use std::path::PathBuf;
 use std::sync::RwLock;
 use std::time::{Duration, UNIX_EPOCH};
 use uts2ts;
+
+/// Extract password from Authorization header.
+///
+/// Supports Basic Auth (`Basic base64(user:pass)`) and Bearer tokens (`Bearer <token>`).
+fn extract_password_from_auth(auth_header: &str) -> Option<String> {
+    if let Some(basic) = auth_header.strip_prefix("Basic ") {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(basic)
+            .ok()?;
+        let creds = String::from_utf8(bytes).ok()?;
+        creds.split_once(':').map(|(_, p)| p.to_owned())
+    } else {
+        auth_header
+            .strip_prefix("Bearer ")
+            .map(|bearer| bearer.to_owned())
+    }
+}
 
 /// Shows the landing page.
 #[get("/")]
@@ -92,7 +110,12 @@ async fn serve(
     let mut path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
-        for type_ in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
+        for type_ in &[
+            PasteType::Url,
+            PasteType::Oneshot,
+            PasteType::OneshotUrl,
+            PasteType::ProtectedFile,
+        ] {
             let alt_path = safe_path_join(type_.get_path(&config.server.upload_path)?, &*file)?;
             let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
@@ -107,8 +130,28 @@ async fn serve(
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
+
+    // Check password protection
+    if crate::password::has_password(&path) {
+        use actix_web::http::header::AUTHORIZATION;
+
+        let password = request
+            .headers()
+            .get(AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .and_then(extract_password_from_auth)
+            .ok_or_else(|| error::ErrorNotFound("file is not found or expired :(\n"))?;
+
+        if !crate::password::verify_file_password(&path, &password)
+            .map_err(|e| error::ErrorInternalServerError(format!("password verification: {}", e)))?
+        {
+            // Same error as missing file (prevents enumeration)
+            return Err(error::ErrorNotFound("file is not found or expired :(\n"));
+        }
+    }
+
     match paste_type {
-        PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
+        PasteType::File | PasteType::RemoteFile | PasteType::Oneshot | PasteType::ProtectedFile => {
             let mime_type = if options.map(|v| v.download).unwrap_or(false) {
                 mime::APPLICATION_OCTET_STREAM
             } else {
@@ -162,8 +205,13 @@ async fn delete(
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
-    match fs::remove_file(path) {
-        Ok(_) => info!("deleted file: {:?}", file.to_string()),
+
+    // Delete content file first, then password (prevents unprotected window)
+    match fs::remove_file(&path) {
+        Ok(_) => {
+            info!("deleted file: {:?}", file.to_string());
+            crate::password::delete_password_file(&path).ok();
+        }
         Err(e) => {
             error!("cannot delete file: {}", e);
             return Err(error::ErrorInternalServerError("cannot delete file"));
@@ -245,6 +293,7 @@ async fn upload(
             if paste_type != PasteType::Oneshot
                 && paste_type != PasteType::RemoteFile
                 && paste_type != PasteType::OneshotUrl
+                && paste_type != PasteType::ProtectedFile
                 && expiry_date.is_none()
                 && !config
                     .read()
@@ -275,8 +324,8 @@ async fn upload(
                 data: bytes.to_vec(),
                 type_: paste_type,
             };
-            let mut file_name = match paste.type_ {
-                PasteType::File | PasteType::Oneshot => {
+            let result = match paste.type_ {
+                PasteType::File | PasteType::Oneshot | PasteType::ProtectedFile => {
                     let config = config
                         .read()
                         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
@@ -299,6 +348,10 @@ async fn upload(
                     paste.store_url(expiry_date, header_filename, &config)?
                 }
             };
+
+            let mut file_name = result.filename;
+            let password = result.password;
+
             info!(
                 "{} ({}) is uploaded from {}",
                 file_name,
@@ -313,7 +366,11 @@ async fn upload(
             if let Some(handle_spaces_config) = config.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
             }
-            urls.push(format!("{server_url}/{file_name}\n"));
+            if let Some(pwd) = password {
+                urls.push(format!("{server_url}/{file_name}\nPassword: {pwd}\n"));
+            } else {
+                urls.push(format!("{server_url}/{file_name}\n"));
+            }
         } else {
             warn!("{} sent an invalid form field", host);
             return Err(error::ErrorBadRequest("invalid form field"));
@@ -731,6 +788,63 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn test_list_excludes_password_files() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload_protected_list";
+        // Clean up from any previous test runs
+        let _ = fs::remove_dir_all(test_upload_dir);
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        // Create protected subdirectory
+        fs::create_dir(PathBuf::from(test_upload_dir).join("protected"))?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "secret.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+
+        // Upload a protected file (creates both secret.txt and secret.txt.password in protected/ subdir)
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "protected", filename).to_request(),
+        )
+        .await;
+
+        // Verify both files exist in protected/ subdirectory
+        let main_file = PathBuf::from(test_upload_dir)
+            .join("protected")
+            .join(filename);
+        let password_file = PathBuf::from(test_upload_dir)
+            .join("protected")
+            .join(format!("{}.password", filename));
+        assert!(main_file.exists());
+        assert!(password_file.exists());
+
+        // Call /list endpoint (reads root directory only)
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        // Should return 0 files (protected files are in subdirectory, not shown in root listing)
+        assert_eq!(result.len(), 0);
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
     async fn test_auth() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.auth_tokens = Some(["test".to_string()].into());
@@ -806,6 +920,9 @@ mod tests {
 
         let path = PathBuf::from(file_name);
         assert!(!path.exists());
+
+        let password_path = PathBuf::from(format!("{}.password", file_name));
+        assert!(!password_path.exists(), "password file should be deleted");
 
         Ok(())
     }
@@ -1297,6 +1414,179 @@ mod tests {
 
         // Cleanup
         fs::remove_dir_all(url_upload_path)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_protected_file() -> Result<(), Error> {
+        let test_upload_dir = "test_upload_protected";
+        fs::create_dir(test_upload_dir)?;
+
+        let mut config = Config::default();
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config.clone())))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let protected_upload_path = PasteType::ProtectedFile
+            .get_path(&config.server.upload_path)
+            .expect("Bad upload path");
+        fs::create_dir_all(&protected_upload_path)?;
+
+        let file_name = "protected.txt";
+        let file_content = "secret content";
+
+        // Upload protected file
+        let response = test::call_service(
+            &app,
+            get_multipart_request(file_content, "protected", file_name).to_request(),
+        )
+        .await;
+
+        assert_eq!(StatusCode::OK, response.status());
+        let body = response.into_body();
+        let body_bytes = actix_web::body::to_bytes(body).await?;
+        let body_text = str::from_utf8(&body_bytes)?;
+
+        // Extract URL and password from response
+        let lines: Vec<&str> = body_text.lines().collect();
+        assert_eq!(2, lines.len(), "Expected URL and password in response");
+        assert!(
+            lines[0].contains(file_name),
+            "First line should contain URL"
+        );
+        assert!(
+            lines[1].starts_with("Password: "),
+            "Second line should contain password"
+        );
+
+        let password = lines[1]
+            .strip_prefix("Password: ")
+            .expect("Failed to extract password")
+            .to_string();
+
+        // Access without authorization header -> 404
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Access with wrong password (Bearer) -> 404
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, "Bearer wrongpassword"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Access with wrong password (Basic Auth) -> 404
+        let wrong_basic = format!(
+            "Basic {}",
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                b"user:wrongpassword"
+            )
+        );
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, wrong_basic))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Access with correct password (Bearer) -> 200
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, format!("Bearer {}", password)))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), file_content).await?;
+
+        // Access with correct password (Basic Auth) -> 200
+        let correct_basic = format!(
+            "Basic {}",
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                format!("user:{}", password).as_bytes()
+            )
+        );
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, correct_basic))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), file_content).await?;
+
+        // Cleanup
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_protected_file_enumeration_prevention() -> Result<(), Error> {
+        let test_upload_dir = "test_upload_enum";
+        fs::create_dir(test_upload_dir)?;
+
+        let mut config = Config::default();
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config.clone())))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let protected_upload_path = PasteType::ProtectedFile
+            .get_path(&config.server.upload_path)
+            .expect("Bad upload path");
+        fs::create_dir_all(&protected_upload_path)?;
+
+        // Test that both missing files and protected files return same error code
+        // This prevents attackers from enumerating files
+
+        // Request non-existent file -> 404
+        let serve_request = TestRequest::get().uri("/nonexistent.txt").to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Upload protected file
+        let file_name = "protected_enum.txt";
+        let response = test::call_service(
+            &app,
+            get_multipart_request("content", "protected", file_name).to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+
+        // Request protected file without auth -> 404 (same as non-existent)
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Request protected file with wrong password -> 404 (same as non-existent)
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, "Bearer wrongpassword"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Cleanup
+        fs::remove_dir_all(test_upload_dir)?;
 
         Ok(())
     }

@@ -44,6 +44,7 @@ some text
     - [Expiration](#expiration)
     - [One shot files](#one-shot-files)
     - [One shot URLs](#one-shot-urls)
+    - [Password-protected files](#password-protected-files)
     - [URL shortening](#url-shortening)
     - [Paste file from remote URL](#paste-file-from-remote-url)
     - [Cleaning up expired files](#cleaning-up-expired-files)
@@ -75,6 +76,9 @@ some text
     - auto-expiration of files (optional)
     - auto-deletion of expired files (optional)
   - supports one shot links/URLs (can only be viewed once)
+  - supports password-protected files
+    - auto-generated passwords
+    - Argon2id hashing
   - guesses MIME types
     - supports overriding and blacklisting
     - supports forcing to download via `?download=true`
@@ -222,6 +226,30 @@ $ curl -F "oneshot=@x.txt" "<server_address>"
 ```sh
 $ curl -F "oneshot_url=https://example.com" "<server_address>"
 ```
+
+#### Password-protected files
+
+Upload a file with auto-generated password:
+
+```sh
+$ curl -F "protected=@secret.txt" "<server_address>"
+https://paste.site.com/secret.txt
+Password: aBcD1234EfGh5678IjKl9012
+```
+
+Download with Bearer token:
+
+```sh
+$ curl -H "Authorization: Bearer aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
+```
+
+Or with Basic Auth:
+
+```sh
+$ curl -u "user:aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
+```
+
+**Note**: Protected files cannot be combined with other paste types (oneshot, URL). The password is permanently tied to the file and cannot be changed. If the password is lost, the file becomes inaccessible. Password files are deleted automatically when the main file is deleted or expires.
 
 #### URL shortening
 
