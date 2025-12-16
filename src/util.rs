@@ -63,6 +63,7 @@ pub fn get_expired_files(base_path: &Path) -> Vec<PathBuf> {
         PasteType::Oneshot,
         PasteType::Url,
         PasteType::OneshotUrl,
+        PasteType::ProtectedFile,
     ]
     .into_iter()
     .filter_map(|v| v.get_path(base_path).ok())
@@ -82,6 +83,23 @@ pub fn get_expired_files(base_path: &Path) -> Vec<PathBuf> {
         }
     })
     .collect()
+}
+
+/// Returns orphaned .password files (main file missing)
+pub fn get_orphaned_password_files(base_path: &Path) -> Vec<PathBuf> {
+    // Search both root and protected subdirectory
+    [base_path.to_path_buf(), base_path.join("protected")]
+        .into_iter()
+        .filter_map(|dir| glob(&dir.join("*.password").to_string_lossy()).ok())
+        .flat_map(|g| g.filter_map(|v| v.ok()))
+        .filter(|password_path| {
+            password_path
+                .file_stem()
+                .and_then(|stem| password_path.parent().map(|p| p.join(stem)))
+                .map(|main_path| !main_path.exists())
+                .unwrap_or(false)
+        })
+        .collect()
 }
 
 /// Returns the SHA256 digest of the given input.
@@ -215,6 +233,42 @@ mod tests {
         );
         fs::remove_file(path)?;
         assert_eq!(Vec::<PathBuf>::new(), get_expired_files(&current_dir));
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_orphaned_password_files() -> Result<(), ActixError> {
+        let test_dir = env::temp_dir().join("rustypaste_orphan_test");
+        let protected_dir = test_dir.join("protected");
+
+        // Cleanup from previous runs
+        let _ = fs::remove_dir_all(&test_dir);
+
+        fs::create_dir_all(&protected_dir)?;
+
+        // Create orphaned password file in root
+        let orphan_root = test_dir.join("orphan_root.txt.password");
+        fs::write(&orphan_root, "hash")?;
+
+        // Create orphaned password file in protected/
+        let orphan_protected = protected_dir.join("orphan_protected.txt.password");
+        fs::write(&orphan_protected, "hash")?;
+
+        // Create non-orphaned password file (has main file)
+        let main_file = protected_dir.join("valid.txt");
+        let valid_password = protected_dir.join("valid.txt.password");
+        fs::write(&main_file, "content")?;
+        fs::write(&valid_password, "hash")?;
+
+        let orphans = get_orphaned_password_files(&test_dir);
+
+        // Should find both orphans, not the valid one
+        assert_eq!(2, orphans.len());
+        assert!(orphans.contains(&orphan_root));
+        assert!(orphans.contains(&orphan_protected));
+        assert!(!orphans.contains(&valid_password));
+
+        fs::remove_dir_all(&test_dir)?;
         Ok(())
     }
 
