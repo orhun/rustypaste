@@ -27,37 +27,37 @@ some text
 
 <!-- vim-markdown-toc GFM -->
 
-- [Features](#features)
-- [Installation](#installation)
-  - [From crates.io](#from-cratesio)
-  - [Arch Linux](#arch-linux)
-  - [Alpine Linux](#alpine-linux)
-  - [FreeBSD](#freebsd)
-  - [Binary releases](#binary-releases)
-  - [Build from source](#build-from-source)
-    - [Feature flags](#feature-flags)
-    - [Testing](#testing)
-      - [Unit tests](#unit-tests)
-      - [Test Fixtures](#test-fixtures)
-- [Usage](#usage)
-  - [CLI](#cli)
-    - [Expiration](#expiration)
-    - [One shot files](#one-shot-files)
-    - [One shot URLs](#one-shot-urls)
-    - [URL shortening](#url-shortening)
-    - [Paste file from remote URL](#paste-file-from-remote-url)
-    - [Cleaning up expired files](#cleaning-up-expired-files)
-    - [Delete file from server](#delete-file-from-server)
-    - [Override the filename when using `random_url`](#override-the-filename-when-using-random_url)
-  - [Server](#server)
-    - [Authentication](#authentication)
-    - [List endpoint](#list-endpoint)
-    - [HTML Form](#html-form)
-    - [Docker](#docker)
-    - [Nginx](#nginx)
-  - [Third Party Clients](#third-party-clients)
-  - [Contributing](#contributing)
-    - [License](#license)
+* [Features](#features)
+* [Installation](#installation)
+  * [From crates.io](#from-cratesio)
+  * [Arch Linux](#arch-linux)
+  * [Alpine Linux](#alpine-linux)
+  * [FreeBSD](#freebsd)
+  * [Binary releases](#binary-releases)
+  * [Build from source](#build-from-source)
+    * [Feature flags](#feature-flags)
+    * [Testing](#testing)
+      * [Unit tests](#unit-tests)
+      * [Test Fixtures](#test-fixtures)
+* [Usage](#usage)
+  * [CLI](#cli)
+    * [Expiration](#expiration)
+    * [One shot files](#one-shot-files)
+    * [One shot URLs](#one-shot-urls)
+    * [URL shortening](#url-shortening)
+    * [Paste file from remote URL](#paste-file-from-remote-url)
+    * [Cleaning up expired files](#cleaning-up-expired-files)
+    * [Delete file from server](#delete-file-from-server)
+    * [Override the filename](#override-the-filename)
+  * [Server](#server)
+    * [Authentication](#authentication)
+    * [List endpoint](#list-endpoint)
+    * [HTML Form](#html-form)
+    * [Docker](#docker)
+    * [Nginx](#nginx)
+  * [Third Party Clients](#third-party-clients)
+  * [Contributing](#contributing)
+    * [License](#license)
 
 <!-- vim-markdown-toc -->
 
@@ -260,12 +260,15 @@ $ curl -H "Authorization: <auth_token>" -X DELETE "<server_address>/file.txt"
 
 > The `DELETE` endpoint will not be exposed and will return `404` error if `delete_tokens` are not set.
 
-#### Override the filename when using `random_url`
+#### Override the filename
 
-The generation of a random filename can be overridden by sending a header called `filename`:
+When using the `random_url` config option, or when pasting a file [from remote URL](#paste-file-from-remote-url), rustypaste automatically selects a filename.
+
+This can be overridden by sending a header called `filename`:
 
 ```sh
 curl -F "file=@x.txt" -H "filename: <file_name>" "<server_address>"
+curl -F "remote=https://example.com/file.png" -H "filename: <file_name>" "<server_address>"
 ```
 
 ### Server
