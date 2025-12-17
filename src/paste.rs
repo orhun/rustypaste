@@ -219,7 +219,7 @@ impl Paste {
         let password = if self.type_.is_protected() {
             let pwd = crate::password::generate_password();
             crate::password::store_password_hash(&path, &pwd)
-                .map_err(|e| error::ErrorInternalServerError(format!("password storage: {}", e)))?;
+                .map_err(|e| error::ErrorInternalServerError(format!("password storage: {e}")))?;
             Some(pwd)
         } else {
             None

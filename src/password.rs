@@ -26,14 +26,14 @@ pub fn hash_password(password: &str) -> Result<String, IoError> {
         .t_cost(2)
         .p_cost(1)
         .build()
-        .map_err(|e| IoError::other(format!("argon2 params: {}", e)))?;
+        .map_err(|e| IoError::other(format!("argon2 params: {e}")))?;
 
     let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
 
     argon2
         .hash_password(password.as_bytes(), &salt)
         .map(|hash| hash.to_string())
-        .map_err(|e| IoError::other(format!("hash failed: {}", e)))
+        .map_err(|e| IoError::other(format!("hash failed: {e}")))
 }
 
 /// Verify password against hash (constant-time)
@@ -61,7 +61,7 @@ pub fn get_password_file_path(file_path: &Path) -> IoResult<PathBuf> {
         })?;
 
     let mut path = file_path.to_path_buf();
-    path.set_file_name(format!("{}.password", current_name));
+    path.set_file_name(format!("{current_name}.password"));
     Ok(path)
 }
 
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_password_hashing() {
         let password = "test_password_123";
-        let hash = hash_password(password).unwrap();
+        let hash = hash_password(password).expect("hashing should succeed in test");
         assert!(verify_password(password, &hash));
         assert!(!verify_password("wrong", &hash));
     }

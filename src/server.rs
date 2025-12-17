@@ -145,7 +145,7 @@ async fn serve(
             .ok_or_else(|| error::ErrorNotFound("file is not found or expired :(\n"))?;
 
         if !crate::password::verify_file_password(&path, &password)
-            .map_err(|e| error::ErrorInternalServerError(format!("password verification: {}", e)))?
+            .map_err(|e| error::ErrorInternalServerError(format!("password verification: {e}")))?
         {
             // Same error as missing file (prevents enumeration)
             return Err(error::ErrorNotFound("file is not found or expired :(\n"));
@@ -929,7 +929,7 @@ mod tests {
             .join(filename);
         let password_file = PathBuf::from(test_upload_dir)
             .join("protected")
-            .join(format!("{}.password", filename));
+            .join(format!("{filename}.password"));
         assert!(main_file.exists());
         assert!(password_file.exists());
 
@@ -1025,7 +1025,7 @@ mod tests {
         let path = PathBuf::from(file_name);
         assert!(!path.exists());
 
-        let password_path = PathBuf::from(format!("{}.password", file_name));
+        let password_path = PathBuf::from(format!("{file_name}.password"));
         assert!(!password_path.exists(), "password file should be deleted");
 
         Ok(())
@@ -1672,7 +1672,7 @@ mod tests {
         // Access with correct password (Bearer) -> 200
         let serve_request = TestRequest::get()
             .uri(&format!("/{file_name}"))
-            .insert_header((AUTHORIZATION, format!("Bearer {}", password)))
+            .insert_header((AUTHORIZATION, format!("Bearer {password}")))
             .to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::OK, response.status());
@@ -1683,7 +1683,7 @@ mod tests {
             "Basic {}",
             base64::Engine::encode(
                 &base64::engine::general_purpose::STANDARD,
-                format!("user:{}", password).as_bytes()
+                format!("user:{password}").as_bytes()
             )
         );
         let serve_request = TestRequest::get()
