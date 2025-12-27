@@ -7,9 +7,11 @@ use ring::digest::{Context, SHA256};
 use std::fmt::Write;
 use std::io::{BufReader, Read};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
+use std::net::{IpAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
+use url::Url;
 
 /// Regex for matching the timestamp extension of a path.
 pub static TIMESTAMP_EXTENSION_REGEX: Lazy<Regex> = lazy_regex!(r#"\.[0-9]{10,}$"#);
@@ -153,6 +155,108 @@ pub fn get_dir_size(path: &Path) -> IoResult<u64> {
         size_in_bytes = path_metadata.len();
     }
     Ok(size_in_bytes)
+}
+
+/// Validates that the URL uses an allowed scheme and does not resolve to disallowed IPs.
+pub fn validate_remote_url(url: &Url) -> IoResult<()> {
+    let scheme = url.scheme();
+    if scheme != "http" && scheme != "https" {
+        return Err(IoError::new(
+            IoErrorKind::InvalidInput,
+            "unsupported URL scheme",
+        ));
+    }
+    let host = url
+        .host_str()
+        .ok_or_else(|| IoError::new(IoErrorKind::InvalidInput, "URL host is missing"))?;
+    if host == "localhost" || host.ends_with(".localhost") {
+        return Err(IoError::new(
+            IoErrorKind::InvalidInput,
+            "localhost is not allowed",
+        ));
+    }
+    let port = url
+        .port_or_known_default()
+        .ok_or_else(|| IoError::new(IoErrorKind::InvalidInput, "URL port is missing"))?;
+    let addrs = (host, port)
+        .to_socket_addrs()
+        .map_err(|e| IoError::new(IoErrorKind::InvalidInput, e.to_string()))?;
+    let mut resolved = false;
+    for addr in addrs {
+        resolved = true;
+        if is_disallowed_ip(addr.ip()) {
+            return Err(IoError::new(
+                IoErrorKind::InvalidInput,
+                "URL resolves to a disallowed address",
+            ));
+        }
+    }
+    if !resolved {
+        return Err(IoError::new(
+            IoErrorKind::InvalidInput,
+            "URL host did not resolve",
+        ));
+    }
+    Ok(())
+}
+
+fn is_disallowed_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => is_disallowed_ipv4(v4),
+        IpAddr::V6(v6) => is_disallowed_ipv6(v6),
+    }
+}
+
+fn is_disallowed_ipv4(v4: std::net::Ipv4Addr) -> bool {
+    let o = v4.octets();
+    if v4.is_loopback()
+        || v4.is_private()
+        || v4.is_link_local()
+        || v4.is_multicast()
+        || v4.is_broadcast()
+        || v4.is_documentation()
+        || v4.is_unspecified()
+    {
+        return true;
+    }
+    // Carrier-grade NAT: 100.64.0.0/10
+    if o[0] == 100 && (o[1] & 0b1100_0000) == 0b0100_0000 {
+        return true;
+    }
+    // Benchmarking: 198.18.0.0/15
+    if o[0] == 198 && (o[1] == 18 || o[1] == 19) {
+        return true;
+    }
+    // IETF protocol assignments: 192.0.0.0/24
+    if o[0] == 192 && o[1] == 0 && o[2] == 0 {
+        return true;
+    }
+    // Reserved for future use: 240.0.0.0/4
+    if o[0] >= 240 {
+        return true;
+    }
+    // Explicit metadata IP block.
+    o == [169, 254, 169, 254]
+}
+
+fn is_disallowed_ipv6(v6: std::net::Ipv6Addr) -> bool {
+    if let Some(v4) = v6.to_ipv4() {
+        return is_disallowed_ipv4(v4);
+    }
+    if v6.is_loopback()
+        || v6.is_unspecified()
+        || v6.is_multicast()
+        || v6.is_unique_local()
+        || v6.is_unicast_link_local()
+    {
+        return true;
+    }
+    let seg = v6.segments();
+    // Documentation: 2001:db8::/32
+    if seg[0] == 0x2001 && seg[1] == 0x0db8 {
+        return true;
+    }
+    false
 }
 
 #[cfg(test)]
