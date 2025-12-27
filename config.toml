@@ -66,6 +66,11 @@ mime_blacklist = [
   "application/java-archive",
   "application/java-vm",
 ]
+# Additional MIME types to render as text/plain when serving files.
+#text_mime_overrides = [
+#  "application/toml",
+#  "application/x-yaml",
+#]
 duplicate_files = true
 # default_expiry = "1h"
 delete_expired_files = { enabled = true, interval = "1h" }

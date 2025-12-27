@@ -11,6 +11,8 @@ use actix_web::http::StatusCode;
 use actix_web::middleware::ErrorHandlers;
 use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
 use actix_web_grants::GrantsMiddleware;
+use awc::error::HeaderValue;
+use awc::http::header::{CONTENT_SECURITY_POLICY, X_CONTENT_TYPE_OPTIONS};
 use awc::Client;
 use byte_unit::{Byte, UnitType};
 use futures_util::stream::StreamExt;
@@ -109,17 +111,24 @@ async fn serve(
     }
     match paste_type {
         PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
-            let mime_type = if options.map(|v| v.download).unwrap_or(false) {
+            let should_download = options.map(|v| v.download).unwrap_or(false);
+
+            let mut mime_type = if should_download {
                 mime::APPLICATION_OCTET_STREAM
             } else {
                 mime_util::get_mime_type(&config.paste.mime_override, file.to_string())
                     .map_err(error::ErrorInternalServerError)?
             };
-            let response = NamedFile::open(&path)?
+            if !should_download && is_text_like_mime(&mime_type, &config.paste.text_mime_overrides)
+            {
+                mime_type = TEXT_PLAIN_UTF_8;
+            }
+            let mut response = NamedFile::open(&path)?
                 .disable_content_disposition()
                 .set_content_type(mime_type)
                 .prefer_utf8(true)
                 .into_response(&request);
+            apply_security_headers(&mut response);
             if paste_type.is_oneshot() {
                 fs::rename(
                     &path,
@@ -146,6 +155,49 @@ async fn serve(
             Ok(resp)
         }
     }
+}
+
+fn apply_security_headers(response: &mut HttpResponse) {
+    response
+        .headers_mut()
+        .insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
+    response.headers_mut().insert(
+        CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; sandbox"),
+    );
+}
+
+fn is_text_like_mime(mime_type: &mime::Mime, overrides: &[String]) -> bool {
+    if mime_type.type_() == mime::TEXT {
+        return true;
+    }
+    if let Some(suffix) = mime_type.suffix() {
+        if matches!(suffix.as_str(), "xml" | "json") {
+            return true;
+        }
+    }
+    let essence = mime_type.essence_str();
+    if overrides.iter().any(|v| v.eq_ignore_ascii_case(essence)) {
+        return true;
+    }
+    matches!(
+        essence,
+        "application/javascript"
+            | "application/ecmascript"
+            | "application/json"
+            | "application/geo+json"
+            | "application/ld+json"
+            | "application/manifest+json"
+            | "application/problem+json"
+            | "application/rss+xml"
+            | "application/atom+xml"
+            | "application/x-www-form-urlencoded"
+            | "application/x-javascript"
+            | "application/xml"
+            | "application/xhtml+xml"
+            | "image/svg+xml"
+            | "text/xml"
+    )
 }
 
 /// Remove a file from the upload directory.
