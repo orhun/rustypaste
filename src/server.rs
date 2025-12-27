@@ -493,6 +493,7 @@ mod tests {
     use std::io::Write;
     use std::path::PathBuf;
     use std::str;
+    use std::str::FromStr;
     use std::thread;
     use std::time::Duration;
 
@@ -532,6 +533,51 @@ mod tests {
         } else {
             Err(error::ErrorInternalServerError("unexpected body type"))
         }
+    }
+
+    #[test]
+    fn test_is_text_like_mime_defaults() {
+        let overrides = Vec::<String>::new();
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("text/plain").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/atom+xml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/problem+json").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("image/svg+xml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(!is_text_like_mime(
+            &mime::Mime::from_str("application/octet-stream").expect("invalid mime"),
+            &overrides
+        ));
+    }
+
+    #[test]
+    fn test_is_text_like_mime_overrides() {
+        let overrides = vec![
+            String::from("application/toml"),
+            String::from("application/x-yaml"),
+        ];
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/toml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/x-yaml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(!is_text_like_mime(
+            &mime::Mime::from_str("application/pdf").expect("invalid mime"),
+            &overrides
+        ));
     }
 
     #[actix_web::test]
