@@ -7,4 +7,4 @@ upload_path = "./upload"
 random_url = { type = "petname", words = 2, separator = "-" }
 default_extension = "txt"
 duplicate_files = true
-mime_blacklist = ["text/html", "text/xml"]
+mime_blacklist = ["text/html", "text/xml", "image/"]

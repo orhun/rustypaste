@@ -105,7 +105,9 @@ impl Paste {
         let file_type = infer::get(&self.data);
         if let Some(file_type) = file_type {
             for mime_type in &config.paste.mime_blacklist {
-                if mime_type == file_type.mime_type() {
+                if mime_type == file_type.mime_type()
+                    || (mime_type.ends_with('/') && file_type.mime_type().starts_with(mime_type))
+                {
                     return Err(error::ErrorUnsupportedMediaType(
                         "this file type is not permitted",
                     ));

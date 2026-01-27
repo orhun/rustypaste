@@ -65,6 +65,7 @@ mime_blacklist = [
   "application/x-dosexec",
   "application/java-archive",
   "application/java-vm",
+  "audio/",
 ]
 duplicate_files = true
 # default_expiry = "1h"
