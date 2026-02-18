@@ -144,7 +144,6 @@ cargo build --release
 
 #### Feature flags
 
-- `shuttle`: enable an entry point for deploying on Shuttle
 - `openssl`: use distro OpenSSL (binary size is reduced ~20% in release mode)
 - `rustls`: use [rustls](https://github.com/rustls/rustls) (enabled as default)
 
