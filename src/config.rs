@@ -114,6 +114,9 @@ pub struct PasteConfig {
     /// Media type blacklist.
     #[serde(default)]
     pub mime_blacklist: Vec<String>,
+    /// Additional MIME types to render as text/plain when serving files.
+    #[serde(default)]
+    pub text_mime_overrides: Vec<String>,
     /// Allow duplicate uploads.
     pub duplicate_files: Option<bool>,
     /// Default expiry time.

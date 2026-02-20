@@ -304,6 +304,15 @@ There are 2 options for setting multiple auth tokens:
 
 See [config.toml](./config.toml) for configuration options.
 
+#### MIME handling
+
+rustypaste determines a file's MIME type from its extension (with optional overrides) and serves
+text-like types as `text/plain; charset=utf-8` to avoid script execution.
+
+- `[paste].mime_override` lets you override MIME types by filename regex.
+- `[paste].mime_blacklist` blocks uploads of specific MIME types.
+- `[paste].text_mime_overrides` forces additional MIME types to be rendered as plaintext.
+
 #### List endpoint
 
 Set `expose_list` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot URLs, or URLs.
