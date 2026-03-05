@@ -128,7 +128,9 @@ async fn serve(
                 .set_content_type(mime_type)
                 .prefer_utf8(true)
                 .into_response(&request);
-            apply_security_headers(&mut response);
+            if config.server.hardening.unwrap_or(false) {
+                apply_security_headers(&mut response);
+            }
             if paste_type.is_oneshot() {
                 fs::rename(
                     &path,
@@ -157,6 +159,11 @@ async fn serve(
     }
 }
 
+/// Adds security hardening headers to the response.
+///
+/// Sets `X-Content-Type-Options: nosniff` to prevent MIME sniffing and
+/// `Content-Security-Policy: default-src 'none'; sandbox` to restrict
+/// script execution and embedding.
 fn apply_security_headers(response: &mut HttpResponse) {
     response
         .headers_mut()
@@ -167,6 +174,14 @@ fn apply_security_headers(response: &mut HttpResponse) {
     );
 }
 
+/// Returns `true` if the given MIME type represents text-like content that
+/// should be rendered as `text/plain` instead of being downloaded.
+///
+/// A MIME type is considered text-like if any of the following hold:
+/// - Its type is `text` (e.g. `text/html`, `text/x-shellscript`)
+/// - It has a `+xml` or `+json` structured syntax suffix
+/// - It matches one of the user-configured `overrides`
+/// - It is a known text-like `application/` type (e.g. `application/json`, `application/xml`)
 fn is_text_like_mime(mime_type: &mime::Mime, overrides: &[String]) -> bool {
     if mime_type.type_() == mime::TEXT {
         return true;

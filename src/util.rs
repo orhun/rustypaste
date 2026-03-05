@@ -200,6 +200,8 @@ pub fn validate_remote_url(url: &Url) -> IoResult<()> {
     Ok(())
 }
 
+/// Returns `true` if the IP address belongs to a private, reserved, or otherwise
+/// non-publicly-routable range that should not be accessed via remote URL fetching.
 fn is_disallowed_ip(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => is_disallowed_ipv4(v4),
@@ -240,11 +242,16 @@ fn is_disallowed_ipv4(v4: std::net::Ipv4Addr) -> bool {
 }
 
 fn is_disallowed_ipv6(v6: std::net::Ipv6Addr) -> bool {
+    // Check loopback/unspecified before to_ipv4(), because ::1 maps to
+    // 0.0.0.1 and :: maps to 0.0.0.0 via to_ipv4(), which would bypass
+    // the IPv6-specific loopback/unspecified checks below.
+    if v6.is_loopback() || v6.is_unspecified() {
+        return true;
+    }
     if let Some(v4) = v6.to_ipv4() {
         return is_disallowed_ipv4(v4);
     }
-    if v6.is_loopback()
-        || v6.is_unspecified()
+    if v6.is_multicast()
         || v6.is_multicast()
         || v6.is_unique_local()
         || v6.is_unicast_link_local()
@@ -340,5 +347,133 @@ mod tests {
         assert!(safe_path_join("/foo", "/bar").is_err());
         assert!(safe_path_join("/foo/bar", "..").is_err());
         assert!(safe_path_join("/foo/bar", "../").is_err());
+    }
+
+    #[test]
+    fn test_validate_remote_url_valid_https() {
+        let url = Url::parse("https://example.com/file.txt").unwrap();
+        assert!(validate_remote_url(&url).is_ok());
+    }
+
+    #[test]
+    fn test_validate_remote_url_valid_http() {
+        let url = Url::parse("http://example.com/file.txt").unwrap();
+        assert!(validate_remote_url(&url).is_ok());
+    }
+
+    #[test]
+    fn test_validate_remote_url_rejects_ftp() {
+        let url = Url::parse("ftp://example.com/file.txt").unwrap();
+        let err = validate_remote_url(&url).unwrap_err();
+        assert_eq!(err.kind(), IoErrorKind::InvalidInput);
+        assert!(err.to_string().contains("unsupported URL scheme"));
+    }
+
+    #[test]
+    fn test_validate_remote_url_rejects_file_scheme() {
+        let url = Url::parse("file:///etc/passwd").unwrap();
+        let err = validate_remote_url(&url).unwrap_err();
+        assert!(err.to_string().contains("unsupported URL scheme"));
+    }
+
+    #[test]
+    fn test_validate_remote_url_rejects_localhost() {
+        let url = Url::parse("http://localhost/file.txt").unwrap();
+        let err = validate_remote_url(&url).unwrap_err();
+        assert!(err.to_string().contains("localhost is not allowed"));
+    }
+
+    #[test]
+    fn test_validate_remote_url_rejects_subdomain_localhost() {
+        let url = Url::parse("http://foo.localhost/file.txt").unwrap();
+        let err = validate_remote_url(&url).unwrap_err();
+        assert!(err.to_string().contains("localhost is not allowed"));
+    }
+
+    #[test]
+    fn test_validate_remote_url_rejects_loopback() {
+        let url = Url::parse("http://127.0.0.1/file.txt").unwrap();
+        let err = validate_remote_url(&url).unwrap_err();
+        assert!(err.to_string().contains("disallowed address"));
+    }
+
+    #[test]
+    fn test_validate_remote_url_rejects_private_ip() {
+        for ip in &["10.0.0.1", "192.168.1.1", "172.16.0.1"] {
+            let url = Url::parse(&format!("http://{ip}/file.txt")).unwrap();
+            let err = validate_remote_url(&url).unwrap_err();
+            assert!(
+                err.to_string().contains("disallowed address"),
+                "expected {ip} to be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_remote_url_rejects_unresolvable() {
+        let url =
+            Url::parse("http://this-domain-should-not-exist-xyz123.invalid/file.txt").unwrap();
+        assert!(validate_remote_url(&url).is_err());
+    }
+
+    #[test]
+    fn test_is_disallowed_ipv4() {
+        use std::net::Ipv4Addr;
+        // Loopback
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(127, 0, 0, 1)));
+        // Private ranges
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(10, 0, 0, 1)));
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(172, 16, 0, 1)));
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(192, 168, 0, 1)));
+        // Link-local
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(169, 254, 1, 1)));
+        // Multicast
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(224, 0, 0, 1)));
+        // Broadcast
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(255, 255, 255, 255)));
+        // Documentation
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(192, 0, 2, 1)));
+        // Unspecified
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(0, 0, 0, 0)));
+        // Carrier-grade NAT
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(100, 64, 0, 1)));
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(100, 127, 255, 254)));
+        // Benchmarking
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(198, 18, 0, 1)));
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(198, 19, 0, 1)));
+        // IETF protocol assignments
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(192, 0, 0, 1)));
+        // Reserved for future use
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(240, 0, 0, 1)));
+        // Metadata IP
+        assert!(is_disallowed_ipv4(Ipv4Addr::new(169, 254, 169, 254)));
+
+        // Public IPs should be allowed
+        assert!(!is_disallowed_ipv4(Ipv4Addr::new(8, 8, 8, 8)));
+        assert!(!is_disallowed_ipv4(Ipv4Addr::new(1, 1, 1, 1)));
+        assert!(!is_disallowed_ipv4(Ipv4Addr::new(93, 184, 216, 34)));
+    }
+
+    #[test]
+    fn test_is_disallowed_ipv6() {
+        use std::net::Ipv6Addr;
+        // Loopback
+        assert!(is_disallowed_ipv6(Ipv6Addr::LOCALHOST));
+        // Unspecified
+        assert!(is_disallowed_ipv6(Ipv6Addr::UNSPECIFIED));
+        // IPv4-mapped loopback
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001)));
+        // IPv4-mapped private
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x0a00, 0x0001)));
+        // Documentation 2001:db8::/32
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1)));
+        // Unique local (fc00::/7)
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 1)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
+        // Link-local (fe80::/10)
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 1)));
+
+        // Public IPv6 should be allowed
+        assert!(!is_disallowed_ipv6(Ipv6Addr::new(0x2607, 0xf8b0, 0x4004, 0x800, 0, 0, 0, 0x200e)));
     }
 }

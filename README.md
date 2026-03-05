@@ -312,7 +312,7 @@ text-like types as `text/plain; charset=utf-8` to avoid script execution.
 
 - `[paste].mime_override` lets you override MIME types by filename regex.
 - `[paste].mime_blacklist` blocks uploads of specific MIME types.
-- `[paste].text_mime_overrides` forces additional MIME types to be rendered as plaintext.
+- `[paste].text_mime_overrides` forces additional detected/guessed MIME types to be rendered as plaintext (unlike `mime_override` which matches by filename regex, this matches the content's actual MIME type).
 
 #### List endpoint
 

@@ -68,6 +68,8 @@ pub struct ServerConfig {
     pub expose_list: Option<bool>,
     /// Authentication tokens for deleting.
     pub delete_tokens: Option<HashSet<String>>,
+    /// Enable security hardening headers (X-Content-Type-Options, Content-Security-Policy).
+    pub hardening: Option<bool>,
 }
 
 /// Enum representing different strategies for handling spaces in filenames.

@@ -227,10 +227,8 @@ impl Paste {
     ) -> Result<String, Error> {
         let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
         let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
-        match web::block({
-            let url = url.clone();
-            move || util::validate_remote_url(&url)
-        })
+        let url_clone = url.clone();
+        match web::block(move || util::validate_remote_url(&url_clone))
         .await
         {
             Ok(Ok(())) => {}
