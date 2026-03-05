@@ -11,6 +11,8 @@ use actix_web::http::StatusCode;
 use actix_web::middleware::ErrorHandlers;
 use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
 use actix_web_grants::GrantsMiddleware;
+use awc::error::HeaderValue;
+use awc::http::header::{CONTENT_SECURITY_POLICY, X_CONTENT_TYPE_OPTIONS};
 use awc::Client;
 use byte_unit::{Byte, UnitType};
 use futures_util::stream::StreamExt;
@@ -109,17 +111,26 @@ async fn serve(
     }
     match paste_type {
         PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
-            let mime_type = if options.map(|v| v.download).unwrap_or(false) {
+            let should_download = options.map(|v| v.download).unwrap_or(false);
+
+            let mut mime_type = if should_download {
                 mime::APPLICATION_OCTET_STREAM
             } else {
                 mime_util::get_mime_type(&config.paste.mime_override, file.to_string())
                     .map_err(error::ErrorInternalServerError)?
             };
-            let response = NamedFile::open(&path)?
+            if !should_download && is_text_like_mime(&mime_type, &config.paste.text_mime_overrides)
+            {
+                mime_type = TEXT_PLAIN_UTF_8;
+            }
+            let mut response = NamedFile::open(&path)?
                 .disable_content_disposition()
                 .set_content_type(mime_type)
                 .prefer_utf8(true)
                 .into_response(&request);
+            if config.server.hardening.unwrap_or(false) {
+                apply_security_headers(&mut response);
+            }
             if paste_type.is_oneshot() {
                 fs::rename(
                     &path,
@@ -146,6 +157,53 @@ async fn serve(
             Ok(resp)
         }
     }
+}
+
+/// Adds security hardening headers to the response.
+///
+/// Sets `X-Content-Type-Options: nosniff` to prevent MIME sniffing and
+/// `Content-Security-Policy: default-src 'none'; sandbox` to restrict
+/// script execution and embedding.
+fn apply_security_headers(response: &mut HttpResponse) {
+    response
+        .headers_mut()
+        .insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
+    response.headers_mut().insert(
+        CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; sandbox"),
+    );
+}
+
+/// Returns `true` if the given MIME type represents text-like content that
+/// should be rendered as `text/plain` instead of being downloaded.
+///
+/// A MIME type is considered text-like if any of the following hold:
+/// - Its type is `text` (e.g. `text/html`, `text/x-shellscript`)
+/// - It has a `+xml` or `+json` structured syntax suffix
+/// - It matches one of the user-configured `overrides`
+/// - It is a known text-like `application/` type (e.g. `application/json`, `application/xml`)
+fn is_text_like_mime(mime_type: &mime::Mime, overrides: &[String]) -> bool {
+    if mime_type.type_() == mime::TEXT {
+        return true;
+    }
+    if let Some(suffix) = mime_type.suffix() {
+        if matches!(suffix.as_str(), "xml" | "json") {
+            return true;
+        }
+    }
+    let essence = mime_type.essence_str();
+    if overrides.iter().any(|v| v.eq_ignore_ascii_case(essence)) {
+        return true;
+    }
+    matches!(
+        essence,
+        "application/javascript"
+            | "application/ecmascript"
+            | "application/json"
+            | "application/x-www-form-urlencoded"
+            | "application/x-javascript"
+            | "application/xml"
+    )
 }
 
 /// Remove a file from the upload directory.
@@ -441,6 +499,7 @@ mod tests {
     use std::io::Write;
     use std::path::PathBuf;
     use std::str;
+    use std::str::FromStr;
     use std::thread;
     use std::time::Duration;
 
@@ -480,6 +539,51 @@ mod tests {
         } else {
             Err(error::ErrorInternalServerError("unexpected body type"))
         }
+    }
+
+    #[test]
+    fn test_is_text_like_mime_defaults() {
+        let overrides = Vec::<String>::new();
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("text/plain").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/atom+xml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/problem+json").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("image/svg+xml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(!is_text_like_mime(
+            &mime::Mime::from_str("application/octet-stream").expect("invalid mime"),
+            &overrides
+        ));
+    }
+
+    #[test]
+    fn test_is_text_like_mime_overrides() {
+        let overrides = vec![
+            String::from("application/toml"),
+            String::from("application/x-yaml"),
+        ];
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/toml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/x-yaml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(!is_text_like_mime(
+            &mime::Mime::from_str("application/pdf").expect("invalid mime"),
+            &overrides
+        ));
     }
 
     #[actix_web::test]
