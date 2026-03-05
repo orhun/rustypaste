@@ -185,18 +185,9 @@ fn is_text_like_mime(mime_type: &mime::Mime, overrides: &[String]) -> bool {
         "application/javascript"
             | "application/ecmascript"
             | "application/json"
-            | "application/geo+json"
-            | "application/ld+json"
-            | "application/manifest+json"
-            | "application/problem+json"
-            | "application/rss+xml"
-            | "application/atom+xml"
             | "application/x-www-form-urlencoded"
             | "application/x-javascript"
             | "application/xml"
-            | "application/xhtml+xml"
-            | "image/svg+xml"
-            | "text/xml"
     )
 }
 
