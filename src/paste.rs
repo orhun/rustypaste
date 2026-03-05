@@ -232,7 +232,10 @@ impl Paste {
         .await
         {
             Ok(Ok(())) => {}
-            Ok(Err(e)) => return Err(error::ErrorBadRequest(e.to_string())),
+            Ok(Err(e)) => {
+                warn!("URL validation failed for {}: {}", url, e);
+                return Err(error::ErrorBadRequest("invalid remote URL\n"));
+            }
             Err(e) => return Err(error::ErrorInternalServerError(e.to_string())),
         }
         let file_name = url

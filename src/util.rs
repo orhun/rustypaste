@@ -226,6 +226,8 @@ fn is_disallowed_ipv4(v4: std::net::Ipv4Addr) -> bool {
         return true;
     }
     // Benchmarking: 198.18.0.0/15
+    // TODO: Replace with v4.is_benchmarking() when stabilised.
+    // See: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_benchmarking
     if o[0] == 198 && (o[1] == 18 || o[1] == 19) {
         return true;
     }
@@ -252,7 +254,6 @@ fn is_disallowed_ipv6(v6: std::net::Ipv6Addr) -> bool {
         return is_disallowed_ipv4(v4);
     }
     if v6.is_multicast()
-        || v6.is_multicast()
         || v6.is_unique_local()
         || v6.is_unicast_link_local()
     {
@@ -261,6 +262,10 @@ fn is_disallowed_ipv6(v6: std::net::Ipv6Addr) -> bool {
     let seg = v6.segments();
     // Documentation: 2001:db8::/32
     if seg[0] == 0x2001 && seg[1] == 0x0db8 {
+        return true;
+    }
+    // Documentation: 3fff::/20 (RFC 9637)
+    if seg[0] == 0x3fff {
         return true;
     }
     false
@@ -467,6 +472,9 @@ mod tests {
         assert!(is_disallowed_ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x0a00, 0x0001)));
         // Documentation 2001:db8::/32
         assert!(is_disallowed_ipv6(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1)));
+        // Documentation 3fff::/20 (RFC 9637)
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0x3fff, 0, 0, 0, 0, 0, 0, 1)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(0x3fff, 0x0fff, 0, 0, 0, 0, 0, 1)));
         // Unique local (fc00::/7)
         assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 1)));
         assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
