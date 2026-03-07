@@ -55,6 +55,9 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         }
         None => config_folder.join("config.toml"),
     };
+    // Make config_path absolute when possible so relative upload_path resolution
+    // uses the actual config file directory instead of the process CWD.
+    let config_path = std::fs::canonicalize(&config_path).unwrap_or(config_path);
     if !config_path.exists() {
         error!(
             "{} is not found, please provide a configuration file.",
@@ -62,7 +65,17 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         );
         std::process::exit(1);
     }
-    let config = Config::parse(&config_path).expect("failed to parse config");
+    let mut config = Config::parse(&config_path).expect("failed to parse config");
+    // If `upload_path` in config is relative, interpret it relative to the config file
+    // directory so services that change working directory still resolve paths correctly.
+    if !config.server.upload_path.is_absolute() {
+        let config_parent = config_path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        config.server.upload_path = config_parent.join(&config.server.upload_path);
+    }
+    // Canonicalize upload_path to resolve symlinks and normalize . and ..
+    if let Ok(canonical) = std::fs::canonicalize(&config.server.upload_path) {
+        config.server.upload_path = canonical;
+    }
     trace!("{:#?}", config);
     config.warn_deprecation();
     let server_config = config.server.clone();
@@ -188,6 +201,6 @@ async fn main() -> IoResult<()> {
     }
 
     // Run the server.
-    info!("Server is running at {}", server_config.address);
+    info!("Server is running at {} (upload_path={})", server_config.address, server_config.upload_path.display());
     http_server.run().await
 }

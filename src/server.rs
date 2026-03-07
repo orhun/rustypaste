@@ -9,7 +9,7 @@ use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::http::StatusCode;
 use actix_web::middleware::ErrorHandlers;
-use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
+use actix_web::{delete, error, get, post, web, guard, Error, HttpRequest, HttpResponse};
 use actix_web_grants::GrantsMiddleware;
 use awc::Client;
 use byte_unit::{Byte, UnitType};
@@ -78,9 +78,19 @@ struct ServeOptions {
     download: bool,
 }
 
-/// Serves a file from the upload directory.
+/// Serves a file from the upload directory (GET and HEAD).
 #[get("/{file}")]
 async fn serve(
+    request: HttpRequest,
+    file: web::Path<String>,
+    options: Option<web::Query<ServeOptions>>,
+    config: web::Data<RwLock<Config>>,
+) -> Result<HttpResponse, Error> {
+    serve_impl(request, file, options, config).await
+}
+
+/// Implementation for both GET and HEAD.
+async fn serve_impl(
     request: HttpRequest,
     file: web::Path<String>,
     options: Option<web::Query<ServeOptions>>,
@@ -89,7 +99,10 @@ async fn serve(
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let mut path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    let joined_path = safe_path_join(&config.server.upload_path, &*file)?;
+    warn!("serve: file={}, upload_path={}, joined_path={}", file, config.server.upload_path.display(), joined_path.display());
+    let mut path = util::glob_match_file(joined_path)?;
+    warn!("serve: glob_match_file returned: {}", path.display());
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
         for type_ in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
@@ -413,6 +426,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(serve)
             .service(upload)
             .service(delete)
+            .route("/{file}", web::route().guard(guard::Head()).to(serve_impl))
             .route("", web::head().to(HttpResponse::MethodNotAllowed))
             .wrap(GrantsMiddleware::with_extractor(extract_tokens))
             .wrap(
