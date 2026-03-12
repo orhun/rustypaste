@@ -9,7 +9,7 @@ use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::http::StatusCode;
 use actix_web::middleware::ErrorHandlers;
-use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
+use actix_web::{delete, error, get, post, route, web, Error, HttpRequest, HttpResponse};
 use actix_web_grants::GrantsMiddleware;
 use awc::Client;
 use byte_unit::{Byte, UnitType};
@@ -79,7 +79,7 @@ struct ServeOptions {
 }
 
 /// Serves a file from the upload directory.
-#[get("/{file}")]
+#[route("/{file}", method = "GET", method = "HEAD")]
 async fn serve(
     request: HttpRequest,
     file: web::Path<String>,
