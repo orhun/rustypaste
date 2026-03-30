@@ -1,0 +1,21 @@
+#!/sbin/openrc-run
+supervisor="supervise-daemon"
+
+export CONFIG="/etc/rustypaste/config.toml"
+
+name=$RC_SVCNAME
+description="A minimal file upload/pastebin service"
+
+command="/usr/bin/rustypaste"
+command_user="rustypaste:rustypaste"
+directory="/var/lib/rustypaste"
+
+depend() {
+        need net
+        after firewall
+}
+
+start_pre() {
+        checkpath -d -o $command_user $directory
+}
+
