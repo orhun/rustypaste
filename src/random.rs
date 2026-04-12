@@ -1,5 +1,4 @@
-use petname::Generator;
-use rand::{distr::Alphanumeric, Rng};
+use rand::distr::{Alphanumeric, SampleString};
 
 /// Random URL configuration.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -30,15 +29,19 @@ impl RandomURLConfig {
             return None;
         }
         Some(match self.type_ {
-            RandomURLType::PetName => petname::Petnames::large().generate_one(
-                self.words.unwrap_or(2),
-                self.separator.as_deref().unwrap_or("-"),
-            )?,
-            RandomURLType::Alphanumeric => rand::rng()
-                .sample_iter(&Alphanumeric)
-                .take(self.length.unwrap_or(8))
-                .map(char::from)
-                .collect::<String>(),
+            RandomURLType::PetName => {
+                let mut buf = String::new();
+                petname::Petnames::large()
+                    .namer(
+                        self.words.unwrap_or(2),
+                        self.separator.as_deref().unwrap_or("-"),
+                    )
+                    .generate_into(&mut buf, &mut rand::rng());
+                buf
+            }
+            RandomURLType::Alphanumeric => {
+                Alphanumeric.sample_string(&mut rand::rng(), self.length.unwrap_or(8))
+            }
         })
     }
 }
