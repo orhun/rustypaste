@@ -212,7 +212,6 @@ fn is_disallowed_ip(ip: IpAddr) -> bool {
 fn is_disallowed_ipv4(v4: std::net::Ipv4Addr) -> bool {
     let o = v4.octets();
     if v4.is_loopback()
-        || v4.is_private()
         || v4.is_link_local()
         || v4.is_multicast()
         || v4.is_broadcast()
