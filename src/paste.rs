@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::file::Directory;
 use crate::header::ContentDisposition;
 use crate::util;
-use actix_web::{error, Error};
+use actix_web::{error, web, Error};
 use awc::Client;
 use std::fs::{self, File};
 use std::io::{Error as IoError, Result as IoResult, Write};
@@ -229,6 +229,15 @@ impl Paste {
     ) -> Result<String, Error> {
         let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
         let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
+        let url_clone = url.clone();
+        match web::block(move || util::validate_remote_url(&url_clone)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => {
+                warn!("URL validation failed for {}: {}", url, e);
+                return Err(error::ErrorBadRequest("invalid remote URL\n"));
+            }
+            Err(e) => return Err(error::ErrorInternalServerError(e.to_string())),
+        }
         let file_name = url
             .path_segments()
             .and_then(|mut segments| segments.next_back())

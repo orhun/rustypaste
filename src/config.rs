@@ -68,6 +68,8 @@ pub struct ServerConfig {
     pub expose_list: Option<bool>,
     /// Authentication tokens for deleting.
     pub delete_tokens: Option<HashSet<String>>,
+    /// Enable security hardening headers (X-Content-Type-Options, Content-Security-Policy).
+    pub hardening: Option<bool>,
 }
 
 /// Enum representing different strategies for handling spaces in filenames.
@@ -114,6 +116,9 @@ pub struct PasteConfig {
     /// Media type blacklist.
     #[serde(default)]
     pub mime_blacklist: Vec<String>,
+    /// Additional MIME types to render as text/plain when serving files.
+    #[serde(default)]
+    pub text_mime_overrides: Vec<String>,
     /// Allow duplicate uploads.
     pub duplicate_files: Option<bool>,
     /// Default expiry time.
