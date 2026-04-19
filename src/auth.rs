@@ -6,6 +6,7 @@ use actix_web::middleware::ErrorHandlerResponse;
 use actix_web::{error, web, Error};
 use std::collections::HashSet;
 use std::sync::RwLock;
+use tracing::warn;
 
 /// Extracts the tokens from the authorization header by token type.
 ///
@@ -37,7 +38,7 @@ pub(crate) async fn extract_tokens(req: &ServiceRequest) -> Result<HashSet<Token
         } else if token_type == TokenType::Delete && req.method() == Method::DELETE {
             // explicitly disable `DELETE` methods if no `delete_tokens` are set
             warn!("delete endpoint is not served because there are no delete_tokens set");
-            Err(error::ErrorNotFound(""))?;
+            return Err(error::ErrorNotFound(""));
         }
     }
 

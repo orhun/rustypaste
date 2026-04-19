@@ -10,6 +10,7 @@ use std::{
     pin::Pin,
     rc::Rc,
 };
+use tracing::warn;
 
 /// Content length limiter middleware.
 #[derive(Debug)]
@@ -77,7 +78,7 @@ where
                 return Box::pin(async move {
                     // drain the body due to https://github.com/actix/actix-web/issues/2695
                     let mut payload = request.take_payload();
-                    while let Ok(Some(_)) = payload.try_next().await {}
+                    let _ = payload.try_next().await;
                     Ok(request.into_response(
                         HttpResponseBuilder::new(StatusCode::PAYLOAD_TOO_LARGE)
                             .body("upload limit exceeded")

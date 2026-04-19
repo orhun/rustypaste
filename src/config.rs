@@ -8,6 +8,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use tracing::warn;
 
 /// Configuration values.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]

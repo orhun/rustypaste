@@ -31,10 +31,6 @@ pub mod util;
 /// Custom middleware implementation.
 pub mod middleware;
 
-// Use macros from tracing crate.
-#[macro_use]
-extern crate tracing;
-
 /// Environment variable for setting the configuration file path.
 pub const CONFIG_ENV: &str = "CONFIG";
 

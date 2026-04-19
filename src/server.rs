@@ -23,6 +23,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
+use tracing::warn;
 use std::time::{Duration, UNIX_EPOCH};
 use uts2ts;
 
@@ -116,7 +117,7 @@ async fn serve(
             let mut mime_type = if should_download {
                 mime::APPLICATION_OCTET_STREAM
             } else {
-                mime_util::get_mime_type(&config.paste.mime_override, file.to_string())
+                mime_util::get_mime_type(&config.paste.mime_override, file)
                     .map_err(error::ErrorInternalServerError)?
             };
             if !should_download && is_text_like_mime(&mime_type, &config.paste.text_mime_overrides)

@@ -20,23 +20,23 @@ pub struct MimeMatcher {
 /// [`MIME matcher`]: MimeMatcher
 pub fn get_mime_type(
     mime_matchers: &[MimeMatcher],
-    file_name: String,
+    file_name: &str,
 ) -> Result<Mime, FromStrError> {
-    let path = PathBuf::from(&file_name);
+    if file_name.is_empty() {
+        return Ok(mime::APPLICATION_OCTET_STREAM);
+    }
+    let path = PathBuf::from(file_name);
     let mut mime_type = file_extension_to_mime(
         path.extension()
             .and_then(|v| v.to_str())
             .unwrap_or_default(),
     );
     for matcher in mime_matchers {
-        if matcher
-            .regex
-            .as_ref()
-            .map(|r| r.is_match(&file_name))
-            .unwrap_or(false)
-        {
-            mime_type = Mime::from_str(&matcher.mime)?;
-            break;
+        if let Some(ref regex) = matcher.regex {
+            if regex.is_match(file_name) {
+                mime_type = Mime::from_str(&matcher.mime)?;
+                break;
+            }
         }
     }
     Ok(mime_type)
@@ -55,7 +55,7 @@ mod tests {
                     mime: String::from("text/plain"),
                     regex: Regex::new("^.*\\.test$").ok(),
                 }],
-                String::from("mime.test")
+                "mime.test"
             )?
         );
         assert_eq!(
@@ -65,16 +65,21 @@ mod tests {
                     mime: String::from("image/png"),
                     regex: Regex::new("^.*\\.PNG$").ok(),
                 }],
-                String::from("image.PNG")
+                "image.PNG"
             )?
         );
         assert_eq!(
             mime::APPLICATION_PDF,
-            get_mime_type(&[], String::from("book.pdf"))?
+            get_mime_type(&[], "book.pdf")?
         );
         assert_eq!(
             mime::APPLICATION_OCTET_STREAM,
-            get_mime_type(&[], String::from("x.unknown"))?
+            get_mime_type(&[], "x.unknown")?
+        );
+        // Empty filename should return octet-stream
+        assert_eq!(
+            mime::APPLICATION_OCTET_STREAM,
+            get_mime_type(&[], "")?
         );
         Ok(())
     }
