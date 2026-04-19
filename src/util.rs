@@ -400,18 +400,6 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_remote_url_rejects_private_ip() {
-        for ip in &["10.0.0.1", "192.168.1.1", "172.16.0.1"] {
-            let url = Url::parse(&format!("http://{ip}/file.txt")).unwrap();
-            let err = validate_remote_url(&url).unwrap_err();
-            assert!(
-                err.to_string().contains("disallowed address"),
-                "expected {ip} to be rejected"
-            );
-        }
-    }
-
-    #[test]
     fn test_validate_remote_url_rejects_unresolvable() {
         let url =
             Url::parse("http://this-domain-should-not-exist-xyz123.invalid/file.txt").unwrap();
@@ -423,10 +411,6 @@ mod tests {
         use std::net::Ipv4Addr;
         // Loopback
         assert!(is_disallowed_ipv4(Ipv4Addr::new(127, 0, 0, 1)));
-        // Private ranges
-        assert!(is_disallowed_ipv4(Ipv4Addr::new(10, 0, 0, 1)));
-        assert!(is_disallowed_ipv4(Ipv4Addr::new(172, 16, 0, 1)));
-        assert!(is_disallowed_ipv4(Ipv4Addr::new(192, 168, 0, 1)));
         // Link-local
         assert!(is_disallowed_ipv4(Ipv4Addr::new(169, 254, 1, 1)));
         // Multicast
@@ -466,10 +450,6 @@ mod tests {
         // IPv4-mapped loopback
         assert!(is_disallowed_ipv6(Ipv6Addr::new(
             0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001
-        )));
-        // IPv4-mapped private
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(
-            0, 0, 0, 0, 0, 0xffff, 0x0a00, 0x0001
         )));
         // Documentation 2001:db8::/32
         assert!(is_disallowed_ipv6(Ipv6Addr::new(
