@@ -252,10 +252,7 @@ fn is_disallowed_ipv6(v6: std::net::Ipv6Addr) -> bool {
     if let Some(v4) = v6.to_ipv4() {
         return is_disallowed_ipv4(v4);
     }
-    if v6.is_multicast()
-        || v6.is_unique_local()
-        || v6.is_unicast_link_local()
-    {
+    if v6.is_multicast() || v6.is_unique_local() || v6.is_unicast_link_local() {
         return true;
     }
     let seg = v6.segments();
@@ -466,21 +463,39 @@ mod tests {
         // Unspecified
         assert!(is_disallowed_ipv6(Ipv6Addr::UNSPECIFIED));
         // IPv4-mapped loopback
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x0001
+        )));
         // IPv4-mapped private
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x0a00, 0x0001)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0, 0, 0, 0, 0, 0xffff, 0x0a00, 0x0001
+        )));
         // Documentation 2001:db8::/32
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0x2001, 0x0db8, 0, 0, 0, 0, 0, 1
+        )));
         // Documentation 3fff::/20 (RFC 9637)
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0x3fff, 0, 0, 0, 0, 0, 0, 1)));
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0x3fff, 0x0fff, 0, 0, 0, 0, 0, 1)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0x3fff, 0, 0, 0, 0, 0, 0, 1
+        )));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0x3fff, 0x0fff, 0, 0, 0, 0, 0, 1
+        )));
         // Unique local (fc00::/7)
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 1)));
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0xfc00, 0, 0, 0, 0, 0, 0, 1
+        )));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0xfd00, 0, 0, 0, 0, 0, 0, 1
+        )));
         // Link-local (fe80::/10)
-        assert!(is_disallowed_ipv6(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 1)));
+        assert!(is_disallowed_ipv6(Ipv6Addr::new(
+            0xfe80, 0, 0, 0, 0, 0, 0, 1
+        )));
 
         // Public IPv6 should be allowed
-        assert!(!is_disallowed_ipv6(Ipv6Addr::new(0x2607, 0xf8b0, 0x4004, 0x800, 0, 0, 0, 0x200e)));
+        assert!(!is_disallowed_ipv6(Ipv6Addr::new(
+            0x2607, 0xf8b0, 0x4004, 0x800, 0, 0, 0, 0x200e
+        )));
     }
 }
