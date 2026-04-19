@@ -267,6 +267,7 @@ fn is_disallowed_ipv6(v6: std::net::Ipv6Addr) -> bool {
     false
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::*;
