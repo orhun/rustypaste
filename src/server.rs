@@ -483,7 +483,6 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 mod tests {
     use super::*;
     use crate::config::LandingPageConfig;
-    use crate::middleware::ContentLengthLimiter;
     use crate::random::{RandomURLConfig, RandomURLType};
     use actix_web::body::MessageBody;
     use actix_web::body::{BodySize, BoxBody};
