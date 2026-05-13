@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-05-14
+
+### Added
+
+- Support server hardening by @y5 in [#508](https://github.com/orhun/rustypaste/pull/508)
+
+Two new configuration options are added:
+
+```toml
+[server]
+text_mime_overrides = [
+  "application/toml",
+  "application/yaml",
+  "application/x-yaml",
+]
+
+hardening = true
+```
+
+1. `text_mime_overrides`: Additional MIME types to render as `text/plain` when serving files. This is useful for preventing XSS attacks when serving files that would otherwise be rendered as HTML or JavaScript in the browser.
+2. `hardening`: When set to `true`, the server will include security headers such as `X-Content-Type-Options: nosniff` and a basic `Content-Security-Policy` to mitigate XSS and other attacks.
+
+Remote URL uploads are now also validated to reject localhost and non-public IP addresses.
+
+- Support overriding filename when paste from remote URL by @rtk0c in [#504](https://github.com/orhun/rustypaste/pull/504)
+
+For example:
+
+```sh
+curl -F "remote=https://example.com/file.png" -H "filename: foobar.png" "<server_address>"
+```
+
+`file.png` will be saved as `foobar.png` in the server.
+
+- Support no extension for random URLs by @tessus in [#439](https://github.com/orhun/rustypaste/pull/439)
+
+```toml
+[paste]
+random_url = { type = "alphanumeric", length = 8, no_extension = true }
+```
+
+When `no_extension` is set to `true`, the generated random URLs will not have an extension, even if the original file has one.
+
+For example, if you upload a file named `example.txt`, it might be saved as `a1b2c3d4` instead of `a1b2c3d4.txt`.
+
+- Add [rustypaste-ui](https://github.com/Silvenga/rustypaste-ui) to third-party clients list by @Silvenga in [#487](https://github.com/orhun/rustypaste/pull/487)
+
+A new third-party client has dropped!
+
+<img src="https://raw.githubusercontent.com/Silvenga/rustypaste-ui/refs/heads/master/docs/upload.gif" style="width: 60%" />
+
+- Add [3rd party ShareX client](https://gist.github.com/Null-Kelvin/c726a080762781a603cbc1b713d36cc6) by @Null-Kelvin in [#448](https://github.com/orhun/rustypaste/pull/448)
+- Add a [OpenRC service file](https://github.com/orhun/rustypaste/blob/master/extra/OpenRC/rustypaste.initd) by @divideableZero in [#536](https://github.com/orhun/rustypaste/pull/536)
+
+### Changed
+
+- Allow to blacklist a whole class of mime-types by @mscherer in [#513](https://github.com/orhun/rustypaste/pull/513)
+
+This makes it possible to e.g. block all image types with a single entry in the blacklist:
+
+```toml
+[paste]
+mime_blacklist = ["image/"]
+```
+
+- Allow HEAD method for /{file} endpoint by @tessus in [#530](https://github.com/orhun/rustypaste/pull/530)
+- Migrate from deprecated bash uploader to codecov-action v5 by @EzgiTastan in [#521](https://github.com/orhun/rustypaste/pull/521)
+
+### New Contributors
+
+- @y5 made their first contribution in [#508](https://github.com/orhun/rustypaste/pull/508)
+- @divideableZero made their first contribution in [#536](https://github.com/orhun/rustypaste/pull/536)
+- @mtvrsh made their first contribution in [#526](https://github.com/orhun/rustypaste/pull/526)
+- @EzgiTastan made their first contribution in [#521](https://github.com/orhun/rustypaste/pull/521)
+- @mscherer made their first contribution in [#513](https://github.com/orhun/rustypaste/pull/513)
+- @rtk0c made their first contribution in [#504](https://github.com/orhun/rustypaste/pull/504)
+- @Silvenga made their first contribution in [#487](https://github.com/orhun/rustypaste/pull/487)
+- @Null-Kelvin made their first contribution in [#448](https://github.com/orhun/rustypaste/pull/448)
+
 ## [0.16.1] - 2025-03-21
 
 ### Added
@@ -439,7 +518,6 @@ random_url = { enabled = true, type = "alphanumeric", length = 6, suffix_mode = 
 ```
 
 - Honor X-Forward-\* headers (`X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto`) (#61)
-
   - This would be really useful to have for setups where the service is running behind a reverse-proxy or gateway and the possibility to adjust the logging output based on their availability, to have the real IP addresses of the clients available in the log.
 
 - Add new line character to the 404 message (#72)
@@ -459,7 +537,6 @@ file is not found or expired :(
 - Bump Shuttle to `0.20.0`
 - List all the supported units in the documentation (#63)
 - Note that the Alpine Linux package is moved to the community
-
   - <https://pkgs.alpinelinux.org/packages?name=rustypaste>
 
 - Bump dependencies
@@ -572,7 +649,6 @@ url = "https://paste.example.com"
 `rustypaste` is now available in [testing](https://pkgs.alpinelinux.org/packages?name=rustypaste&branch=edge) repositories.
 
 - Add new crate features
-
   - `shuttle`: enable an entry point for deploying on Shuttle
   - `openssl`: use distro OpenSSL (binary size is reduced ~20% in release mode)
   - `rustls`: use [rustls](https://github.com/rustls/rustls) (enabled as default)
@@ -762,7 +838,6 @@ auth_token="hunter2"
 ### Added
 
 - Support pasting files from remote URLs (via `remote=` form field)
-
   - `{server.max_content_length}` is used for download limit
   - See [README.md#paste-file-from-remote-url](https://github.com/orhun/rustypaste#paste-file-from-remote-url)
 
