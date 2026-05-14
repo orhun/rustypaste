@@ -27,7 +27,7 @@ hardening = true
 1. `text_mime_overrides`: Additional MIME types to render as `text/plain` when serving files. This is useful for preventing XSS attacks when serving files that would otherwise be rendered as HTML or JavaScript in the browser.
 2. `hardening`: When set to `true`, the server will include security headers such as `X-Content-Type-Options: nosniff` and a basic `Content-Security-Policy` to mitigate XSS and other attacks.
 
-Remote URL uploads are now also validated to reject localhost and non-public IP addresses.
+Remote URL uploads are now also validated to reject `localhost` and other disallowed address ranges, while still allowing private intranet IPv4 ranges such as `10.0.0.0/8` and `192.168.0.0/16`.
 
 - Support overriding filename when paste from remote URL by @rtk0c in [#504](https://github.com/orhun/rustypaste/pull/504)
 
