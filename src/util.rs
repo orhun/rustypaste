@@ -56,6 +56,43 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
     Ok(path)
 }
 
+/// Attempts to extract the full file extension (including compound extensions, e.g. ".tar.gz")
+/// from a given file path.
+///
+/// Returns `None` for files without an extension or for hidden files
+/// with only a leading dot (e.g., ".gitignore").
+///
+/// If a known MIME type is detected for a compound
+/// extension, it is returned; otherwise, falls back to the standard extension.
+pub fn get_extension_from_filename(file_path: &str) -> Option<String> {
+    let path = Path::new(file_path);
+    let file_name = path.file_name()?.to_str()?;
+    let parts: Vec<&str> = file_name.split('.').collect();
+
+    // Ignore names with no dot
+    if parts.len() < 2 {
+        return None;
+    }
+
+    // Ignore hidden files with only a single leading dot (e.g., ".gitignore")
+    let start_index = if parts[0].is_empty() { 2 } else { 1 };
+    if parts.len() <= start_index {
+        return None;
+    }
+
+    // Attempt to mime guess the extension after the first dot
+    for i in start_index..parts.len() {
+        let potential_ext = parts[i..].join(".");
+        let guesses = mime_guess::from_ext(&potential_ext);
+        if !guesses.is_empty() {
+            return Some(format!(".{}", potential_ext));
+        }
+    }
+
+    path.extension()
+        .map(|ext| format!(".{}", ext.to_string_lossy()))
+}
+
 /// Returns the found expired files in the possible upload locations.
 ///
 /// Fail-safe, omits errors.
