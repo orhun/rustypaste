@@ -146,7 +146,10 @@ impl Paste {
             util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
 
         let mut extension = match util::get_extension_from_filename(&file_name) {
-            Some(ext) => ext,
+            Some(ext) => {
+                file_name.truncate(file_name.len() - ext.len() - 1);
+                ext
+            }
             None => file_type
                 .map(|t| t.extension())
                 .unwrap_or(&config.paste.default_extension)
