@@ -144,33 +144,18 @@ impl Paste {
 
         let mut path =
             util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
-        let mut parts: Vec<&str> = file_name.split('.').collect();
-        let mut dotfile = false;
-        let mut lower_bound = 1;
-        let mut file_name = match parts[0] {
-            "" => {
-                // Index shifts one to the right in the array for the rest of the string (the extension)
-                dotfile = true;
-                lower_bound = 2;
-                // If the first array element is empty, it means the file started with a dot (e.g.: .foo)
-                format!(".{}", parts[1])
+
+        let mut extension = match util::get_extension_from_filename(&file_name) {
+            Some(ext) => {
+                file_name.truncate(file_name.len() - ext.len() - 1);
+                ext
             }
-            _ => parts[0].to_string(),
-        };
-        let mut extension = if parts.len() > lower_bound {
-            // To get the rest (the extension), we have to remove the first element of the array, which is the filename
-            parts.remove(0);
-            if dotfile {
-                // If the filename starts with a dot, we have to remove another element, because the first element was empty
-                parts.remove(0);
-            }
-            parts.join(".")
-        } else {
-            file_type
+            None => file_type
                 .map(|t| t.extension())
                 .unwrap_or(&config.paste.default_extension)
-                .to_string()
+                .to_string(),
         };
+
         let mut no_extension = false;
         if let Some(random_url) = &config.paste.random_url {
             if let Some(random_text) = random_url.generate() {
