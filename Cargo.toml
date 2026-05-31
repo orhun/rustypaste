@@ -15,7 +15,7 @@ include = ["src/**/*", "Cargo.*", "LICENSE", "README.md", "CHANGELOG.md"]
 [features]
 default = ["rustls"]
 openssl = ["actix-web/openssl", "awc/openssl"]
-rustls = ["actix-web/rustls-0_21", "awc/rustls-0_21"]
+rustls = ["actix-web/rustls-0_23", "awc/rustls-0_23-webpki-roots"]
 
 [dependencies]
 actix-web = { version = "4.13.0" }
@@ -40,6 +40,7 @@ humantime = "2.3.0"
 humantime-serde = "1.1.1"
 glob = "0.3.3"
 ring = "0.17.14"
+rustls = { version = "0.23.40", default-features = false, features = ["ring", "std"] }
 hotwatch = "0.5.0"
 tokio = { version = "1.52.3", optional = true }
 tracing = "0.1.44"
