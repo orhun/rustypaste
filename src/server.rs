@@ -259,7 +259,14 @@ async fn delete(
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    let mut path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    if !path.is_file() || !path.exists() {
+        let protected_path = safe_path_join(
+            PasteType::ProtectedFile.get_path(&config.server.upload_path)?,
+            &*file,
+        )?;
+        path = util::glob_match_file(protected_path)?;
+    }
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
@@ -1027,6 +1034,58 @@ mod tests {
 
         let password_path = PathBuf::from(format!("{file_name}.password"));
         assert!(!password_path.exists(), "password file should be deleted");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_delete_protected_file() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.delete_tokens = Some(["test".to_string()].into());
+        config.server.upload_path = env::current_dir()?;
+
+        let protected_upload_path = PasteType::ProtectedFile
+            .get_path(&config.server.upload_path)
+            .expect("cannot get protected file path");
+        fs::create_dir_all(&protected_upload_path)?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "test_protected_delete.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "protected", file_name).to_request(),
+        )
+        .await;
+
+        let path = protected_upload_path.join(file_name);
+        let password_path = protected_upload_path.join(format!("{file_name}.password"));
+        assert!(path.exists());
+        assert!(password_path.exists());
+
+        let request = TestRequest::delete()
+            .insert_header((AUTHORIZATION, header::HeaderValue::from_static("test")))
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), "file deleted\n").await?;
+
+        assert!(!path.exists());
+        assert!(
+            !password_path.exists(),
+            "password file should be deleted with the content file"
+        );
+
+        fs::remove_dir(protected_upload_path)?;
 
         Ok(())
     }
