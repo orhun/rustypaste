@@ -387,6 +387,8 @@ pub struct ListItem {
     pub file_name: PathBuf,
     /// Size of the file in bytes.
     pub file_size: u64,
+    /// Item type
+    pub item_type: PasteType,
     /// ISO8601 formatted date-time of the moment the file was created (uploaded).
     pub creation_date_utc: Option<String>,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
@@ -405,59 +407,83 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
         warn!("server is not configured to expose list endpoint");
         Err(error::ErrorNotFound(""))?;
     }
-    let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
-        .filter_map(|entry| {
-            entry.ok().and_then(|e| {
-                let metadata = match e.metadata() {
-                    Ok(metadata) => {
-                        if metadata.is_dir() {
+
+    let get_item_list = |item_type: PasteType| -> Result<Vec<ListItem>, Error> {
+        let dir = item_type.get_path(&config.server.upload_path)?;
+        Ok(fs::read_dir(dir.as_path())?
+            .filter_map(|entry| {
+                entry.ok().and_then(|e| {
+                    let metadata = match e.metadata() {
+                        Ok(metadata) => {
+                            if metadata.is_dir() {
+                                return None;
+                            }
+                            metadata
+                        }
+                        Err(e) => {
+                            error!("failed to read metadata: {e}");
                             return None;
                         }
-                        metadata
-                    }
-                    Err(e) => {
-                        error!("failed to read metadata: {e}");
-                        return None;
-                    }
-                };
-                let mut file_name = PathBuf::from(e.file_name());
+                    };
+                    let mut file_name = PathBuf::from(e.file_name());
 
-                let creation_date_utc = metadata.created().ok().map(|v| {
-                    let millis = v
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Time since UNIX epoch should be valid.")
-                        .as_millis();
-                    uts2ts::uts2ts(
-                        i64::try_from(millis).expect("UNIX time should be smaller than i64::MAX")
-                            / 1000,
-                    )
-                    .as_string()
-                });
+                    let creation_date_utc = metadata.created().ok().map(|v| {
+                        let millis = v
+                            .duration_since(UNIX_EPOCH)
+                            .expect("Time since UNIX epoch should be valid.")
+                            .as_millis();
+                        uts2ts::uts2ts(
+                            i64::try_from(millis)
+                                .expect("UNIX time should be smaller than i64::MAX")
+                                / 1000,
+                        )
+                        .as_string()
+                    });
 
-                let expires_at_utc = if let Some(expiration) = file_name
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .and_then(|v| v.parse::<i64>().ok())
-                {
-                    file_name.set_extension("");
-                    if util::get_system_time().ok()?
-                        > Duration::from_millis(expiration.try_into().ok()?)
+                    let expires_at_utc = if let Some(expiration) = file_name
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .and_then(|v| v.parse::<i64>().ok())
                     {
-                        return None;
-                    }
-                    Some(uts2ts::uts2ts(expiration / 1000).as_string())
-                } else {
-                    None
-                };
-                Some(ListItem {
-                    file_name,
-                    file_size: metadata.len(),
-                    creation_date_utc,
-                    expires_at_utc,
+                        file_name.set_extension("");
+                        if util::get_system_time().ok()?
+                            > Duration::from_millis(expiration.try_into().ok()?)
+                        {
+                            return None;
+                        }
+                        Some(uts2ts::uts2ts(expiration / 1000).as_string())
+                    } else {
+                        None
+                    };
+                    Some(ListItem {
+                        file_name,
+
+                        // TODO: For urls this will return url length. Not sure if desired behaviour
+                        file_size: metadata.len(),
+                        item_type: item_type,
+                        creation_date_utc,
+                        expires_at_utc,
+                    })
                 })
             })
-        })
+            .collect())
+    };
+
+    const PASTE_VARIANTS: [PasteType; 4] = [
+        PasteType::File,
+        PasteType::Oneshot,
+        PasteType::Url,
+        PasteType::OneshotUrl,
+    ];
+
+    let entries: Vec<ListItem> = PASTE_VARIANTS
+        .iter()
+        .map(|variant| get_item_list(*variant))
+        .collect::<Result<Vec<Vec<ListItem>>, Error>>()?
+        .into_iter()
+        .flatten()
         .collect();
+
     Ok(HttpResponse::Ok().json(entries))
 }
 

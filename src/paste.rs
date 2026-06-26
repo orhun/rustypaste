@@ -4,6 +4,7 @@ use crate::header::ContentDisposition;
 use crate::util;
 use actix_web::{error, web, Error};
 use awc::Client;
+use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Error as IoError, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
@@ -16,7 +17,8 @@ use std::{
 use url::Url;
 
 /// Type of the data to store.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum PasteType {
     /// Any type of file.
     File,
