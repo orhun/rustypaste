@@ -1641,9 +1641,9 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "petname"
-version = "3.0.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ce610bff48dd7b6a127e45631795fbb0b302b99a39bef7e6da3d297e8eb2b6b"
+checksum = "1201345ec6f6630308d0549e198c58aff61df8033afe094f072def1ebe43eafa"
 dependencies = [
  "petname-macros",
  "rand 0.10.1",
@@ -1651,9 +1651,9 @@ dependencies = [
 
 [[package]]
 name = "petname-macros"
-version = "3.0.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "324239bd00dcf61f1a0e301d4d8f6f8c080a755248fc3fdc817ee1fdbbc27b8b"
+checksum = "c9b4bcfb5a86125ae8f1342b95f8b64d050f0a4385c9533c5a17970b9e0479e7"
 dependencies = [
  "proc-macro2",
  "quote",
