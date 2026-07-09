@@ -32,6 +32,16 @@ pub enum PasteType {
     OneshotUrl,
 }
 
+/// Slice of all paste variants that may be returned by `/list` endpoint
+/// NOTE: PasteType::RemoteFile is missing, because it cannot be distinguished
+///       between itself and PasteType::File without storing additional information
+pub const PASTE_VARIANTS_LIST: [PasteType; 4] = [
+    PasteType::File,
+    PasteType::Oneshot,
+    PasteType::Url,
+    PasteType::OneshotUrl,
+];
+
 impl<'a> TryFrom<&'a ContentDisposition> for PasteType {
     type Error = ();
     fn try_from(content_disposition: &'a ContentDisposition) -> Result<Self, Self::Error> {

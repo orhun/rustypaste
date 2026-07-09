@@ -3,7 +3,7 @@ use crate::config::{Config, LandingPageConfig, TokenType};
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
-use crate::paste::{Paste, PasteType};
+use crate::paste::{Paste, PasteType, PASTE_VARIANTS_LIST};
 use crate::util::{self, safe_path_join};
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
@@ -411,7 +411,7 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
     let get_item_list = |item_type: PasteType| -> Result<Vec<ListItem>, Error> {
         let dir = item_type.get_path(&config.server.upload_path)?;
 
-        //FIX: When running tests other folders than "root" does not exists
+        //FIX: When running some tests (e.g. test_list) other folders than "root" does not exists
         if !fs::exists(&dir).unwrap_or(false) {
             return Ok(Vec::default());
         }
@@ -462,10 +462,9 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                     };
                     Some(ListItem {
                         file_name,
-
-                        // TODO: For urls this will return url length. Not sure if desired behaviour
+                        // NOTE: For urls this will return url length. Not sure if desired behaviour
                         file_size: metadata.len(),
-                        item_type: item_type,
+                        item_type,
                         creation_date_utc,
                         expires_at_utc,
                     })
@@ -474,14 +473,7 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
             .collect())
     };
 
-    const PASTE_VARIANTS: [PasteType; 4] = [
-        PasteType::File,
-        PasteType::Oneshot,
-        PasteType::Url,
-        PasteType::OneshotUrl,
-    ];
-
-    let entries: Vec<ListItem> = PASTE_VARIANTS
+    let entries: Vec<ListItem> = PASTE_VARIANTS_LIST
         .iter()
         .map(|variant| get_item_list(*variant))
         .collect::<Result<Vec<Vec<ListItem>>, Error>>()?
@@ -828,13 +820,7 @@ mod tests {
         let test_upload_dir = "test_upload";
         config.server.upload_path = PathBuf::from(test_upload_dir);
 
-        const PASTE_VARIANTS: [PasteType; 4] = [
-            PasteType::File,
-            PasteType::Oneshot,
-            PasteType::Url,
-            PasteType::OneshotUrl,
-        ];
-        for variant in PASTE_VARIANTS {
+        for variant in PASTE_VARIANTS_LIST {
             fs::create_dir_all(variant.get_path(&config.server.upload_path).unwrap())?;
         }
 
@@ -889,6 +875,7 @@ mod tests {
         // 2. PasteType::Oneshot
         // 3. PasteType::Url
         // 4. PasteType::OneshotUrl
+        // NOTE: The test won't pass if order in `PASTE_VARIANTS_LIST` changes
 
         assert_eq!(result[0].file_name, PathBuf::from(filename));
         assert_eq!(result[0].item_type, PasteType::File);
