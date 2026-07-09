@@ -410,6 +410,11 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
 
     let get_item_list = |item_type: PasteType| -> Result<Vec<ListItem>, Error> {
         let dir = item_type.get_path(&config.server.upload_path)?;
+
+        //FIX: When running tests other folders than "root" does not exists
+        if !fs::exists(&dir).unwrap_or(false) {
+            return Ok(Vec::default());
+        }
         Ok(fs::read_dir(dir.as_path())?
             .filter_map(|entry| {
                 entry.ok().and_then(|e| {
@@ -809,6 +814,93 @@ mod tests {
             result.first().expect("json object").file_name,
             PathBuf::from(filename)
         );
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_list_item_type() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        const PASTE_VARIANTS: [PasteType; 4] = [
+            PasteType::File,
+            PasteType::Oneshot,
+            PasteType::Url,
+            PasteType::OneshotUrl,
+        ];
+        for variant in PASTE_VARIANTS {
+            fs::create_dir_all(variant.get_path(&config.server.upload_path).unwrap())?;
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", filename).to_request(),
+        )
+        .await;
+        let filename_oneshot = "oneshot.txt";
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "oneshot", filename_oneshot).to_request(),
+        )
+        .await;
+        test::call_service(
+            &app,
+            get_multipart_request(env!("CARGO_PKG_HOMEPAGE"), "url", "").to_request(),
+        )
+        .await;
+        let filename_oneshot_url = "oneshot_url";
+        test::call_service(
+            &app,
+            get_multipart_request(
+                env!("CARGO_PKG_HOMEPAGE"),
+                filename_oneshot_url,
+                filename_oneshot_url,
+            )
+            .to_request(),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        assert_eq!(result.len(), 4);
+
+        // Items returned from `/list` endpoint should be returned in this order:
+        // 1. PasteType::File
+        // 2. PasteType::Oneshot
+        // 3. PasteType::Url
+        // 4. PasteType::OneshotUrl
+
+        assert_eq!(result[0].file_name, PathBuf::from(filename));
+        assert_eq!(result[0].item_type, PasteType::File);
+
+        assert_eq!(result[1].file_name, PathBuf::from(filename_oneshot));
+        assert_eq!(result[1].item_type, PasteType::Oneshot);
+
+        assert_eq!(result[2].file_name, PathBuf::from("url"));
+        assert_eq!(result[2].item_type, PasteType::Url);
+
+        assert_eq!(result[3].file_name, PathBuf::from(filename_oneshot_url));
+        assert_eq!(result[3].item_type, PasteType::OneshotUrl);
 
         fs::remove_dir_all(test_upload_dir)?;
 
