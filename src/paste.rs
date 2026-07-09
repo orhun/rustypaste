@@ -18,7 +18,7 @@ use url::Url;
 
 /// Type of the data to store.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum PasteType {
     /// Any type of file.
     File,
