@@ -526,7 +526,6 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                     };
                     Some(ListItem {
                         file_name,
-                        // NOTE: For urls this will return url length. Not sure if desired behaviour
                         file_size: metadata.len(),
                         item_type,
                         creation_date_utc,
