@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::file::Directory;
 use crate::header::ContentDisposition;
 use crate::util;
-use actix_web::{Error, error, web};
+use actix_web::{error, web, Error};
 use awc::Client;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
