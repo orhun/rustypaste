@@ -885,7 +885,11 @@ mod tests {
         config.server.upload_path = PathBuf::from(test_upload_dir);
 
         for variant in PASTE_VARIANTS_LIST {
-            fs::create_dir_all(variant.get_path(&config.server.upload_path).unwrap())?;
+            fs::create_dir_all(
+                variant
+                    .get_path(&config.server.upload_path)
+                    .expect("Bad upload path"),
+            )?;
         }
 
         let app = test::init_service(
