@@ -275,7 +275,7 @@ impl Paste {
         let file_name = url
             .path_segments()
             .and_then(|mut segments| segments.next_back())
-            .and_then(|name| if name.is_empty() { None } else { Some(name) })
+            .filter(|&name| !name.is_empty())
             .unwrap_or("file");
         let mut response = client
             .get(url.as_str())
