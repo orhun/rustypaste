@@ -14,7 +14,6 @@ use actix_web_grants::GrantsMiddleware;
 use awc::error::HeaderValue;
 use awc::http::header::{CONTENT_SECURITY_POLICY, X_CONTENT_TYPE_OPTIONS};
 use awc::Client;
-use awc::Client;
 use base64::Engine;
 use byte_unit::{Byte, UnitType};
 use futures_util::stream::StreamExt;
