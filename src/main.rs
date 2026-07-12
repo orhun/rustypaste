@@ -71,7 +71,12 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
 
     // Create necessary directories.
     fs::create_dir_all(&server_config.upload_path)?;
-    for paste_type in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
+    for paste_type in &[
+        PasteType::Url,
+        PasteType::Oneshot,
+        PasteType::OneshotUrl,
+        PasteType::ProtectedFile,
+    ] {
         fs::create_dir_all(paste_type.get_path(&server_config.upload_path)?)?;
     }
 
@@ -127,12 +132,26 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         {
             if cleanup_config.enabled {
                 debug!("Running cleanup...");
+                // Clean up expired files
                 for file in util::get_expired_files(&upload_path) {
+                    // Delete content file first, then password (prevents unprotected window)
                     match fs::remove_file(&file) {
-                        Ok(()) => info!("Removed expired file: {:?}", file),
+                        Ok(()) => {
+                            info!("Removed expired file: {:?}", file);
+                            rustypaste::password::delete_password_file(&file).ok();
+                        }
                         Err(e) => error!("Cannot remove expired file: {}", e),
                     }
                 }
+
+                // Clean orphaned password files
+                for password_file in util::get_orphaned_password_files(&upload_path) {
+                    match fs::remove_file(&password_file) {
+                        Ok(()) => info!("Removed orphaned password: {:?}", password_file),
+                        Err(e) => error!("Cannot remove orphaned password: {}", e),
+                    }
+                }
+
                 thread::sleep(cleanup_config.interval);
             }
             enabled = cleanup_config.enabled;
