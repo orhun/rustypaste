@@ -527,8 +527,8 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                     Some(ListItem {
                         file_name,
                         file_size: match item_type {
-                            PasteType::Url | PasteType::OneshotUrl => None,
-                            _ => Some(metadata.len()),
+                            PasteType::File | PasteType::Oneshot => Some(metadata.len()),
+                            _ => None,
                         },
                         item_type,
                         creation_date_utc,
