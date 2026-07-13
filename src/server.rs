@@ -450,7 +450,7 @@ pub struct ListItem {
     /// Uploaded file name.
     pub file_name: PathBuf,
     /// Size of the file in bytes.
-    pub file_size: u64,
+    pub file_size: Option<u64>,
     /// Item type
     pub item_type: PasteType,
     /// ISO8601 formatted date-time of the moment the file was created (uploaded).
@@ -526,7 +526,10 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                     };
                     Some(ListItem {
                         file_name,
-                        file_size: metadata.len(),
+                        file_size: match item_type {
+                            PasteType::Url | PasteType::OneshotUrl => None,
+                            _ => Some(metadata.len()),
+                        },
                         item_type,
                         creation_date_utc,
                         expires_at_utc,
