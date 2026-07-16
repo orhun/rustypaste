@@ -259,7 +259,16 @@ async fn delete(
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let mut path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    let mut path = PathBuf::new();
+    for variant in PASTE_VARIANTS_LIST {
+        path = util::glob_match_file(safe_path_join(
+            variant.get_path(&config.server.upload_path)?,
+            &*file,
+        )?)?;
+        if path.exists() && path.is_file() {
+            break;
+        }
+    }
     if !path.is_file() || !path.exists() {
         let protected_path = safe_path_join(
             PasteType::ProtectedFile.get_path(&config.server.upload_path)?,
