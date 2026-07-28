@@ -143,7 +143,10 @@ async fn serve(
                 .get(AUTHORIZATION)
                 .and_then(|v| v.to_str().ok())
                 .and_then(extract_password_from_auth)
-                .ok_or_else(|| error::ErrorNotFound("file is not found or expired :(\n"))?;
+                .ok_or_else(|| {
+                    info!("PasteType::ProtectedFile: cannot extract password from headers");
+                    error::ErrorNotFound("file is not found or expired :(\n")
+                })?;
 
             if !crate::password::verify_file_password(&path, &password).map_err(|e| {
                 error::ErrorInternalServerError(format!("password verification: {e}"))
