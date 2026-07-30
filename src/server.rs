@@ -134,20 +134,29 @@ async fn serve(
     }
 
     // Check password protection
-    if crate::password::has_password(&path) {
-        use actix_web::http::header::AUTHORIZATION;
+    if paste_type == PasteType::ProtectedFile {
+        if crate::password::has_password(&path) {
+            use actix_web::http::header::AUTHORIZATION;
 
-        let password = request
-            .headers()
-            .get(AUTHORIZATION)
-            .and_then(|v| v.to_str().ok())
-            .and_then(extract_password_from_auth)
-            .ok_or_else(|| error::ErrorNotFound("file is not found or expired :(\n"))?;
+            let password = request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok())
+                .and_then(extract_password_from_auth)
+                .ok_or_else(|| {
+                    info!("PasteType::ProtectedFile: cannot extract password from headers");
+                    error::ErrorNotFound("file is not found or expired :(\n")
+                })?;
 
-        if !crate::password::verify_file_password(&path, &password)
-            .map_err(|e| error::ErrorInternalServerError(format!("password verification: {e}")))?
-        {
-            // Same error as missing file (prevents enumeration)
+            if !crate::password::verify_file_password(&path, &password).map_err(|e| {
+                error::ErrorInternalServerError(format!("password verification: {e}"))
+            })? {
+                // Same error as missing file (prevents enumeration)
+                info!("PasteType::ProtectedFile: password verification failed");
+                return Err(error::ErrorNotFound("file is not found or expired :(\n"));
+            }
+        } else {
+            error!("PasteType::ProtectedFile: no password metadata file");
             return Err(error::ErrorNotFound("file is not found or expired :(\n"));
         }
     }

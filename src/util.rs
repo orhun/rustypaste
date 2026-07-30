@@ -40,6 +40,14 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
     );
     if let Some(glob_path) = glob(&format!("{}.[0-9]*", path.to_string_lossy()))
         .map_err(error::ErrorInternalServerError)?
+        .filter(|r| {
+            // we do not want password files, otherwise further processing fails
+            r.as_ref()
+                .ok()
+                .and_then(|p| p.extension())
+                .and_then(|e| e.to_str())
+                != Some("password")
+        })
         .last()
     {
         let glob_path = glob_path.map_err(error::ErrorInternalServerError)?;
