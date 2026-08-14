@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.18.0] - 2026-08-01
+## [0.18.0] - 2026-08-14
 
 ### Added
 
@@ -30,7 +30,9 @@ Or with Basic Auth:
 ```sh
 $ curl -u "user:aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
 ```
-**Note**: Protected files cannot be combined with other paste types (oneshot, URL). The password is permanently tied to the file and cannot be changed. If the password is lost, the file becomes inaccessible. Password files are deleted automatically when the main file is deleted or expires.
+
+> [!NOTE]  
+> Protected files cannot be combined with other paste types (oneshot, URL). The password is permanently tied to the file and cannot be changed. If the password is lost, the file becomes inaccessible. Password files are deleted automatically when the main file is deleted or expires.
 
 - Add item type to /list endpoint by @Bit38 in [#587](https://github.com/orhun/rustypaste/pull/587)
 - Support deletion of all item types by @tessus in [#592](https://github.com/orhun/rustypaste/pull/592)
