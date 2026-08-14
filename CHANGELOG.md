@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-08-14
+
+### Added
+
+- Add password-protected file uploads by @anoldguy in [#505](https://github.com/orhun/rustypaste/pull/505)
+
+Upload a file with auto-generated password:
+
+```sh
+$ curl -F "protected=@secret.txt" "<server_address>"
+https://paste.site.com/secret.txt
+Password: aBcD1234EfGh5678IjKl9012
+```
+
+Download with Bearer token:
+
+```sh
+$ curl -H "Authorization: Bearer aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
+```
+
+Or with Basic Auth:
+
+```sh
+$ curl -u "user:aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
+```
+
+> [!NOTE]  
+> Protected files cannot be combined with other paste types (oneshot, URL). The password is permanently tied to the file and cannot be changed. If the password is lost, the file becomes inaccessible. Password files are deleted automatically when the main file is deleted or expires.
+
+- Add item type to /list endpoint by @Bit38 in [#587](https://github.com/orhun/rustypaste/pull/587)
+- Support deletion of all item types by @tessus in [#592](https://github.com/orhun/rustypaste/pull/592)
+
+### Changed
+
+- Improve compound extension detection using mime_guess by @coko7 in [#563](https://github.com/orhun/rustypaste/pull/563)
+
+### Fixed
+
+- Retrieval of password-protected files by @tessus in [#603](https://github.com/orhun/rustypaste/pull/603)
+
+### Removed
+
+- Remove yanked 3rd party client by @tessus in [#580](https://github.com/orhun/rustypaste/pull/580)
+
+### New Contributors
+
+- @Bit38 made their first contribution in [#587](https://github.com/orhun/rustypaste/pull/587)
+- @anoldguy made their first contribution in [#505](https://github.com/orhun/rustypaste/pull/505)
+- @coko7 made their first contribution in [#563](https://github.com/orhun/rustypaste/pull/563)
+
 ## [0.17.0] - 2026-05-14
 
 ### Added
@@ -925,42 +975,44 @@ Under the hood, it checks the SHA256 digest of the uploaded files.
 
 Initial release.
 
-[0.16.1]: https://github.com/orhun/rustypaste/compare/v0.16.0..v0.16.1
-[0.16.0]: https://github.com/orhun/rustypaste/compare/v0.15.1..v0.16.0
-[0.15.1]: https://github.com/orhun/rustypaste/compare/v0.15.0..v0.15.1
-[0.15.0]: https://github.com/orhun/rustypaste/compare/v0.14.4..v0.15.0
-[0.14.4]: https://github.com/orhun/rustypaste/compare/v0.14.3..v0.14.4
-[0.14.3]: https://github.com/orhun/rustypaste/compare/v0.14.2..v0.14.3
-[0.14.2]: https://github.com/orhun/rustypaste/compare/v0.14.1..v0.14.2
-[0.14.1]: https://github.com/orhun/rustypaste/compare/v0.14.0..v0.14.1
-[0.14.0]: https://github.com/orhun/rustypaste/compare/v0.12.1..v0.14.0
-[0.12.1]: https://github.com/orhun/rustypaste/compare/v0.12.0..v0.12.1
-[0.12.0]: https://github.com/orhun/rustypaste/compare/v0.11.1..v0.12.0
-[0.11.1]: https://github.com/orhun/rustypaste/compare/v0.11.0..v0.11.1
-[0.11.0]: https://github.com/orhun/rustypaste/compare/v0.10.1..v0.11.0
-[0.10.1]: https://github.com/orhun/rustypaste/compare/v0.10.0..v0.10.1
-[0.10.0]: https://github.com/orhun/rustypaste/compare/v0.9.1..v0.10.0
-[0.9.1]: https://github.com/orhun/rustypaste/compare/v0.9.0..v0.9.1
-[0.9.0]: https://github.com/orhun/rustypaste/compare/v0.8.4..v0.9.0
-[0.8.4]: https://github.com/orhun/rustypaste/compare/v0.8.3..v0.8.4
-[0.8.3]: https://github.com/orhun/rustypaste/compare/v0.8.2..v0.8.3
-[0.8.2]: https://github.com/orhun/rustypaste/compare/v0.8.1..v0.8.2
-[0.8.1]: https://github.com/orhun/rustypaste/compare/v0.8.0..v0.8.1
-[0.8.0]: https://github.com/orhun/rustypaste/compare/v0.7.1..v0.8.0
-[0.7.1]: https://github.com/orhun/rustypaste/compare/v0.7.0..v0.7.1
-[0.7.0]: https://github.com/orhun/rustypaste/compare/v0.6.5..v0.7.0
-[0.6.5]: https://github.com/orhun/rustypaste/compare/v0.6.4..v0.6.5
-[0.6.4]: https://github.com/orhun/rustypaste/compare/v0.6.3..v0.6.4
-[0.6.3]: https://github.com/orhun/rustypaste/compare/v0.6.2..v0.6.3
-[0.6.2]: https://github.com/orhun/rustypaste/compare/v0.6.1..v0.6.2
-[0.6.1]: https://github.com/orhun/rustypaste/compare/v0.6.0..v0.6.1
-[0.6.0]: https://github.com/orhun/rustypaste/compare/v0.5.0..v0.6.0
-[0.5.0]: https://github.com/orhun/rustypaste/compare/v0.4.1..v0.5.0
-[0.4.1]: https://github.com/orhun/rustypaste/compare/v0.4.0..v0.4.1
-[0.4.0]: https://github.com/orhun/rustypaste/compare/v0.3.1..v0.4.0
-[0.3.1]: https://github.com/orhun/rustypaste/compare/v0.3.0..v0.3.1
-[0.3.0]: https://github.com/orhun/rustypaste/compare/v0.2.0..v0.3.0
-[0.2.0]: https://github.com/orhun/rustypaste/compare/v0.1.3..v0.2.0
-[0.1.3]: https://github.com/orhun/rustypaste/compare/v0.1.2..v0.1.3
-[0.1.2]: https://github.com/orhun/rustypaste/compare/v0.1.1..v0.1.2
-[0.1.1]: https://github.com/orhun/rustypaste/compare/v0.1.0..v0.1.1
+[0.18.0]: https://github.com/orhun/rustypaste/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/orhun/rustypaste/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/orhun/rustypaste/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/orhun/rustypaste/compare/v0.15.1...v0.16.0
+[0.15.1]: https://github.com/orhun/rustypaste/compare/v0.15.0...v0.15.1
+[0.15.0]: https://github.com/orhun/rustypaste/compare/v0.14.4...v0.15.0
+[0.14.4]: https://github.com/orhun/rustypaste/compare/v0.14.3...v0.14.4
+[0.14.3]: https://github.com/orhun/rustypaste/compare/v0.14.2...v0.14.3
+[0.14.2]: https://github.com/orhun/rustypaste/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/orhun/rustypaste/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/orhun/rustypaste/compare/v0.12.1...v0.14.0
+[0.12.1]: https://github.com/orhun/rustypaste/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/orhun/rustypaste/compare/v0.11.1...v0.12.0
+[0.11.1]: https://github.com/orhun/rustypaste/compare/v0.11.0...v0.11.1
+[0.11.0]: https://github.com/orhun/rustypaste/compare/v0.10.1...v0.11.0
+[0.10.1]: https://github.com/orhun/rustypaste/compare/v0.10.0...v0.10.1
+[0.10.0]: https://github.com/orhun/rustypaste/compare/v0.9.1...v0.10.0
+[0.9.1]: https://github.com/orhun/rustypaste/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/orhun/rustypaste/compare/v0.8.4...v0.9.0
+[0.8.4]: https://github.com/orhun/rustypaste/compare/v0.8.3...v0.8.4
+[0.8.3]: https://github.com/orhun/rustypaste/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/orhun/rustypaste/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/orhun/rustypaste/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/orhun/rustypaste/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/orhun/rustypaste/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/orhun/rustypaste/compare/v0.6.5...v0.7.0
+[0.6.5]: https://github.com/orhun/rustypaste/compare/v0.6.4...v0.6.5
+[0.6.4]: https://github.com/orhun/rustypaste/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/orhun/rustypaste/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/orhun/rustypaste/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/orhun/rustypaste/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/orhun/rustypaste/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/orhun/rustypaste/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/orhun/rustypaste/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/orhun/rustypaste/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/orhun/rustypaste/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/orhun/rustypaste/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/orhun/rustypaste/compare/v0.1.3...v0.2.0
+[0.1.3]: https://github.com/orhun/rustypaste/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/orhun/rustypaste/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/orhun/rustypaste/compare/v0.1.0...v0.1.1
