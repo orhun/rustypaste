@@ -5,7 +5,7 @@
 //! the uploaded content.
 
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    password_hash::{phc::PasswordHash, PasswordHasher, PasswordVerifier},
     Argon2, ParamsBuilder,
 };
 use rand::distr::{Alphanumeric, SampleString};
@@ -20,7 +20,6 @@ pub fn generate_password() -> String {
 
 /// Hash password using Argon2id (19MB memory, 2 iterations)
 pub fn hash_password(password: &str) -> Result<String, IoError> {
-    let salt = SaltString::generate(&mut OsRng);
     let params = ParamsBuilder::new()
         .m_cost(19456) // 19MB
         .t_cost(2)
@@ -31,7 +30,7 @@ pub fn hash_password(password: &str) -> Result<String, IoError> {
     let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
 
     argon2
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(password.as_bytes())
         .map(|hash| hash.to_string())
         .map_err(|e| IoError::other(format!("hash failed: {e}")))
 }

@@ -25,7 +25,7 @@ actix-files = "0.7.0"
 awc = { version = "3.8.2" }
 serde = "1.0.229"
 futures-util = "0.3.33"
-argon2 = { version = "0.5", features = ["std"] }
+argon2 = "0.6"
 base64 = "0.23.0"
 petname = { version = "3.0.0", default-features = false, features = [
   "default-rng",
