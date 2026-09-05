@@ -211,10 +211,8 @@ impl Paste {
         }
         if let Some(header_filename) = header_filename {
             file_name = header_filename;
-            // Re-validate through `safe_path_join` rather than `set_file_name`, which does not
-            // canonicalize its argument and would let a `../`-containing header value escape
-            // `upload_path` after the earlier join already checked a different, unrelated name.
-            path = util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
+            path =
+                util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
         }
         let file_name = path
             .file_name()
