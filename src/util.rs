@@ -182,10 +182,7 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
 
 /// Joins the paths whilst ensuring the path doesn't drastically change.
 /// `base` is assumed to be a trusted value.
-pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path> + Copy>(
-    base: B,
-    part: P,
-) -> IoResult<PathBuf> {
+pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> IoResult<PathBuf> {
     let new_path = base.as_ref().join(&part).clean();
 
     let cleaned_base = base.as_ref().clean();
