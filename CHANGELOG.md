@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.18.1] - 2026-09-07
 
+> [!IMPORTANT]
+> This is a security release. Please upgrade immediately. See [details](https://github.com/orhun/rustypaste/discussions/627).
+
 ### Fixed
 - Validate override filename by @carfeii in [#623](https://github.com/orhun/rustypaste/pull/623)
 
