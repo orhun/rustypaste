@@ -4,6 +4,8 @@ site\.com
 localhost
 awesome\.txt
 x\.txt
+# Links that do no exist before release is created
+https://github.com/orhun/rustypaste/compare/v
 # Valid dead links (e.g. in CHANGELOG.md)
 https://.*/rukh-debug/droidypaste
 # Links that sometimes timeout (e.g. due to rate limiting, ...), but we know that they are valid.
