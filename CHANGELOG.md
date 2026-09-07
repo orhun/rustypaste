@@ -167,7 +167,7 @@ GitHub: <https://github.com/dbohdan/ferripaste>
 
 3. Rustypaste-GUI
 
-A script for a mininal GUI client for `rustypaste` (powered by zenity)
+A script for a minimal GUI client for `rustypaste` (powered by zenity)
 
 GitHub: <https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58>
 
