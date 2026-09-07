@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2026-09-07
+
+> [!IMPORTANT]
+> This is a security release. Please upgrade immediately. See [details](https://github.com/orhun/rustypaste/discussions/627).
+
+### Fixed
+- Validate override filename by @carfeii in [#623](https://github.com/orhun/rustypaste/pull/623)
+
+### New Contributors
+- @carfeii made their first contribution in [#623](https://github.com/orhun/rustypaste/pull/623)
+
 ## [0.18.0] - 2026-08-14
 
 ### Added
@@ -31,7 +42,7 @@ Or with Basic Auth:
 $ curl -u "user:aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
 ```
 
-> [!NOTE]  
+> [!NOTE]
 > Protected files cannot be combined with other paste types (oneshot, URL). The password is permanently tied to the file and cannot be changed. If the password is lost, the file becomes inaccessible. Password files are deleted automatically when the main file is deleted or expires.
 
 - Add item type to /list endpoint by @Bit38 in [#587](https://github.com/orhun/rustypaste/pull/587)
@@ -156,7 +167,7 @@ GitHub: <https://github.com/dbohdan/ferripaste>
 
 3. Rustypaste-GUI
 
-A script for a mininal GUI client for `rustypaste` (powered by zenity)
+A script for a minimal GUI client for `rustypaste` (powered by zenity)
 
 GitHub: <https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58>
 
@@ -975,6 +986,7 @@ Under the hood, it checks the SHA256 digest of the uploaded files.
 
 Initial release.
 
+[0.18.1]: https://github.com/orhun/rustypaste/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/orhun/rustypaste/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/orhun/rustypaste/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/orhun/rustypaste/compare/v0.16.0...v0.16.1
