@@ -211,7 +211,8 @@ impl Paste {
         }
         if let Some(header_filename) = header_filename {
             file_name = header_filename;
-            path.set_file_name(file_name);
+            path =
+                util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
         }
         let file_name = path
             .file_name()

@@ -183,17 +183,21 @@ pub fn sha256_digest<R: Read>(input: R) -> Result<String, ActixError> {
 /// Joins the paths whilst ensuring the path doesn't drastically change.
 /// `base` is assumed to be a trusted value.
 pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> IoResult<PathBuf> {
-    let new_path = base.as_ref().join(part).clean();
+    let new_path = base.as_ref().join(&part).clean();
 
     let cleaned_base = base.as_ref().clean();
 
     if !new_path.starts_with(cleaned_base) {
+        error!(
+            "{} is outside of {}",
+            part.as_ref().display(),
+            base.as_ref().display()
+        );
         return Err(IoError::new(
             IoErrorKind::InvalidData,
             format!(
-                "{} is outside of {}",
-                new_path.display(),
-                base.as_ref().display()
+                "{} is outside of the base directory",
+                part.as_ref().display()
             ),
         ));
     }
