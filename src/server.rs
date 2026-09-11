@@ -1561,6 +1561,75 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn test_glob_in_path_does_not_serve_or_delete_other_files() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.delete_tokens = Some(["test".to_string()].into());
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        // An expiring file is stored with a timestamp extension, which is the
+        // case that goes through the glob lookup.
+        let file_name = "glob-server-secret.txt";
+        let response = test::call_service(
+            &app,
+            get_multipart_request("secret", "file", file_name)
+                .insert_header((
+                    header::HeaderName::from_static("expire"),
+                    header::HeaderValue::from_static("1min"),
+                ))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+
+        for uri in [
+            "/*",
+            "/glob-server-*",
+            "/glob-server-secre%3F.txt",
+            "/%5Bg%5Dlob-server-secret.txt",
+        ] {
+            let response = test::call_service(&app, TestRequest::get().uri(uri).to_request()).await;
+            assert_eq!(StatusCode::NOT_FOUND, response.status(), "GET {uri}");
+
+            let response = test::call_service(
+                &app,
+                TestRequest::delete()
+                    .insert_header((AUTHORIZATION, header::HeaderValue::from_static("test")))
+                    .uri(uri)
+                    .to_request(),
+            )
+            .await;
+            assert_eq!(StatusCode::NOT_FOUND, response.status(), "DELETE {uri}");
+        }
+
+        // The file survived every attempt and is still served by its real name.
+        let response = test::call_service(
+            &app,
+            TestRequest::get()
+                .uri(&format!("/{file_name}"))
+                .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), "secret").await?;
+
+        if let Some(glob_path) = glob(&format!("{file_name}.[0-9]*"))
+            .map_err(error::ErrorInternalServerError)?
+            .next()
+        {
+            fs::remove_file(glob_path.map_err(error::ErrorInternalServerError)?)?;
+        }
+        Ok(())
+    }
+
+    #[actix_web::test]
     async fn test_upload_remote_file() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.upload_path = env::current_dir()?;

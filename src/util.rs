@@ -1,6 +1,6 @@
 use crate::paste::PasteType;
 use actix_web::{error, Error as ActixError};
-use glob::glob;
+use glob::{glob, Pattern};
 use lazy_regex::{lazy_regex, Lazy, Regex};
 use path_clean::PathClean;
 use ring::digest::{Context, SHA256};
@@ -38,17 +38,23 @@ pub fn glob_match_file(mut path: PathBuf) -> Result<PathBuf, ActixError> {
             )
             .to_string(),
     );
-    if let Some(glob_path) = glob(&format!("{}.[0-9]*", path.to_string_lossy()))
-        .map_err(error::ErrorInternalServerError)?
-        .filter(|r| {
-            // we do not want password files, otherwise further processing fails
-            r.as_ref()
-                .ok()
-                .and_then(|p| p.extension())
-                .and_then(|e| e.to_str())
-                != Some("password")
-        })
-        .last()
+    // `path` ends in a client-supplied file name. Escape it so only the
+    // timestamp suffix below acts as a pattern: otherwise `GET /*` (or
+    // `DELETE /*`) resolves to an arbitrary stored file.
+    if let Some(glob_path) = glob(&format!(
+        "{}.[0-9]*",
+        Pattern::escape(&path.to_string_lossy())
+    ))
+    .map_err(error::ErrorInternalServerError)?
+    .filter(|r| {
+        // we do not want password files, otherwise further processing fails
+        r.as_ref()
+            .ok()
+            .and_then(|p| p.extension())
+            .and_then(|e| e.to_str())
+            != Some("password")
+    })
+    .last()
     {
         let glob_path = glob_path.map_err(error::ErrorInternalServerError)?;
         if let Some(extension) = glob_path
@@ -371,6 +377,51 @@ mod tests {
         );
         fs::remove_file(path)?;
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_glob_match_treats_the_name_literally() -> Result<(), ActixError> {
+        // The name comes straight from the request path. Glob metacharacters in
+        // it must not match someone else's file: `GET /*` returning a stored file
+        // with no name known defeats random file names entirely.
+        let expiry = get_system_time()?.as_millis() + 60_000;
+        let secret = PathBuf::from(format!("glob-literal-secret.txt.{expiry}"));
+        fs::write(&secret, "secret")?;
+        for pattern in [
+            "*",
+            "glob-literal-*",
+            "glob-literal-secre?.txt",
+            "[g]lob-literal-secret.txt",
+            "glob-literal-secret.[t]xt",
+            "**",
+        ] {
+            let matched = glob_match_file(PathBuf::from(pattern))?;
+            assert_eq!(
+                PathBuf::from(pattern),
+                matched,
+                "{pattern} matched {matched:?}"
+            );
+        }
+        // The exact name still resolves.
+        assert_eq!(
+            secret,
+            glob_match_file(PathBuf::from("glob-literal-secret.txt"))?
+        );
+        fs::remove_file(&secret)?;
+
+        // A name that legitimately contains metacharacters is found by itself,
+        // and only by itself.
+        let bracketed = PathBuf::from(format!("glob-literal-[1].txt.{expiry}"));
+        let decoy = PathBuf::from(format!("glob-literal-1.txt.{expiry}"));
+        fs::write(&bracketed, "bracketed")?;
+        fs::write(&decoy, "decoy")?;
+        assert_eq!(
+            bracketed,
+            glob_match_file(PathBuf::from("glob-literal-[1].txt"))?
+        );
+        fs::remove_file(&bracketed)?;
+        fs::remove_file(&decoy)?;
         Ok(())
     }
 
