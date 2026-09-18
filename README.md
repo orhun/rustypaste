@@ -291,6 +291,8 @@ $ curl -H "Authorization: <auth_token>" -X DELETE "<server_address>/file.txt"
 
 When using the `random_url` config option, or when pasting a file [from remote URL](#paste-file-from-remote-url), rustypaste automatically selects a filename.
 
+If the generated random name collides with an existing file, a new name is generated and tried again, up to `random_url.retry_count` times (defaults to `5`). If every attempt collides, the upload is rejected with a `409 Conflict` response.
+
 This can be overridden by sending a header called `filename`:
 
 ```sh

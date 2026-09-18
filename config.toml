@@ -51,6 +51,9 @@ random_url = { type = "petname", words = 2, separator = "-" }
 #random_url = { type = "alphanumeric", length = 8 }
 #random_url = { type = "alphanumeric", length = 8, no_extension = true }
 #random_url = { type = "alphanumeric", length = 6, suffix_mode = true }
+# Number of attempts to make when a generated random name collides with an existing
+# file before giving up with a "409 Conflict" response. Defaults to 5.
+#random_url = { type = "petname", words = 2, separator = "-", retry_count = 5 }
 default_extension = "txt"
 mime_override = [
   { mime = "image/jpeg", regex = "^.*\\.jpg$" },
