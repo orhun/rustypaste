@@ -11,7 +11,7 @@ run_test() {
   encoded_url=$(curl -s -F "file=@test%file#-🤯.txt" localhost:8000)
 
   # Ensure the URL is encoded correctly.
-  expected_url="http://localhost:8000/test%25file%23-%F0%9F%A4%AF.txt"
+  expected_url="http://localhost:8000/test%file#-🤯.txt"
   test "$encoded_url" = "$expected_url"
 }
 
