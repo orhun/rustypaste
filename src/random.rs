@@ -19,10 +19,21 @@ pub struct RandomURLConfig {
     pub suffix_mode: Option<bool>,
     /// Do not add or keep an extension.
     pub no_extension: Option<bool>,
+    /// Number of attempts to make when the generated name collides with an existing file.
+    pub retry_count: Option<usize>,
 }
+
+/// Default number of attempts made to find a non-colliding random name.
+const DEFAULT_RETRY_COUNT: usize = 5;
 
 #[allow(deprecated)]
 impl RandomURLConfig {
+    /// Returns the number of attempts to make when the generated name collides with an
+    /// existing file, clamped to a minimum of 1.
+    pub fn retry_count(&self) -> usize {
+        self.retry_count.unwrap_or(DEFAULT_RETRY_COUNT).max(1)
+    }
+
     /// Generates and returns a random URL (if `enabled`).
     pub fn generate(&self) -> Option<String> {
         if !self.enabled.unwrap_or(true) {
@@ -92,5 +103,23 @@ mod tests {
             ..RandomURLConfig::default()
         };
         assert!(random_config.generate().is_none());
+    }
+
+    #[test]
+    fn test_retry_count() {
+        let random_config = RandomURLConfig::default();
+        assert_eq!(DEFAULT_RETRY_COUNT, random_config.retry_count());
+
+        let random_config = RandomURLConfig {
+            retry_count: Some(10),
+            ..RandomURLConfig::default()
+        };
+        assert_eq!(10, random_config.retry_count());
+
+        let random_config = RandomURLConfig {
+            retry_count: Some(0),
+            ..RandomURLConfig::default()
+        };
+        assert_eq!(1, random_config.retry_count());
     }
 }
