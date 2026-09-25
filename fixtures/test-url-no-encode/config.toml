@@ -2,8 +2,7 @@
 address="127.0.0.1:8000"
 max_content_length="10MB"
 upload_path="./upload"
-# This is the default. No need to set it explicitly.
-url_encode_filenames = true
+url_encode_filenames = false
 
 [paste]
 #random_url = { enabled = false, type = "alphanumeric", length = 6, suffix_mode = true }
