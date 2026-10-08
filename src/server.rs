@@ -1,5 +1,5 @@
 use crate::auth::{extract_tokens, handle_unauthorized_error, unauthorized_error};
-use crate::config::{Config, LandingPageConfig, TokenType};
+use crate::config::{Config, LandingPageConfig, SpaceHandlingConfig, TokenType};
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
@@ -25,6 +25,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
 use std::time::{Duration, UNIX_EPOCH};
+use urlencoding::encode;
 use uts2ts;
 
 /// Extract password from Authorization header.
@@ -446,8 +447,15 @@ async fn upload(
             let config = config
                 .read()
                 .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+            let mut space_handling_encode = false;
             if let Some(handle_spaces_config) = config.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
+                if handle_spaces_config == SpaceHandlingConfig::Encode {
+                    space_handling_encode = true;
+                }
+            }
+            if config.server.url_encode_filenames.unwrap_or(true) || space_handling_encode {
+                file_name = encode(&file_name).to_string();
             }
             if let Some(pwd) = password {
                 urls.push(format!("{server_url}/{file_name}\nPassword: {pwd}\n"));
@@ -477,10 +485,19 @@ pub struct ListItem {
     pub expires_at_utc: Option<String>,
 }
 
+#[derive(serde::Deserialize)]
+struct ListParams {
+    #[serde(alias = "encoded", alias = "encode", alias = "url_encode")]
+    url_encoded: Option<String>,
+}
+
 /// Returns the list of files.
 #[get("/list")]
 #[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
-async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
+async fn list(
+    query: web::Query<ListParams>,
+    config: web::Data<RwLock<Config>>,
+) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
@@ -542,6 +559,11 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
                     } else {
                         None
                     };
+                    if query.url_encoded.is_some() {
+                        file_name = encode(&file_name.into_os_string().into_string().ok()?)
+                            .to_string()
+                            .into();
+                    }
                     Some(ListItem {
                         file_name,
                         file_size: match item_type {
@@ -889,6 +911,48 @@ mod tests {
         assert_eq!(
             result.first().expect("json object").file_name,
             PathBuf::from(filename)
+        );
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_list_url_encoded() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "test file-@_%.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", filename).to_request(),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list?url_encoded")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(
+            result.first().expect("json object").file_name,
+            "test%20file-%40_%25.txt".to_string()
         );
 
         fs::remove_dir_all(test_upload_dir)?;
