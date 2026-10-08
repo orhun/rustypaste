@@ -5,8 +5,8 @@ use crate::util;
 use actix_web::{error, web, Error};
 use awc::Client;
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
-use std::io::{Error as IoError, Result as IoResult, Write};
+use std::fs::{self, OpenOptions};
+use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::RwLock;
@@ -176,10 +176,10 @@ impl Paste {
             file_name = handle_spaces_config.process_filename(&file_name);
         }
 
-        let mut path =
+        let base_path =
             util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
 
-        let mut extension = match util::get_extension_from_filename(&file_name) {
+        let base_extension = match util::get_extension_from_filename(&file_name) {
             Some(ext) => {
                 file_name.truncate(file_name.len() - ext.len() - 1);
                 ext
@@ -189,41 +189,66 @@ impl Paste {
                 .unwrap_or(&config.paste.default_extension)
                 .to_string(),
         };
+        let base_file_name = file_name;
 
-        let mut no_extension = false;
-        if let Some(random_url) = &config.paste.random_url {
-            if let Some(random_text) = random_url.generate() {
-                if let Some(suffix_mode) = random_url.suffix_mode {
-                    if suffix_mode {
-                        extension = format!("{random_text}.{extension}");
+        let no_extension = config
+            .paste
+            .random_url
+            .as_ref()
+            .and_then(|random_url| random_url.no_extension)
+            .unwrap_or(false);
+
+        // A caller-supplied filename can only ever collide with itself, and without
+        // `random_url` there is no new name to try on the next attempt — retrying only
+        // helps when a fresh random name can be generated each time.
+        let attempts = match (&config.paste.random_url, &header_filename) {
+            (Some(random_url), None) => random_url.retry_count(),
+            _ => 1,
+        };
+
+        let mut selected = None;
+        for _ in 0..attempts {
+            let mut file_name = base_file_name.clone();
+            let mut extension = base_extension.clone();
+            if let Some(random_url) = &config.paste.random_url {
+                if let Some(random_text) = random_url.generate() {
+                    if let Some(suffix_mode) = random_url.suffix_mode {
+                        if suffix_mode {
+                            extension = format!("{random_text}.{extension}");
+                        } else {
+                            file_name = random_text;
+                        }
                     } else {
                         file_name = random_text;
                     }
-                } else {
-                    file_name = random_text;
                 }
             }
-            no_extension = random_url.no_extension.unwrap_or(false);
+            let mut path = base_path.clone();
+            path.set_file_name(file_name);
+            if !no_extension {
+                path.set_extension(extension);
+            }
+            if let Some(header_filename) = &header_filename {
+                path = util::safe_path_join(
+                    self.type_.get_path(&config.server.upload_path)?,
+                    header_filename,
+                )?;
+            }
+            let file_name = path
+                .file_name()
+                .map(|v| v.to_string_lossy())
+                .unwrap_or_default()
+                .to_string();
+            let file_path = util::glob_match_file(path.clone())
+                .map_err(|_| IoError::other(String::from("path is not valid")))?;
+            if file_path.is_file() && file_path.exists() {
+                continue;
+            }
+            selected = Some((path, file_name));
+            break;
         }
-        path.set_file_name(file_name);
-        if !no_extension {
-            path.set_extension(extension);
-        }
-        if let Some(header_filename) = header_filename {
-            file_name = header_filename;
-            path =
-                util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
-        }
-        let file_name = path
-            .file_name()
-            .map(|v| v.to_string_lossy())
-            .unwrap_or_default()
-            .to_string();
-        let file_path = util::glob_match_file(path.clone())
-            .map_err(|_| IoError::other(String::from("path is not valid")))?;
-        if file_path.is_file() && file_path.exists() {
-            return Err(error::ErrorConflict("file already exists\n"));
-        }
+        let (mut path, file_name) =
+            selected.ok_or_else(|| error::ErrorConflict("file already exists\n"))?;
         if let Some(timestamp) = expiry_date {
             path.set_file_name(format!("{file_name}.{timestamp}"));
         }
@@ -238,7 +263,20 @@ impl Paste {
             None
         };
 
-        let mut buffer = File::create(&path)?;
+        // Use `create_new` so a name that a concurrent request wins the race for is
+        // never silently overwritten: the exists-check above and this write are still
+        // two separate steps, but losing the race now surfaces as a clean 409 instead
+        // of a silent overwrite of the other request's content.
+        let mut buffer = match OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(file) => file,
+            Err(e) if e.kind() == IoErrorKind::AlreadyExists => {
+                if self.type_.is_protected() {
+                    let _ = crate::password::delete_password_file(&path);
+                }
+                return Err(error::ErrorConflict("file already exists\n"));
+            }
+            Err(e) => return Err(e.into()),
+        };
         buffer.write_all(&self.data)?;
 
         Ok(UploadResult {
@@ -653,6 +691,148 @@ mod tests {
             )?;
         }
 
+        Ok(())
+    }
+
+    /// Alphabet used by [`RandomURLType::Alphanumeric`], in the same order `rand`'s
+    /// `Alphanumeric` distribution draws from. Used to pre-create every possible
+    /// single-character name so collisions are deterministic in tests below.
+    const ALPHANUMERIC_CHARS: &str =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    #[actix_rt::test]
+    async fn test_random_url_retry_on_collision() -> Result<(), Error> {
+        let dir = env::current_dir()?.join("test_random_url_retry_on_collision");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir)?;
+
+        // occupy every possible name except the last one
+        let (taken, free) = ALPHANUMERIC_CHARS.split_at(ALPHANUMERIC_CHARS.len() - 1);
+        for c in taken.chars() {
+            fs::write(dir.join(format!("{c}.txt")), "occupied")?;
+        }
+
+        let mut config = Config::default();
+        config.server.upload_path = dir.clone();
+        config.paste.default_extension = String::from("txt");
+        config.paste.random_url = Some(RandomURLConfig {
+            length: Some(1),
+            type_: RandomURLType::Alphanumeric,
+            retry_count: Some(1000),
+            ..RandomURLConfig::default()
+        });
+        let paste = Paste {
+            data: vec![120, 121, 122],
+            type_: PasteType::File,
+        };
+        let result = paste.store_file("upload.txt", None, None, &config)?;
+        assert_eq!(format!("{free}.txt"), result.filename);
+        assert_eq!("xyz", fs::read_to_string(dir.join(&result.filename))?);
+
+        fs::remove_dir_all(&dir)?;
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn test_random_url_retry_exhausted() -> Result<(), Error> {
+        let dir = env::current_dir()?.join("test_random_url_retry_exhausted");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir)?;
+
+        // occupy every possible name
+        for c in ALPHANUMERIC_CHARS.chars() {
+            fs::write(dir.join(format!("{c}.txt")), "occupied")?;
+        }
+
+        let mut config = Config::default();
+        config.server.upload_path = dir.clone();
+        config.paste.default_extension = String::from("txt");
+        config.paste.random_url = Some(RandomURLConfig {
+            length: Some(1),
+            type_: RandomURLType::Alphanumeric,
+            retry_count: Some(5),
+            ..RandomURLConfig::default()
+        });
+        let paste = Paste {
+            data: vec![120, 121, 122],
+            type_: PasteType::File,
+        };
+        let error = paste
+            .store_file("upload.txt", None, None, &config)
+            .expect_err("random name should have been exhausted");
+        assert_eq!(409, error.error_response().status());
+
+        fs::remove_dir_all(&dir)?;
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn test_random_url_header_filename_not_retried() -> Result<(), Error> {
+        let dir = env::current_dir()?.join("test_random_url_header_filename_not_retried");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir)?;
+        fs::write(dir.join("taken.txt"), "occupied")?;
+
+        let mut config = Config::default();
+        config.server.upload_path = dir.clone();
+        config.paste.default_extension = String::from("txt");
+        config.paste.random_url = Some(RandomURLConfig {
+            length: Some(1),
+            type_: RandomURLType::Alphanumeric,
+            retry_count: Some(1000),
+            ..RandomURLConfig::default()
+        });
+        let paste = Paste {
+            data: vec![120, 121, 122],
+            type_: PasteType::File,
+        };
+        // a header filename is deterministic (not random), so a collision must fail
+        // immediately rather than retrying
+        let error = paste
+            .store_file("upload.txt", None, Some("taken.txt".to_string()), &config)
+            .expect_err("header filename collision should not be retried");
+        assert_eq!(409, error.error_response().status());
+
+        fs::remove_dir_all(&dir)?;
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn test_random_url_suffix_mode_not_compounded_across_retries() -> Result<(), Error> {
+        let dir =
+            env::current_dir()?.join("test_random_url_suffix_mode_not_compounded_across_retries");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir)?;
+
+        // occupy every possible name except the last one, so several retries are
+        // needed almost certainly
+        let (taken, _free) = ALPHANUMERIC_CHARS.split_at(ALPHANUMERIC_CHARS.len() - 1);
+        for c in taken.chars() {
+            fs::write(dir.join(format!("foo.{c}.txt")), "occupied")?;
+        }
+
+        let mut config = Config::default();
+        config.server.upload_path = dir.clone();
+        config.paste.default_extension = String::from("txt");
+        config.paste.random_url = Some(RandomURLConfig {
+            length: Some(1),
+            type_: RandomURLType::Alphanumeric,
+            suffix_mode: Some(true),
+            retry_count: Some(1000),
+            ..RandomURLConfig::default()
+        });
+        let paste = Paste {
+            data: vec![120, 121, 122],
+            type_: PasteType::File,
+        };
+        let result = paste.store_file("foo.txt", None, None, &config)?;
+        // exactly "foo.<random>.txt" - the extension must not accumulate an extra
+        // random segment on every retry
+        assert_eq!(2, result.filename.matches('.').count());
+        assert!(result.filename.starts_with("foo."));
+        assert!(result.filename.ends_with(".txt"));
+
+        fs::remove_dir_all(&dir)?;
         Ok(())
     }
 }
