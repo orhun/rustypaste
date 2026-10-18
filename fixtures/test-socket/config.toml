@@ -1,0 +1,10 @@
+[server]
+address = "127.0.0.1:8000"
+socket = "./rustypaste.sock"
+max_content_length = "10MB"
+upload_path = "./upload"
+expose_version = true
+
+[paste]
+default_extension = "txt"
+duplicate_files = true
