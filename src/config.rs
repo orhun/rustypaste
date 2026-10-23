@@ -70,10 +70,12 @@ pub struct ServerConfig {
     pub delete_tokens: Option<HashSet<String>>,
     /// Enable security hardening headers (X-Content-Type-Options, Content-Security-Policy).
     pub hardening: Option<bool>,
+    /// Enable URL encoding
+    pub url_encode_filenames: Option<bool>,
 }
 
 /// Enum representing different strategies for handling spaces in filenames.
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SpaceHandlingConfig {
     /// Represents encoding spaces (e.g., using "%20").
@@ -86,8 +88,10 @@ impl SpaceHandlingConfig {
     /// Processes the given filename based on the specified space handling strategy.
     pub fn process_filename(&self, file_name: &str) -> String {
         match self {
-            Self::Encode => file_name.replace(' ', "%20"),
             Self::Replace => file_name.replace(' ', "_"),
+            // We have to keep this for backwards compat!
+            // However, this is a no-op, because the files on disk must not be encoded.
+            Self::Encode => file_name.to_string(),
         }
     }
 }
@@ -237,6 +241,13 @@ impl Config {
                 );
             }
         }
+        if let Some(handle_spaces_config) = self.server.handle_spaces {
+            if handle_spaces_config == SpaceHandlingConfig::Encode
+                && !self.server.url_encode_filenames.unwrap_or(true)
+            {
+                warn!("[server].handle_spaces = \"encode\" automatically set [server].url_encode_filenames = true");
+            }
+        }
     }
 }
 
@@ -278,8 +289,9 @@ mod tests {
         let processed_filename =
             SpaceHandlingConfig::Replace.process_filename("file with spaces.txt");
         assert_eq!("file_with_spaces.txt", processed_filename);
+        // File on disk is not modified.
         let encoded_filename = SpaceHandlingConfig::Encode.process_filename("file with spaces.txt");
-        assert_eq!("file%20with%20spaces.txt", encoded_filename);
+        assert_eq!("file with spaces.txt", encoded_filename);
     }
 
     #[test]

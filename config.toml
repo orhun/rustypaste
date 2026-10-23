@@ -18,6 +18,7 @@ expose_list = false
 #  "super_secret_token1",
 #  "super_secret_token3",
 #]
+#url_encode_filenames = true # default: true
 handle_spaces = "replace" # or "encode"
 
 [landing_page]
