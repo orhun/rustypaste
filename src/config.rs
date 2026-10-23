@@ -36,6 +36,9 @@ pub struct Settings {
 pub struct ServerConfig {
     /// The socket address to bind.
     pub address: String,
+    /// The Unix Domain Socket the server should create and bind to.
+    #[cfg(unix)]
+    pub socket: Option<PathBuf>,
     /// URL that can be used to access the server externally.
     pub url: Option<String>,
     /// Number of workers to start.
