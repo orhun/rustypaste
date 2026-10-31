@@ -19,3 +19,6 @@ ENV SERVER__ADDRESS=0.0.0.0:8000
 EXPOSE 8000
 USER 1000:1000
 CMD ["./rustypaste"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+     CMD ["./rustypaste", "healthcheck", "127.0.0.1", "8000"]
