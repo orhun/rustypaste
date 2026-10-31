@@ -590,11 +590,22 @@ async fn list(
     Ok(HttpResponse::Ok().json(entries))
 }
 
+/// Returns a simple response for the Docker healthcheck.
+#[get("/health")]
+async fn health(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
+    // Read the config to make the healthcheck fail when the config cannot be read
+    let _config = config
+        .read()
+        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+    Ok(HttpResponse::Ok().body("Healthy"))
+}
+
 /// Configures the server routes.
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("")
             .service(index)
+            .service(health)
             .service(version)
             .service(list)
             .service(serve)
