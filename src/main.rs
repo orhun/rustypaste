@@ -13,7 +13,7 @@ use rustypaste::CONFIG_ENV;
 use std::env;
 use std::fs;
 use std::io::{Read, Result as IoResult, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::{mpsc, RwLock};
@@ -236,10 +236,10 @@ fn remove_stale_unix_socket(path: &std::path::Path) -> std::io::Result<()> {
     fs::remove_file(path)
 }
 
-fn healthcheck(addr: impl ToSocketAddrs) -> IoResult<bool> {
-    let mut stream = TcpStream::connect(addr)?;
+fn healthcheck(host: &str, port: u16) -> IoResult<bool> {
+    let mut stream = TcpStream::connect((host, port))?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
-    stream.write_all(b"GET /health HTTP/1.0\r\nHost: localhost\r\n\r\n")?;
+    stream.write_all(format!("GET /health HTTP/1.0\r\nHost: {host}:{port}\r\n\r\n").as_bytes())?;
     // "HTTP/1.1 200"
     let mut status = [0; 12];
     stream.read_exact(&mut status)?;
@@ -252,7 +252,7 @@ async fn main() -> IoResult<ExitCode> {
     if args.get(1).is_some_and(|arg| arg == "healthcheck") {
         return Ok(
             // Panicking on incorrect use is fine since there is no public CLI
-            if healthcheck((args[2].as_str(), args[3].parse().unwrap()))
+            if healthcheck(&args[2], args[3].parse().unwrap())
                 // Run `sudo docker exec -it rustypaste ./rustypaste healthcheck 127.0.0.1 8000`
                 //  on the command line to see why the healthcheck fails
                 .inspect_err(|err| println!("{err:?}"))
