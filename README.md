@@ -170,7 +170,7 @@ cargo test -- --test-threads 1
 ##### Test Fixtures
 
 ```sh
-cd fixtured
+cd fixtures
 ./test-fixtures.sh
 ```
 
