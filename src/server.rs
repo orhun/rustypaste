@@ -6,7 +6,10 @@ use crate::mime as mime_util;
 use crate::paste::{Paste, PasteType, PASTE_VARIANTS_LIST};
 use crate::util::{self, safe_path_join};
 use actix_files::NamedFile;
-use actix_multipart::Multipart;
+use actix_multipart::{
+    form::{tempfile::TempFile, FieldReader, Limits, MultipartCollect, MultipartForm, State},
+    Field, MultipartError,
+};
 use actix_web::http::StatusCode;
 use actix_web::middleware::ErrorHandlers;
 use actix_web::{delete, error, get, post, route, web, Error, HttpRequest, HttpResponse};
@@ -16,7 +19,7 @@ use awc::http::header::{CONTENT_SECURITY_POLICY, X_CONTENT_TYPE_OPTIONS};
 use awc::Client;
 use base64::Engine;
 use byte_unit::{Byte, UnitType};
-use futures_util::stream::StreamExt;
+use futures_util::future::LocalBoxFuture;
 use mime::TEXT_PLAIN_UTF_8;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -27,6 +30,67 @@ use std::sync::RwLock;
 use std::time::{Duration, UNIX_EPOCH};
 use urlencoding::encode;
 use uts2ts;
+
+const ORDERED_PARTS_KEY: &str = "rustypaste_ordered_parts";
+
+struct OrderedPart {
+    content: ContentDisposition,
+    file: TempFile,
+}
+
+struct OrderedUploadForm {
+    parts: Vec<OrderedPart>,
+}
+
+/// Custom MultipartCollect implementation (ordered multipart collector)
+impl MultipartCollect for OrderedUploadForm {
+    fn limit(_field_name: &str) -> Option<usize> {
+        None
+    }
+
+    fn handle_field<'t>(
+        req: &'t HttpRequest,
+        field: Field,
+        limits: &'t mut Limits,
+        state: &'t mut State,
+    ) -> LocalBoxFuture<'t, Result<(), MultipartError>> {
+        Box::pin(async move {
+            // Preserve the original Content-Disposition before consuming the field.
+            let content = ContentDisposition::from(
+                field
+                    .content_disposition()
+                    .ok_or(MultipartError::ContentDispositionMissing)?
+                    .clone(),
+            );
+
+            // Store the complete field in a temporary file.
+            // TempFile also supports fields without a filename.
+            let file = TempFile::read_field(req, field, limits).await?;
+
+            // Append to a single ordered collection.
+            let parts = state
+                .entry(ORDERED_PARTS_KEY.to_string())
+                .or_insert_with(|| Box::new(Vec::<OrderedPart>::new()))
+                .downcast_mut::<Vec<OrderedPart>>()
+                .expect("invalid ordered multipart state");
+
+            parts.push(OrderedPart { content, file });
+
+            Ok(())
+        })
+    }
+
+    fn from_state(mut state: State) -> Result<Self, MultipartError> {
+        let parts = match state.remove(ORDERED_PARTS_KEY) {
+            Some(value) => *value
+                .downcast::<Vec<OrderedPart>>()
+                .expect("invalid ordered multipart state"),
+            None => Vec::new(),
+        };
+
+        Ok(Self { parts })
+    }
+}
 
 /// Extract password from Authorization header.
 ///
@@ -325,7 +389,7 @@ async fn version(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Erro
 #[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
 async fn upload(
     request: HttpRequest,
-    mut payload: Multipart,
+    MultipartForm(form): MultipartForm<OrderedUploadForm>,
     client: web::Data<Client>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
@@ -354,119 +418,121 @@ async fn upload(
             .and_then(|v| time.checked_add(v).map(|t| t.as_millis()));
     }
     let mut urls: Vec<String> = Vec::new();
-    while let Some(item) = payload.next().await {
+
+    for part in form.parts {
         let header_filename = header::parse_header_filename(request.headers())?;
-        let mut field = item?;
-        let content = ContentDisposition::from(
-            field
-                .content_disposition()
-                .ok_or_else(|| {
-                    error::ErrorInternalServerError("payload must contain content disposition")
-                })?
-                .clone(),
-        );
-        if let Ok(paste_type) = PasteType::try_from(&content) {
-            let mut bytes = Vec::<u8>::new();
-            while let Some(chunk) = field.next().await {
-                bytes.append(&mut chunk?.to_vec());
+        let content = part.content;
+        let paste_type = match PasteType::try_from(&content) {
+            Ok(paste_type) => paste_type,
+            Err(_) => {
+                warn!("{} sent an invalid form field", host);
+                return Err(error::ErrorBadRequest("invalid form field"));
             }
-            if bytes.is_empty() {
-                warn!("{} sent zero bytes", host);
-                return Err(error::ErrorBadRequest("invalid file size"));
-            }
-            if paste_type != PasteType::Oneshot
-                && paste_type != PasteType::RemoteFile
-                && paste_type != PasteType::OneshotUrl
-                && paste_type != PasteType::ProtectedFile
-                && expiry_date.is_none()
-                && !config
-                    .read()
-                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
-                    .paste
-                    .duplicate_files
-                    .unwrap_or(true)
-            {
-                let bytes_checksum = util::sha256_digest(&*bytes)?;
-                let config = config
-                    .read()
-                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                if let Some(file) = Directory::try_from(config.server.upload_path.as_path())?
-                    .get_file(bytes_checksum)
-                {
-                    urls.push(format!(
-                        "{}/{}\n",
-                        server_url,
-                        file.path
-                            .file_name()
-                            .map(|v| v.to_string_lossy())
-                            .unwrap_or_default()
-                    ));
-                    continue;
-                }
-            }
-            let mut paste = Paste {
-                data: bytes.to_vec(),
-                type_: paste_type,
-            };
-            let result = match paste.type_ {
-                PasteType::File | PasteType::Oneshot | PasteType::ProtectedFile => {
-                    let config = config
-                        .read()
-                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste.store_file(
-                        content.get_file_name()?,
-                        expiry_date,
-                        header_filename,
-                        &config,
-                    )?
-                }
-                PasteType::RemoteFile => {
-                    paste
-                        .store_remote_file(expiry_date, header_filename, &client, &config)
-                        .await?
-                }
-                PasteType::Url | PasteType::OneshotUrl => {
-                    let config = config
-                        .read()
-                        .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste.store_url(expiry_date, header_filename, &config)?
-                }
-            };
+        };
 
-            let mut file_name = result.filename;
-            let password = result.password;
+        let bytes = fs::read(part.file.file.path())?;
+        if bytes.is_empty() {
+            warn!("{} sent zero bytes", host);
+            return Err(error::ErrorBadRequest("invalid file size"));
+        }
 
-            info!(
-                "{} ({}) is uploaded from {}",
-                file_name,
-                Byte::from_u128(paste.data.len() as u128)
-                    .unwrap_or_default()
-                    .get_appropriate_unit(UnitType::Decimal),
-                host
-            );
+        if paste_type != PasteType::Oneshot
+            && paste_type != PasteType::RemoteFile
+            && paste_type != PasteType::OneshotUrl
+            && paste_type != PasteType::ProtectedFile
+            && expiry_date.is_none()
+            && !config
+                .read()
+                .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+                .paste
+                .duplicate_files
+                .unwrap_or(true)
+        {
+            let bytes_checksum = util::sha256_digest(bytes.as_slice())?;
             let config = config
                 .read()
                 .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-            let mut space_handling_encode = false;
-            if let Some(handle_spaces_config) = config.server.handle_spaces {
-                file_name = handle_spaces_config.process_filename(&file_name);
-                if handle_spaces_config == SpaceHandlingConfig::Encode {
-                    space_handling_encode = true;
-                }
+
+            if let Some(file) =
+                Directory::try_from(config.server.upload_path.as_path())?.get_file(bytes_checksum)
+            {
+                urls.push(format!(
+                    "{}/{}\n",
+                    server_url,
+                    file.path
+                        .file_name()
+                        .map(|v| v.to_string_lossy())
+                        .unwrap_or_default()
+                ));
+                continue;
             }
-            if config.server.url_encode_filenames.unwrap_or(true) || space_handling_encode {
-                file_name = encode(&file_name).to_string();
+        }
+
+        let mut paste = Paste {
+            data: bytes,
+            type_: paste_type,
+        };
+
+        let result = match paste.type_ {
+            PasteType::File | PasteType::Oneshot | PasteType::ProtectedFile => {
+                let config = config
+                    .read()
+                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+
+                paste.store_file(
+                    content.get_file_name()?,
+                    expiry_date,
+                    header_filename,
+                    &config,
+                )?
             }
-            if let Some(pwd) = password {
-                urls.push(format!("{server_url}/{file_name}\nPassword: {pwd}\n"));
-            } else {
-                urls.push(format!("{server_url}/{file_name}\n"));
+            PasteType::RemoteFile => {
+                paste
+                    .store_remote_file(expiry_date, header_filename, &client, &config)
+                    .await?
             }
+            PasteType::Url | PasteType::OneshotUrl => {
+                let config = config
+                    .read()
+                    .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+
+                paste.store_url(expiry_date, header_filename, &config)?
+            }
+        };
+
+        let mut file_name = result.filename;
+        let password = result.password;
+        info!(
+            "{} ({}) is uploaded from {}",
+            file_name,
+            Byte::from_u128(paste.data.len() as u128)
+                .unwrap_or_default()
+                .get_appropriate_unit(UnitType::Decimal),
+            host
+        );
+
+        let config = config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+        let mut space_handling_encode = false;
+        if let Some(handle_spaces_config) = config.server.handle_spaces {
+            file_name = handle_spaces_config.process_filename(&file_name);
+            if handle_spaces_config == SpaceHandlingConfig::Encode {
+                space_handling_encode = true;
+            }
+        }
+
+        if config.server.url_encode_filenames.unwrap_or(true) || space_handling_encode {
+            file_name = encode(&file_name).to_string();
+        }
+
+        if let Some(pwd) = password {
+            urls.push(format!("{server_url}/{file_name}\nPassword: {pwd}\n"));
         } else {
-            warn!("{} sent an invalid form field", host);
-            return Err(error::ErrorBadRequest("invalid form field"));
+            urls.push(format!("{server_url}/{file_name}\n"));
         }
     }
+
     Ok(HttpResponse::Ok().body(urls.join("")))
 }
 
