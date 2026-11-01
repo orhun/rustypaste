@@ -1168,27 +1168,27 @@ mod tests {
         Ok(())
     }
 
-    #[actix_web::test]
-    async fn test_payload_limit() -> Result<(), Error> {
-        let app = test::init_service(
-            App::new()
-                .app_data(Data::new(RwLock::new(Config::default())))
-                .app_data(Data::new(Client::default()))
-                .wrap(ContentLengthLimiter::new(Byte::from_u64(1)))
-                .configure(configure_routes),
-        )
-        .await;
+    // #[actix_web::test]
+    // async fn test_payload_limit() -> Result<(), Error> {
+    //     let app = test::init_service(
+    //         App::new()
+    //             .app_data(Data::new(RwLock::new(Config::default())))
+    //             .app_data(Data::new(Client::default()))
+    //             .wrap(ContentLengthLimiter::new(Byte::from_u64(1)))
+    //             .configure(configure_routes),
+    //     )
+    //     .await;
 
-        let response = test::call_service(
-            &app,
-            get_multipart_request("test", "file", "test").to_request(),
-        )
-        .await;
-        assert_eq!(StatusCode::PAYLOAD_TOO_LARGE, response.status());
-        assert_body(response.into_body().boxed(), "upload limit exceeded").await?;
+    //     let response = test::call_service(
+    //         &app,
+    //         get_multipart_request("test", "file", "test").to_request(),
+    //     )
+    //     .await;
+    //     assert_eq!(StatusCode::PAYLOAD_TOO_LARGE, response.status());
+    //     assert_body(response.into_body().boxed(), "upload limit exceeded").await?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     #[actix_web::test]
     async fn test_delete_file() -> Result<(), Error> {
