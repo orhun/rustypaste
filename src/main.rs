@@ -250,6 +250,18 @@ async fn main() -> IoResult<()> {
 
     // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
+        let mut multipart_config = MultipartFormConfig::default()
+            .memory_limit(10 * 1024 * 1024)
+            .error_handler(handle_multipart_error);
+        if server_config.max_content_length.as_u64() > 0 {
+            multipart_config = multipart_config.total_limit(
+                server_config
+                    .max_content_length
+                    .as_u64()
+                    .try_into()
+                    .expect("max_content_length exceeds supported limit"),
+            );
+        }
         let http_client = ClientBuilder::new()
             .timeout(
                 server_config
@@ -261,18 +273,7 @@ async fn main() -> IoResult<()> {
         App::new()
             .app_data(Data::clone(&config))
             .app_data(Data::new(http_client))
-            .app_data(
-                MultipartFormConfig::default()
-                    .total_limit(
-                        Byte::parse_str(server_config.max_content_length.to_string(), true)
-                            .expect("cannot parse byte")
-                            .as_u64()
-                            .try_into()
-                            .unwrap(),
-                    )
-                    .memory_limit(10 * 1024 * 1024)
-                    .error_handler(handle_multipart_error),
-            )
+            .app_data(multipart_config)
             .wrap(Logger::new(
                 "%{r}a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T",
             ))
