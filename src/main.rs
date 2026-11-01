@@ -57,7 +57,9 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     // Parse configuration.
     let config_path = match env::var(CONFIG_ENV).ok() {
         Some(path) => {
-            env::remove_var(CONFIG_ENV);
+            unsafe {
+                env::remove_var(CONFIG_ENV);
+            }
             PathBuf::from(path)
         }
         None => config_folder.join("config.toml"),
@@ -78,7 +80,12 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
 
     // Create necessary directories.
     fs::create_dir_all(&server_config.upload_path)?;
-    for paste_type in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
+    for paste_type in &[
+        PasteType::Url,
+        PasteType::Oneshot,
+        PasteType::OneshotUrl,
+        PasteType::ProtectedFile,
+    ] {
         fs::create_dir_all(paste_type.get_path(&server_config.upload_path)?)?;
     }
 
@@ -134,12 +141,26 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
         {
             if cleanup_config.enabled {
                 debug!("Running cleanup...");
+                // Clean up expired files
                 for file in util::get_expired_files(&upload_path) {
+                    // Delete content file first, then password (prevents unprotected window)
                     match fs::remove_file(&file) {
-                        Ok(()) => info!("Removed expired file: {:?}", file),
+                        Ok(()) => {
+                            info!("Removed expired file: {:?}", file);
+                            rustypaste::password::delete_password_file(&file).ok();
+                        }
                         Err(e) => error!("Cannot remove expired file: {}", e),
                     }
                 }
+
+                // Clean orphaned password files
+                for password_file in util::get_orphaned_password_files(&upload_path) {
+                    match fs::remove_file(&password_file) {
+                        Ok(()) => info!("Removed orphaned password: {:?}", password_file),
+                        Err(e) => error!("Cannot remove orphaned password: {}", e),
+                    }
+                }
+
                 thread::sleep(cleanup_config.interval);
             }
             enabled = cleanup_config.enabled;
@@ -161,6 +182,65 @@ fn setup(config_folder: &Path) -> IoResult<(Data<RwLock<Config>>, ServerConfig, 
     });
 
     Ok((config, server_config, hotwatch))
+}
+
+#[cfg(unix)]
+fn remove_stale_unix_socket(path: &std::path::Path) -> std::io::Result<()> {
+    use std::fs;
+    use std::io::{Error, ErrorKind};
+    use std::os::unix::fs::FileTypeExt;
+    use std::os::unix::net::UnixStream;
+
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(e),
+    };
+
+    // Never remove regular files, symlinks, or other filesystem entries.
+    if !metadata.file_type().is_socket() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!(
+                "Unix socket path exists but is not a socket: {}",
+                path.display()
+            ),
+        ));
+    }
+
+    match UnixStream::connect(path) {
+        Ok(_) => {
+            // A listener is accepting connections; do not remove its socket.
+            return Err(Error::new(
+                ErrorKind::AddrInUse,
+                format!("Unix socket is already in use: {}", path.display()),
+            ));
+        }
+        Err(e) if e.kind() == ErrorKind::ConnectionRefused => {
+            // No listener is accepting connections: likely a stale socket.
+        }
+        Err(e) if e.kind() == ErrorKind::NotFound => {
+            // Another process may have removed it between our checks.
+            return Ok(());
+        }
+        Err(e) => return Err(e),
+    }
+
+    // Recheck that the path still refers to a socket before removing it.
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(e),
+    };
+
+    if !metadata.file_type().is_socket() {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("Socket path changed during cleanup: {}", path.display()),
+        ));
+    }
+
+    fs::remove_file(path)
 }
 
 #[actix_web::main]
@@ -205,7 +285,18 @@ async fn main() -> IoResult<()> {
         http_server = http_server.workers(workers);
     }
 
+    // Optionally bind to unix socket
+    #[cfg(unix)]
+    if let Some(socket) = server_config.socket.as_deref() {
+        remove_stale_unix_socket(socket)?;
+        http_server = http_server.bind_uds(socket)?;
+    }
+
     // Run the server.
     info!("Server is running at {}", server_config.address);
+    #[cfg(unix)]
+    if let Some(socket) = server_config.socket.as_deref() {
+        info!("Server is listening on Unix socket {}", socket.display());
+    }
     http_server.run().await
 }

@@ -28,6 +28,9 @@ pub mod mime;
 /// Helper functions.
 pub mod util;
 
+/// Password hashing and verification.
+pub mod password;
+
 // Use macros from tracing crate.
 #[macro_use]
 extern crate tracing;

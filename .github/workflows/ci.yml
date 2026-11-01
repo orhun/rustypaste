@@ -13,10 +13,10 @@ on:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Check the project files
@@ -24,10 +24,10 @@ jobs:
 
   test:
     name: Test suite
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-llvm-cov
@@ -36,13 +36,13 @@ jobs:
         run: cargo llvm-cov --lcov --output-path lcov.info -- --test-threads 1
         env:
           OUT_DIR: target
-      - name: Upload reports to codecov
-        run: |
-          curl -Os https://uploader.codecov.io/latest/linux/codecov
-          chmod +x codecov
-          ./codecov -t ${CODECOV_TOKEN} -f lcov.info
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          verbose: true
 
   fixtures:
     strategy:
@@ -50,14 +50,14 @@ jobs:
       matrix:
         os:
           - name: Linux
-            runner: ubuntu-22.04
+            runner: ubuntu-latest
           - name: macOS
-            runner: macos-12
+            runner: macos-14
     name: Test fixtures [${{ matrix.os.name }}]
     runs-on: ${{ matrix.os.runner }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install coreutils for MacOS
         if: matrix.os.name == 'macOS'
         run: brew install coreutils
@@ -74,10 +74,10 @@ jobs:
 
   clippy:
     name: Lints
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -87,10 +87,10 @@ jobs:
 
   rustfmt:
     name: Formatting
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -100,13 +100,13 @@ jobs:
 
   lychee:
     name: Links
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Check the links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --exclude "example.com|site.com|localhost|awesome.txt|x.txt" -v *.md
+          args: -v *.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

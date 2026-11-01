@@ -1,17 +1,20 @@
 use crate::auth::{extract_tokens, handle_unauthorized_error, unauthorized_error};
-use crate::config::{Config, LandingPageConfig, TokenType};
+use crate::config::{Config, LandingPageConfig, SpaceHandlingConfig, TokenType};
 use crate::file::Directory;
 use crate::header::{self, ContentDisposition};
 use crate::mime as mime_util;
-use crate::paste::{Paste, PasteType};
+use crate::paste::{Paste, PasteType, PASTE_VARIANTS_LIST};
 use crate::util::{self, safe_path_join};
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::http::StatusCode;
 use actix_web::middleware::ErrorHandlers;
-use actix_web::{delete, error, get, post, web, Error, HttpRequest, HttpResponse};
+use actix_web::{delete, error, get, post, route, web, Error, HttpRequest, HttpResponse};
 use actix_web_grants::GrantsMiddleware;
+use awc::error::HeaderValue;
+use awc::http::header::{CONTENT_SECURITY_POLICY, X_CONTENT_TYPE_OPTIONS};
 use awc::Client;
+use base64::Engine;
 use byte_unit::{Byte, UnitType};
 use futures_util::stream::StreamExt;
 use mime::TEXT_PLAIN_UTF_8;
@@ -22,7 +25,25 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
 use std::time::{Duration, UNIX_EPOCH};
+use urlencoding::encode;
 use uts2ts;
+
+/// Extract password from Authorization header.
+///
+/// Supports Basic Auth (`Basic base64(user:pass)`) and Bearer tokens (`Bearer <token>`).
+fn extract_password_from_auth(auth_header: &str) -> Option<String> {
+    if let Some(basic) = auth_header.strip_prefix("Basic ") {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(basic)
+            .ok()?;
+        let creds = String::from_utf8(bytes).ok()?;
+        creds.split_once(':').map(|(_, p)| p.to_owned())
+    } else {
+        auth_header
+            .strip_prefix("Bearer ")
+            .map(|bearer| bearer.to_owned())
+    }
+}
 
 /// Shows the landing page.
 #[get("/")]
@@ -79,7 +100,7 @@ struct ServeOptions {
 }
 
 /// Serves a file from the upload directory.
-#[get("/{file}")]
+#[route("/{file}", method = "GET", method = "HEAD")]
 async fn serve(
     request: HttpRequest,
     file: web::Path<String>,
@@ -92,7 +113,12 @@ async fn serve(
     let mut path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
-        for type_ in &[PasteType::Url, PasteType::Oneshot, PasteType::OneshotUrl] {
+        for type_ in &[
+            PasteType::Url,
+            PasteType::Oneshot,
+            PasteType::OneshotUrl,
+            PasteType::ProtectedFile,
+        ] {
             let alt_path = safe_path_join(type_.get_path(&config.server.upload_path)?, &*file)?;
             let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
@@ -107,19 +133,57 @@ async fn serve(
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
+
+    // Check password protection
+    if paste_type == PasteType::ProtectedFile {
+        if crate::password::has_password(&path) {
+            use actix_web::http::header::AUTHORIZATION;
+
+            let password = request
+                .headers()
+                .get(AUTHORIZATION)
+                .and_then(|v| v.to_str().ok())
+                .and_then(extract_password_from_auth)
+                .ok_or_else(|| {
+                    info!("PasteType::ProtectedFile: cannot extract password from headers");
+                    error::ErrorNotFound("file is not found or expired :(\n")
+                })?;
+
+            if !crate::password::verify_file_password(&path, &password).map_err(|e| {
+                error::ErrorInternalServerError(format!("password verification: {e}"))
+            })? {
+                // Same error as missing file (prevents enumeration)
+                info!("PasteType::ProtectedFile: password verification failed");
+                return Err(error::ErrorNotFound("file is not found or expired :(\n"));
+            }
+        } else {
+            error!("PasteType::ProtectedFile: no password metadata file");
+            return Err(error::ErrorNotFound("file is not found or expired :(\n"));
+        }
+    }
+
     match paste_type {
-        PasteType::File | PasteType::RemoteFile | PasteType::Oneshot => {
-            let mime_type = if options.map(|v| v.download).unwrap_or(false) {
+        PasteType::File | PasteType::RemoteFile | PasteType::Oneshot | PasteType::ProtectedFile => {
+            let should_download = options.map(|v| v.download).unwrap_or(false);
+
+            let mut mime_type = if should_download {
                 mime::APPLICATION_OCTET_STREAM
             } else {
                 mime_util::get_mime_type(&config.paste.mime_override, file.to_string())
                     .map_err(error::ErrorInternalServerError)?
             };
-            let response = NamedFile::open(&path)?
+            if !should_download && is_text_like_mime(&mime_type, &config.paste.text_mime_overrides)
+            {
+                mime_type = TEXT_PLAIN_UTF_8;
+            }
+            let mut response = NamedFile::open(&path)?
                 .disable_content_disposition()
                 .set_content_type(mime_type)
                 .prefer_utf8(true)
                 .into_response(&request);
+            if config.server.hardening.unwrap_or(false) {
+                apply_security_headers(&mut response);
+            }
             if paste_type.is_oneshot() {
                 fs::rename(
                     &path,
@@ -148,6 +212,53 @@ async fn serve(
     }
 }
 
+/// Adds security hardening headers to the response.
+///
+/// Sets `X-Content-Type-Options: nosniff` to prevent MIME sniffing and
+/// `Content-Security-Policy: default-src 'none'; sandbox` to restrict
+/// script execution and embedding.
+fn apply_security_headers(response: &mut HttpResponse) {
+    response
+        .headers_mut()
+        .insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
+    response.headers_mut().insert(
+        CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; sandbox"),
+    );
+}
+
+/// Returns `true` if the given MIME type represents text-like content that
+/// should be rendered as `text/plain` instead of being downloaded.
+///
+/// A MIME type is considered text-like if any of the following hold:
+/// - Its type is `text` (e.g. `text/html`, `text/x-shellscript`)
+/// - It has a `+xml` or `+json` structured syntax suffix
+/// - It matches one of the user-configured `overrides`
+/// - It is a known text-like `application/` type (e.g. `application/json`, `application/xml`)
+fn is_text_like_mime(mime_type: &mime::Mime, overrides: &[String]) -> bool {
+    if mime_type.type_() == mime::TEXT {
+        return true;
+    }
+    if let Some(suffix) = mime_type.suffix() {
+        if matches!(suffix.as_str(), "xml" | "json") {
+            return true;
+        }
+    }
+    let essence = mime_type.essence_str();
+    if overrides.iter().any(|v| v.eq_ignore_ascii_case(essence)) {
+        return true;
+    }
+    matches!(
+        essence,
+        "application/javascript"
+            | "application/ecmascript"
+            | "application/json"
+            | "application/x-www-form-urlencoded"
+            | "application/x-javascript"
+            | "application/xml"
+    )
+}
+
 /// Remove a file from the upload directory.
 #[delete("/{file}")]
 #[actix_web_grants::protect("TokenType::Delete", ty = TokenType, error = unauthorized_error)]
@@ -158,12 +269,33 @@ async fn delete(
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    let mut path = PathBuf::new();
+    for variant in PASTE_VARIANTS_LIST {
+        path = util::glob_match_file(safe_path_join(
+            variant.get_path(&config.server.upload_path)?,
+            &*file,
+        )?)?;
+        if path.exists() && path.is_file() {
+            break;
+        }
+    }
+    if !path.is_file() || !path.exists() {
+        let protected_path = safe_path_join(
+            PasteType::ProtectedFile.get_path(&config.server.upload_path)?,
+            &*file,
+        )?;
+        path = util::glob_match_file(protected_path)?;
+    }
     if !path.is_file() || !path.exists() {
         return Err(error::ErrorNotFound("file is not found or expired :(\n"));
     }
-    match fs::remove_file(path) {
-        Ok(_) => info!("deleted file: {:?}", file.to_string()),
+
+    // Delete content file first, then password (prevents unprotected window)
+    match fs::remove_file(&path) {
+        Ok(_) => {
+            info!("deleted file: {:?}", file.to_string());
+            crate::password::delete_password_file(&path).ok();
+        }
         Err(e) => {
             error!("cannot delete file: {}", e);
             return Err(error::ErrorInternalServerError("cannot delete file"));
@@ -245,6 +377,7 @@ async fn upload(
             if paste_type != PasteType::Oneshot
                 && paste_type != PasteType::RemoteFile
                 && paste_type != PasteType::OneshotUrl
+                && paste_type != PasteType::ProtectedFile
                 && expiry_date.is_none()
                 && !config
                     .read()
@@ -275,8 +408,8 @@ async fn upload(
                 data: bytes.to_vec(),
                 type_: paste_type,
             };
-            let mut file_name = match paste.type_ {
-                PasteType::File | PasteType::Oneshot => {
+            let result = match paste.type_ {
+                PasteType::File | PasteType::Oneshot | PasteType::ProtectedFile => {
                     let config = config
                         .read()
                         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
@@ -289,16 +422,20 @@ async fn upload(
                 }
                 PasteType::RemoteFile => {
                     paste
-                        .store_remote_file(expiry_date, &client, &config)
+                        .store_remote_file(expiry_date, header_filename, &client, &config)
                         .await?
                 }
                 PasteType::Url | PasteType::OneshotUrl => {
                     let config = config
                         .read()
                         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste.store_url(expiry_date, &config)?
+                    paste.store_url(expiry_date, header_filename, &config)?
                 }
             };
+
+            let mut file_name = result.filename;
+            let password = result.password;
+
             info!(
                 "{} ({}) is uploaded from {}",
                 file_name,
@@ -310,10 +447,21 @@ async fn upload(
             let config = config
                 .read()
                 .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
+            let mut space_handling_encode = false;
             if let Some(handle_spaces_config) = config.server.handle_spaces {
                 file_name = handle_spaces_config.process_filename(&file_name);
+                if handle_spaces_config == SpaceHandlingConfig::Encode {
+                    space_handling_encode = true;
+                }
             }
-            urls.push(format!("{}/{}\n", server_url, file_name));
+            if config.server.url_encode_filenames.unwrap_or(true) || space_handling_encode {
+                file_name = encode(&file_name).to_string();
+            }
+            if let Some(pwd) = password {
+                urls.push(format!("{server_url}/{file_name}\nPassword: {pwd}\n"));
+            } else {
+                urls.push(format!("{server_url}/{file_name}\n"));
+            }
         } else {
             warn!("{} sent an invalid form field", host);
             return Err(error::ErrorBadRequest("invalid form field"));
@@ -328,17 +476,28 @@ pub struct ListItem {
     /// Uploaded file name.
     pub file_name: PathBuf,
     /// Size of the file in bytes.
-    pub file_size: u64,
+    pub file_size: Option<u64>,
+    /// Item type
+    pub item_type: PasteType,
     /// ISO8601 formatted date-time of the moment the file was created (uploaded).
     pub creation_date_utc: Option<String>,
     /// ISO8601 formatted date-time string of the expiration timestamp if one exists for this file.
     pub expires_at_utc: Option<String>,
 }
 
+#[derive(serde::Deserialize)]
+struct ListParams {
+    #[serde(alias = "encoded", alias = "encode", alias = "url_encode")]
+    url_encoded: Option<String>,
+}
+
 /// Returns the list of files.
 #[get("/list")]
 #[actix_web_grants::protect("TokenType::Auth", ty = TokenType, error = unauthorized_error)]
-async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> {
+async fn list(
+    query: web::Query<ListParams>,
+    config: web::Data<RwLock<Config>>,
+) -> Result<HttpResponse, Error> {
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
@@ -347,59 +506,87 @@ async fn list(config: web::Data<RwLock<Config>>) -> Result<HttpResponse, Error> 
         warn!("server is not configured to expose list endpoint");
         Err(error::ErrorNotFound(""))?;
     }
-    let entries: Vec<ListItem> = fs::read_dir(config.server.upload_path)?
-        .filter_map(|entry| {
-            entry.ok().and_then(|e| {
-                let metadata = match e.metadata() {
-                    Ok(metadata) => {
-                        if metadata.is_dir() {
+
+    let get_item_list = |item_type: PasteType| -> Result<Vec<ListItem>, Error> {
+        let dir = item_type.get_path(&config.server.upload_path)?;
+
+        //FIX: When running some tests (e.g. test_list) other folders than "root" does not exists
+        if !fs::exists(&dir).unwrap_or(false) {
+            return Ok(Vec::default());
+        }
+        Ok(fs::read_dir(dir.as_path())?
+            .filter_map(|entry| {
+                entry.ok().and_then(|e| {
+                    let metadata = match e.metadata() {
+                        Ok(metadata) => {
+                            if metadata.is_dir() {
+                                return None;
+                            }
+                            metadata
+                        }
+                        Err(e) => {
+                            error!("failed to read metadata: {e}");
                             return None;
                         }
-                        metadata
-                    }
-                    Err(e) => {
-                        error!("failed to read metadata: {e}");
-                        return None;
-                    }
-                };
-                let mut file_name = PathBuf::from(e.file_name());
+                    };
+                    let mut file_name = PathBuf::from(e.file_name());
 
-                let creation_date_utc = metadata.created().ok().map(|v| {
-                    let millis = v
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Time since UNIX epoch should be valid.")
-                        .as_millis();
-                    uts2ts::uts2ts(
-                        i64::try_from(millis).expect("UNIX time should be smaller than i64::MAX")
-                            / 1000,
-                    )
-                    .as_string()
-                });
+                    let creation_date_utc = metadata.created().ok().map(|v| {
+                        let millis = v
+                            .duration_since(UNIX_EPOCH)
+                            .expect("Time since UNIX epoch should be valid.")
+                            .as_millis();
+                        uts2ts::uts2ts(
+                            i64::try_from(millis)
+                                .expect("UNIX time should be smaller than i64::MAX")
+                                / 1000,
+                        )
+                        .as_string()
+                    });
 
-                let expires_at_utc = if let Some(expiration) = file_name
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .and_then(|v| v.parse::<i64>().ok())
-                {
-                    file_name.set_extension("");
-                    if util::get_system_time().ok()?
-                        > Duration::from_millis(expiration.try_into().ok()?)
+                    let expires_at_utc = if let Some(expiration) = file_name
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .and_then(|v| v.parse::<i64>().ok())
                     {
-                        return None;
+                        file_name.set_extension("");
+                        if util::get_system_time().ok()?
+                            > Duration::from_millis(expiration.try_into().ok()?)
+                        {
+                            return None;
+                        }
+                        Some(uts2ts::uts2ts(expiration / 1000).as_string())
+                    } else {
+                        None
+                    };
+                    if query.url_encoded.is_some() {
+                        file_name = encode(&file_name.into_os_string().into_string().ok()?)
+                            .to_string()
+                            .into();
                     }
-                    Some(uts2ts::uts2ts(expiration / 1000).as_string())
-                } else {
-                    None
-                };
-                Some(ListItem {
-                    file_name,
-                    file_size: metadata.len(),
-                    creation_date_utc,
-                    expires_at_utc,
+                    Some(ListItem {
+                        file_name,
+                        file_size: match item_type {
+                            PasteType::File | PasteType::Oneshot => Some(metadata.len()),
+                            _ => None,
+                        },
+                        item_type,
+                        creation_date_utc,
+                        expires_at_utc,
+                    })
                 })
             })
-        })
+            .collect())
+    };
+
+    let entries: Vec<ListItem> = PASTE_VARIANTS_LIST
+        .iter()
+        .map(|variant| get_item_list(*variant))
+        .collect::<Result<Vec<Vec<ListItem>>, Error>>()?
+        .into_iter()
+        .flatten()
         .collect();
+
     Ok(HttpResponse::Ok().json(entries))
 }
 
@@ -440,6 +627,7 @@ mod tests {
     use std::io::Write;
     use std::path::PathBuf;
     use std::str;
+    use std::str::FromStr;
     use std::thread;
     use std::time::Duration;
 
@@ -453,7 +641,7 @@ mod tests {
              --multipart_bound--\r\n",
             name,
             filename,
-            data.bytes().len(),
+            data.len(),
             data,
         );
         TestRequest::post()
@@ -463,7 +651,7 @@ mod tests {
             ))
             .insert_header((
                 header::CONTENT_LENGTH,
-                header::HeaderValue::from_str(&data.bytes().len().to_string())
+                header::HeaderValue::from_str(&data.len().to_string())
                     .expect("cannot create header value"),
             ))
             .set_payload(multipart_data)
@@ -471,7 +659,7 @@ mod tests {
 
     async fn assert_body(body: BoxBody, expected: &str) -> Result<(), Error> {
         if let BodySize::Sized(size) = body.size() {
-            assert_eq!(size, expected.as_bytes().len() as u64);
+            assert_eq!(size, expected.len() as u64);
             let body_bytes = actix_web::body::to_bytes(body).await?;
             let body_text = str::from_utf8(&body_bytes)?;
             assert_eq!(expected, body_text);
@@ -479,6 +667,51 @@ mod tests {
         } else {
             Err(error::ErrorInternalServerError("unexpected body type"))
         }
+    }
+
+    #[test]
+    fn test_is_text_like_mime_defaults() {
+        let overrides = Vec::<String>::new();
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("text/plain").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/atom+xml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/problem+json").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("image/svg+xml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(!is_text_like_mime(
+            &mime::Mime::from_str("application/octet-stream").expect("invalid mime"),
+            &overrides
+        ));
+    }
+
+    #[test]
+    fn test_is_text_like_mime_overrides() {
+        let overrides = vec![
+            String::from("application/toml"),
+            String::from("application/x-yaml"),
+        ];
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/toml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(is_text_like_mime(
+            &mime::Mime::from_str("application/x-yaml").expect("invalid mime"),
+            &overrides
+        ));
+        assert!(!is_text_like_mime(
+            &mime::Mime::from_str("application/pdf").expect("invalid mime"),
+            &overrides
+        ));
     }
 
     #[actix_web::test]
@@ -685,6 +918,134 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn test_list_url_encoded() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "test file-@_%.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", filename).to_request(),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list?url_encoded")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(
+            result.first().expect("json object").file_name,
+            "test%20file-%40_%25.txt".to_string()
+        );
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_list_item_type() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload";
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        for variant in PASTE_VARIANTS_LIST {
+            fs::create_dir_all(
+                variant
+                    .get_path(&config.server.upload_path)
+                    .expect("Bad upload path"),
+            )?;
+        }
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "test_file.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "file", filename).to_request(),
+        )
+        .await;
+        let filename_oneshot = "oneshot.txt";
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "oneshot", filename_oneshot).to_request(),
+        )
+        .await;
+        test::call_service(
+            &app,
+            get_multipart_request(env!("CARGO_PKG_HOMEPAGE"), "url", "").to_request(),
+        )
+        .await;
+        let filename_oneshot_url = "oneshot_url";
+        test::call_service(
+            &app,
+            get_multipart_request(
+                env!("CARGO_PKG_HOMEPAGE"),
+                filename_oneshot_url,
+                filename_oneshot_url,
+            )
+            .to_request(),
+        )
+        .await;
+
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        assert_eq!(result.len(), 4);
+
+        // Items returned from `/list` endpoint should be returned in this order:
+        // 1. PasteType::File
+        // 2. PasteType::Oneshot
+        // 3. PasteType::Url
+        // 4. PasteType::OneshotUrl
+        // NOTE: The test won't pass if order in `PASTE_VARIANTS_LIST` changes
+
+        assert_eq!(result[0].file_name, PathBuf::from(filename));
+        assert_eq!(result[0].item_type, PasteType::File);
+
+        assert_eq!(result[1].file_name, PathBuf::from(filename_oneshot));
+        assert_eq!(result[1].item_type, PasteType::Oneshot);
+
+        assert_eq!(result[2].file_name, PathBuf::from("url"));
+        assert_eq!(result[2].item_type, PasteType::Url);
+
+        assert_eq!(result[3].file_name, PathBuf::from(filename_oneshot_url));
+        assert_eq!(result[3].item_type, PasteType::OneshotUrl);
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
     async fn test_list_expired() -> Result<(), Error> {
         let mut config = Config::default();
         config.server.expose_list = Some(true);
@@ -723,6 +1084,63 @@ mod tests {
         let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
 
         assert!(result.is_empty());
+
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_list_excludes_password_files() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.expose_list = Some(true);
+
+        let test_upload_dir = "test_upload_protected_list";
+        // Clean up from any previous test runs
+        let _ = fs::remove_dir_all(test_upload_dir);
+        fs::create_dir(test_upload_dir)?;
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        // Create protected subdirectory
+        fs::create_dir(PathBuf::from(test_upload_dir).join("protected"))?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let filename = "secret.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+
+        // Upload a protected file (creates both secret.txt and secret.txt.password in protected/ subdir)
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "protected", filename).to_request(),
+        )
+        .await;
+
+        // Verify both files exist in protected/ subdirectory
+        let main_file = PathBuf::from(test_upload_dir)
+            .join("protected")
+            .join(filename);
+        let password_file = PathBuf::from(test_upload_dir)
+            .join("protected")
+            .join(format!("{filename}.password"));
+        assert!(main_file.exists());
+        assert!(password_file.exists());
+
+        // Call /list endpoint (reads root directory only)
+        let request = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
+            .uri("/list")
+            .to_request();
+        let result: Vec<ListItem> = test::call_and_read_body_json(&app, request).await;
+
+        // Should return 0 files (protected files are in subdirectory, not shown in root listing)
+        assert_eq!(result.len(), 0);
 
         fs::remove_dir_all(test_upload_dir)?;
 
@@ -805,6 +1223,61 @@ mod tests {
 
         let path = PathBuf::from(file_name);
         assert!(!path.exists());
+
+        let password_path = PathBuf::from(format!("{file_name}.password"));
+        assert!(!password_path.exists(), "password file should be deleted");
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_delete_protected_file() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.delete_tokens = Some(["test".to_string()].into());
+        config.server.upload_path = env::current_dir()?;
+
+        let protected_upload_path = PasteType::ProtectedFile
+            .get_path(&config.server.upload_path)
+            .expect("cannot get protected file path");
+        fs::create_dir_all(&protected_upload_path)?;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "test_protected_delete.txt";
+        let timestamp = util::get_system_time()?.as_secs().to_string();
+        test::call_service(
+            &app,
+            get_multipart_request(&timestamp, "protected", file_name).to_request(),
+        )
+        .await;
+
+        let path = protected_upload_path.join(file_name);
+        let password_path = protected_upload_path.join(format!("{file_name}.password"));
+        assert!(path.exists());
+        assert!(password_path.exists());
+
+        let request = TestRequest::delete()
+            .insert_header((AUTHORIZATION, header::HeaderValue::from_static("test")))
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), "file deleted\n").await?;
+
+        assert!(!path.exists());
+        assert!(
+            !password_path.exists(),
+            "password file should be deleted with the content file"
+        );
+
+        fs::remove_dir(protected_upload_path)?;
 
         Ok(())
     }
@@ -1104,11 +1577,12 @@ mod tests {
         )
         .await;
 
-        let file_name = "Example.jpg";
+        let file_name =
+            "rp_test_3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f.png";
         let response = test::call_service(
             &app,
             get_multipart_request(
-                "https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg",
+                "https://raw.githubusercontent.com/orhun/rustypaste/refs/heads/master/img/rp_test_3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f.png",
                 "remote",
                 file_name,
             )
@@ -1131,7 +1605,71 @@ mod tests {
         let body = response.into_body();
         let body_bytes = actix_web::body::to_bytes(body).await?;
         assert_eq!(
-            "70ff72a2f7651b5fae3aa9834e03d2a2233c52036610562f7fa04e089e8198ed",
+            "3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f",
+            util::sha256_digest(&*body_bytes)?
+        );
+
+        fs::remove_file(file_name)?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_remote_file_override_filename() -> Result<(), Error> {
+        let mut config = Config::default();
+        config.server.upload_path = env::current_dir()?;
+        config.server.max_content_length = Byte::from_u128(30000).unwrap_or_default();
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config)))
+                .app_data(Data::new(
+                    ClientBuilder::new()
+                        .timeout(Duration::from_secs(30))
+                        .finish(),
+                ))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let file_name = "fn_from_header.txt";
+        let response = test::call_service(
+            &app,
+            get_multipart_request(
+                "https://raw.githubusercontent.com/orhun/rustypaste/refs/heads/master/img/rp_test_3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f.png",
+                "remote",
+                file_name,
+            )
+            .insert_header((
+                header::HeaderName::from_static("filename"),
+                header::HeaderValue::from_static(file_name),
+            ))
+            .to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(
+            response.into_body().boxed(),
+            &format!("http://localhost:8080/{file_name}\n"),
+        )
+        .await?;
+
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::OK, response.status());
+
+        let body = response.into_body();
+        let body_bytes = actix_web::body::to_bytes(body).await?;
+        assert_eq!(
+            "3b5eeeee7a7326cd6141f54820e6356a0e9d1dd4021407cb1d5e9de9f034ed2f",
             util::sha256_digest(&*body_bytes)?
         );
 
@@ -1279,22 +1817,195 @@ mod tests {
         assert_eq!(StatusCode::OK, response.status());
         assert_body(
             response.into_body(),
-            &format!("http://localhost:8080/{}\n", oneshot_url_suffix),
+            &format!("http://localhost:8080/{oneshot_url_suffix}\n"),
         )
         .await?;
 
         // Make the oneshot_url request, ensure it is found.
-        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let serve_request = TestRequest::with_uri(&format!("/{oneshot_url_suffix}")).to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::FOUND, response.status());
 
         // Make the same request again, and ensure that the oneshot_url is not found.
-        let serve_request = TestRequest::with_uri(&format!("/{}", oneshot_url_suffix)).to_request();
+        let serve_request = TestRequest::with_uri(&format!("/{oneshot_url_suffix}")).to_request();
         let response = test::call_service(&app, serve_request).await;
         assert_eq!(StatusCode::NOT_FOUND, response.status());
 
         // Cleanup
         fs::remove_dir_all(url_upload_path)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_upload_protected_file() -> Result<(), Error> {
+        let test_upload_dir = "test_upload_protected";
+        fs::create_dir(test_upload_dir)?;
+
+        let mut config = Config::default();
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config.clone())))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let protected_upload_path = PasteType::ProtectedFile
+            .get_path(&config.server.upload_path)
+            .expect("Bad upload path");
+        fs::create_dir_all(&protected_upload_path)?;
+
+        let file_name = "protected.txt";
+        let file_content = "secret content";
+
+        // Upload protected file
+        let response = test::call_service(
+            &app,
+            get_multipart_request(file_content, "protected", file_name).to_request(),
+        )
+        .await;
+
+        assert_eq!(StatusCode::OK, response.status());
+        let body = response.into_body();
+        let body_bytes = actix_web::body::to_bytes(body).await?;
+        let body_text = str::from_utf8(&body_bytes)?;
+
+        // Extract URL and password from response
+        let lines: Vec<&str> = body_text.lines().collect();
+        assert_eq!(2, lines.len(), "Expected URL and password in response");
+        assert!(
+            lines[0].contains(file_name),
+            "First line should contain URL"
+        );
+        assert!(
+            lines[1].starts_with("Password: "),
+            "Second line should contain password"
+        );
+
+        let password = lines[1]
+            .strip_prefix("Password: ")
+            .expect("Failed to extract password")
+            .to_string();
+
+        // Access without authorization header -> 404
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Access with wrong password (Bearer) -> 404
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, "Bearer wrongpassword"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Access with wrong password (Basic Auth) -> 404
+        let wrong_basic = format!(
+            "Basic {}",
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                b"user:wrongpassword"
+            )
+        );
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, wrong_basic))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Access with correct password (Bearer) -> 200
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, format!("Bearer {password}")))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), file_content).await?;
+
+        // Access with correct password (Basic Auth) -> 200
+        let correct_basic = format!(
+            "Basic {}",
+            base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                format!("user:{password}").as_bytes()
+            )
+        );
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, correct_basic))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::OK, response.status());
+        assert_body(response.into_body(), file_content).await?;
+
+        // Cleanup
+        fs::remove_dir_all(test_upload_dir)?;
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_protected_file_enumeration_prevention() -> Result<(), Error> {
+        let test_upload_dir = "test_upload_enum";
+        fs::create_dir(test_upload_dir)?;
+
+        let mut config = Config::default();
+        config.server.upload_path = PathBuf::from(test_upload_dir);
+
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(config.clone())))
+                .app_data(Data::new(Client::default()))
+                .configure(configure_routes),
+        )
+        .await;
+
+        let protected_upload_path = PasteType::ProtectedFile
+            .get_path(&config.server.upload_path)
+            .expect("Bad upload path");
+        fs::create_dir_all(&protected_upload_path)?;
+
+        // Test that both missing files and protected files return same error code
+        // This prevents attackers from enumerating files
+
+        // Request non-existent file -> 404
+        let serve_request = TestRequest::get().uri("/nonexistent.txt").to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Upload protected file
+        let file_name = "protected_enum.txt";
+        let response = test::call_service(
+            &app,
+            get_multipart_request("content", "protected", file_name).to_request(),
+        )
+        .await;
+        assert_eq!(StatusCode::OK, response.status());
+
+        // Request protected file without auth -> 404 (same as non-existent)
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Request protected file with wrong password -> 404 (same as non-existent)
+        let serve_request = TestRequest::get()
+            .uri(&format!("/{file_name}"))
+            .insert_header((AUTHORIZATION, "Bearer wrongpassword"))
+            .to_request();
+        let response = test::call_service(&app, serve_request).await;
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+
+        // Cleanup
+        fs::remove_dir_all(test_upload_dir)?;
 
         Ok(())
     }

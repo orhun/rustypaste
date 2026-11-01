@@ -36,6 +36,9 @@ pub struct Settings {
 pub struct ServerConfig {
     /// The socket address to bind.
     pub address: String,
+    /// The Unix Domain Socket the server should create and bind to.
+    #[cfg(unix)]
+    pub socket: Option<PathBuf>,
     /// URL that can be used to access the server externally.
     pub url: Option<String>,
     /// Number of workers to start.
@@ -44,6 +47,8 @@ pub struct ServerConfig {
     pub max_content_length: Byte,
     /// Storage path.
     pub upload_path: PathBuf,
+    /// Maximum upload directory size.
+    pub max_upload_dir_size: Option<Byte>,
     /// Request timeout.
     #[serde(default, with = "humantime_serde")]
     pub timeout: Option<Duration>,
@@ -66,10 +71,14 @@ pub struct ServerConfig {
     pub expose_list: Option<bool>,
     /// Authentication tokens for deleting.
     pub delete_tokens: Option<HashSet<String>>,
+    /// Enable security hardening headers (X-Content-Type-Options, Content-Security-Policy).
+    pub hardening: Option<bool>,
+    /// Enable URL encoding
+    pub url_encode_filenames: Option<bool>,
 }
 
 /// Enum representing different strategies for handling spaces in filenames.
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SpaceHandlingConfig {
     /// Represents encoding spaces (e.g., using "%20").
@@ -82,8 +91,10 @@ impl SpaceHandlingConfig {
     /// Processes the given filename based on the specified space handling strategy.
     pub fn process_filename(&self, file_name: &str) -> String {
         match self {
-            Self::Encode => file_name.replace(' ', "%20"),
             Self::Replace => file_name.replace(' ', "_"),
+            // We have to keep this for backwards compat!
+            // However, this is a no-op, because the files on disk must not be encoded.
+            Self::Encode => file_name.to_string(),
         }
     }
 }
@@ -112,6 +123,9 @@ pub struct PasteConfig {
     /// Media type blacklist.
     #[serde(default)]
     pub mime_blacklist: Vec<String>,
+    /// Additional MIME types to render as text/plain when serving files.
+    #[serde(default)]
+    pub text_mime_overrides: Vec<String>,
     /// Allow duplicate uploads.
     pub duplicate_files: Option<bool>,
     /// Default expiry time.
@@ -230,6 +244,13 @@ impl Config {
                 );
             }
         }
+        if let Some(handle_spaces_config) = self.server.handle_spaces {
+            if handle_spaces_config == SpaceHandlingConfig::Encode
+                && !self.server.url_encode_filenames.unwrap_or(true)
+            {
+                warn!("[server].handle_spaces = \"encode\" automatically set [server].url_encode_filenames = true");
+            }
+        }
     }
 }
 
@@ -241,7 +262,9 @@ mod tests {
     #[test]
     fn test_parse_config() -> Result<(), ConfigError> {
         let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
-        env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        unsafe {
+            env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        }
         let config = Config::parse(&config_path)?;
         assert_eq!("0.0.1.1", config.server.address);
         Ok(())
@@ -251,7 +274,9 @@ mod tests {
     #[allow(deprecated)]
     fn test_parse_deprecated_config() -> Result<(), ConfigError> {
         let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
-        env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        unsafe {
+            env::set_var("SERVER__ADDRESS", "0.0.1.1");
+        }
         let mut config = Config::parse(&config_path)?;
         config.paste.random_url = Some(RandomURLConfig {
             enabled: Some(true),
@@ -267,15 +292,18 @@ mod tests {
         let processed_filename =
             SpaceHandlingConfig::Replace.process_filename("file with spaces.txt");
         assert_eq!("file_with_spaces.txt", processed_filename);
+        // File on disk is not modified.
         let encoded_filename = SpaceHandlingConfig::Encode.process_filename("file with spaces.txt");
-        assert_eq!("file%20with%20spaces.txt", encoded_filename);
+        assert_eq!("file with spaces.txt", encoded_filename);
     }
 
     #[test]
     fn test_get_tokens() -> Result<(), ConfigError> {
         let config_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config.toml");
-        env::set_var("AUTH_TOKEN", "env_auth");
-        env::set_var("DELETE_TOKEN", "env_delete");
+        unsafe {
+            env::set_var("AUTH_TOKEN", "env_auth");
+            env::set_var("DELETE_TOKEN", "env_delete");
+        }
         let mut config = Config::parse(&config_path)?;
         // empty tokens will be filtered
         config.server.auth_tokens =
@@ -295,8 +323,10 @@ mod tests {
             ])),
             config.get_tokens(TokenType::Delete)
         );
-        env::remove_var("AUTH_TOKEN");
-        env::remove_var("DELETE_TOKEN");
+        unsafe {
+            env::remove_var("AUTH_TOKEN");
+            env::remove_var("DELETE_TOKEN");
+        }
 
         // `get_tokens` returns `None` if no tokens are configured
         config.server.auth_tokens = Some(["  ".to_string()].into());

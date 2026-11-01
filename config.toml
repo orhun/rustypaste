@@ -3,6 +3,7 @@ refresh_rate = "1s"
 
 [server]
 address = "127.0.0.1:8000"
+#socket = "/run/rustypaste/rustypaste.sock"
 #url = "https://paste.example.com"
 #workers=4
 max_content_length = "10MB"
@@ -18,6 +19,7 @@ expose_list = false
 #  "super_secret_token1",
 #  "super_secret_token3",
 #]
+#url_encode_filenames = true # default: true
 handle_spaces = "replace" # or "encode"
 
 [landing_page]
@@ -49,7 +51,11 @@ content_type = "text/plain; charset=utf-8"
 [paste]
 random_url = { type = "petname", words = 2, separator = "-" }
 #random_url = { type = "alphanumeric", length = 8 }
+#random_url = { type = "alphanumeric", length = 8, no_extension = true }
 #random_url = { type = "alphanumeric", length = 6, suffix_mode = true }
+# Number of attempts to make when a generated random name collides with an existing
+# file before giving up with a "409 Conflict" response. Defaults to 5.
+#random_url = { type = "petname", words = 2, separator = "-", retry_count = 5 }
 default_extension = "txt"
 mime_override = [
   { mime = "image/jpeg", regex = "^.*\\.jpg$" },
@@ -64,7 +70,16 @@ mime_blacklist = [
   "application/x-dosexec",
   "application/java-archive",
   "application/java-vm",
+  "audio/",
 ]
+# Additional MIME types to render as text/plain when serving files.
+text_mime_overrides = [
+  "application/toml",
+  "application/yaml",
+  "application/x-yaml",
+]
+# Enable security hardening headers (X-Content-Type-Options, Content-Security-Policy).
+#hardening = false
 duplicate_files = true
 # default_expiry = "1h"
 delete_expired_files = { enabled = true, interval = "1h" }

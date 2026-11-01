@@ -5,6 +5,244 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1] - 2026-09-07
+
+> [!IMPORTANT]
+> This is a security release. Please upgrade immediately. See [details](https://github.com/orhun/rustypaste/discussions/627).
+
+### Fixed
+- Validate override filename by @carfeii in [#623](https://github.com/orhun/rustypaste/pull/623)
+
+### New Contributors
+- @carfeii made their first contribution in [#623](https://github.com/orhun/rustypaste/pull/623)
+
+## [0.18.0] - 2026-08-14
+
+### Added
+
+- Add password-protected file uploads by @anoldguy in [#505](https://github.com/orhun/rustypaste/pull/505)
+
+Upload a file with auto-generated password:
+
+```sh
+$ curl -F "protected=@secret.txt" "<server_address>"
+https://paste.site.com/secret.txt
+Password: aBcD1234EfGh5678IjKl9012
+```
+
+Download with Bearer token:
+
+```sh
+$ curl -H "Authorization: Bearer aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
+```
+
+Or with Basic Auth:
+
+```sh
+$ curl -u "user:aBcD1234EfGh5678IjKl9012" https://paste.site.com/secret.txt
+```
+
+> [!NOTE]
+> Protected files cannot be combined with other paste types (oneshot, URL). The password is permanently tied to the file and cannot be changed. If the password is lost, the file becomes inaccessible. Password files are deleted automatically when the main file is deleted or expires.
+
+- Add item type to /list endpoint by @Bit38 in [#587](https://github.com/orhun/rustypaste/pull/587)
+- Support deletion of all item types by @tessus in [#592](https://github.com/orhun/rustypaste/pull/592)
+
+### Changed
+
+- Improve compound extension detection using mime_guess by @coko7 in [#563](https://github.com/orhun/rustypaste/pull/563)
+
+### Fixed
+
+- Retrieval of password-protected files by @tessus in [#603](https://github.com/orhun/rustypaste/pull/603)
+
+### Removed
+
+- Remove yanked 3rd party client by @tessus in [#580](https://github.com/orhun/rustypaste/pull/580)
+
+### New Contributors
+
+- @Bit38 made their first contribution in [#587](https://github.com/orhun/rustypaste/pull/587)
+- @anoldguy made their first contribution in [#505](https://github.com/orhun/rustypaste/pull/505)
+- @coko7 made their first contribution in [#563](https://github.com/orhun/rustypaste/pull/563)
+
+## [0.17.0] - 2026-05-14
+
+### Added
+
+- Support server hardening by @y5 in [#508](https://github.com/orhun/rustypaste/pull/508)
+
+Two new configuration options are added:
+
+```toml
+[server]
+text_mime_overrides = [
+  "application/toml",
+  "application/yaml",
+  "application/x-yaml",
+]
+
+hardening = true
+```
+
+1. `text_mime_overrides`: Additional MIME types to render as `text/plain` when serving files. This is useful for preventing XSS attacks when serving files that would otherwise be rendered as HTML or JavaScript in the browser.
+2. `hardening`: When set to `true`, the server will include security headers such as `X-Content-Type-Options: nosniff` and a basic `Content-Security-Policy` to mitigate XSS and other attacks.
+
+Remote URL uploads are now also validated to reject `localhost` and other disallowed address ranges, while still allowing private intranet IPv4 ranges such as `10.0.0.0/8` and `192.168.0.0/16`.
+
+- Support overriding filename when paste from remote URL by @rtk0c in [#504](https://github.com/orhun/rustypaste/pull/504)
+
+For example:
+
+```sh
+curl -F "remote=https://example.com/file.png" -H "filename: foobar.png" "<server_address>"
+```
+
+`file.png` will be saved as `foobar.png` in the server.
+
+- Support no extension for random URLs by @tessus in [#439](https://github.com/orhun/rustypaste/pull/439)
+
+```toml
+[paste]
+random_url = { type = "alphanumeric", length = 8, no_extension = true }
+```
+
+When `no_extension` is set to `true`, the generated random URLs will not have an extension, even if the original file has one.
+
+For example, if you upload a file named `example.txt`, it might be saved as `a1b2c3d4` instead of `a1b2c3d4.txt`.
+
+- Add [rustypaste-ui](https://github.com/Silvenga/rustypaste-ui) to third-party clients list by @Silvenga in [#487](https://github.com/orhun/rustypaste/pull/487)
+
+A new third-party client has dropped!
+
+<img src="https://raw.githubusercontent.com/Silvenga/rustypaste-ui/refs/heads/master/docs/upload.gif" style="width: 60%" />
+
+- Add [3rd party ShareX client](https://gist.github.com/Null-Kelvin/c726a080762781a603cbc1b713d36cc6) by @Null-Kelvin in [#448](https://github.com/orhun/rustypaste/pull/448)
+- Add a [OpenRC service file](https://github.com/orhun/rustypaste/blob/master/extra/OpenRC/rustypaste.initd) by @divideableZero in [#536](https://github.com/orhun/rustypaste/pull/536)
+
+### Changed
+
+- Allow to blacklist a whole class of mime-types by @mscherer in [#513](https://github.com/orhun/rustypaste/pull/513)
+
+This makes it possible to e.g. block all image types with a single entry in the blacklist:
+
+```toml
+[paste]
+mime_blacklist = ["image/"]
+```
+
+- Allow HEAD method for /{file} endpoint by @tessus in [#530](https://github.com/orhun/rustypaste/pull/530)
+- Migrate from deprecated bash uploader to codecov-action v5 by @EzgiTastan in [#521](https://github.com/orhun/rustypaste/pull/521)
+
+### New Contributors
+
+- @y5 made their first contribution in [#508](https://github.com/orhun/rustypaste/pull/508)
+- @divideableZero made their first contribution in [#536](https://github.com/orhun/rustypaste/pull/536)
+- @mtvrsh made their first contribution in [#526](https://github.com/orhun/rustypaste/pull/526)
+- @EzgiTastan made their first contribution in [#521](https://github.com/orhun/rustypaste/pull/521)
+- @mscherer made their first contribution in [#513](https://github.com/orhun/rustypaste/pull/513)
+- @rtk0c made their first contribution in [#504](https://github.com/orhun/rustypaste/pull/504)
+- @Silvenga made their first contribution in [#487](https://github.com/orhun/rustypaste/pull/487)
+- @Null-Kelvin made their first contribution in [#448](https://github.com/orhun/rustypaste/pull/448)
+
+## [0.16.1] - 2025-03-21
+
+### Added
+
+- Add unofficial clients to the documentation
+
+1. Droidypaste
+
+Yes, you heard it right! `rustypaste` now has an Android client!
+
+![](https://raw.githubusercontent.com/rukh-debug/droidypaste/main/assets/1.png)
+
+GitHub: <https://github.com/rukh-debug/droidypaste>
+
+2. Ferripaste
+
+An alternative Rustypaste client
+
+GitHub: <https://github.com/dbohdan/ferripaste>
+
+3. Rustypaste-GUI
+
+A script for a minimal GUI client for `rustypaste` (powered by zenity)
+
+GitHub: <https://gist.github.com/rukh-debug/cc42900f86e39cacef6f7a6ba77ebf58>
+
+### Changed
+
+- Use fully locked system accounts on systemd257
+- Bump to Rust 2024 edition
+- Update dependencies
+
+### New Contributors
+
+- @rukh-debug made their first contribution in [#407](https://github.com/orhun/rustypaste/pull/407)
+
+## [0.16.0] - 2024-12-11
+
+### Added
+
+- Support `max_upload_dir_size` by @Narayanbhat166
+
+Now you can configure the server to limit the total size of the uploaded files as follows:
+
+```toml
+[server]
+max_upload_dir_size = "100G"
+```
+
+This would help with e.g. public instances in terms of avoiding a storage attack where a single user uploads a bunch of big/small files.
+
+- Add support for multiple auth tokens via env vars by @nydragon in [#339](https://github.com/orhun/rustypaste/pull/339)
+
+In addition to `[server].auth_tokens` and `[server].delete_tokens` in the configuration file, it has been made possible to set multiple tokens for authentication and deletion via their respective environment variables.
+
+- `AUTH_TOKENS_FILE`: Points to a file containing a list of tokens for authentication, one per line.
+- `DELETE_TOKENS_FILE`: Points to a file containing a list of tokens for deletion, one per line.
+
+For example:
+
+`export AUTH_TOKENS_FILE=./auth_file`
+
+and `auth_file` contains:
+
+```plaintext
+bread
+brioche
+baguette
+naan
+```
+
+### Changed
+
+- Allow shortening URLs with a filename by @Vaelatern in [#373](https://github.com/orhun/rustypaste/pull/373)
+
+This enable naming shortened URLs beyond using a random string or the text "url". For example:
+
+```sh
+$ curl -s -F "url=https://shorten.this" -H "filename: abc" "<server_address>"
+```
+
+The shortened URL will be saved as `abc` in the server.
+
+- Update all dependencies
+
+### Removed
+
+- Remove shuttle code and deps by @tessus in [#328](https://github.com/orhun/rustypaste/pull/328)
+
+I'm looking for a service to publicly host a rustypaste instance.
+If you have any suggestions or want to sponsor this, please let me know [in this issue](https://github.com/orhun/rustypaste/issues/326)!
+
+## New Contributors
+
+- @Narayanbhat166 made their first contribution
+- @Vaelatern made their first contribution in [#374](https://github.com/orhun/rustypaste/pull/374)
+- @nydragon made their first contribution in [#339](https://github.com/orhun/rustypaste/pull/339)
+
 ## [0.15.1] - 2024-07-29
 
 ### Added
@@ -341,7 +579,6 @@ random_url = { enabled = true, type = "alphanumeric", length = 6, suffix_mode = 
 ```
 
 - Honor X-Forward-\* headers (`X-Forwarded-For` / `X-Forwarded-Host` / `X-Forwarded-Proto`) (#61)
-
   - This would be really useful to have for setups where the service is running behind a reverse-proxy or gateway and the possibility to adjust the logging output based on their availability, to have the real IP addresses of the clients available in the log.
 
 - Add new line character to the 404 message (#72)
@@ -361,7 +598,6 @@ file is not found or expired :(
 - Bump Shuttle to `0.20.0`
 - List all the supported units in the documentation (#63)
 - Note that the Alpine Linux package is moved to the community
-
   - <https://pkgs.alpinelinux.org/packages?name=rustypaste>
 
 - Bump dependencies
@@ -474,7 +710,6 @@ url = "https://paste.example.com"
 `rustypaste` is now available in [testing](https://pkgs.alpinelinux.org/packages?name=rustypaste&branch=edge) repositories.
 
 - Add new crate features
-
   - `shuttle`: enable an entry point for deploying on Shuttle
   - `openssl`: use distro OpenSSL (binary size is reduced ~20% in release mode)
   - `rustls`: use [rustls](https://github.com/rustls/rustls) (enabled as default)
@@ -664,7 +899,6 @@ auth_token="hunter2"
 ### Added
 
 - Support pasting files from remote URLs (via `remote=` form field)
-
   - `{server.max_content_length}` is used for download limit
   - See [README.md#paste-file-from-remote-url](https://github.com/orhun/rustypaste#paste-file-from-remote-url)
 
@@ -751,3 +985,46 @@ Under the hood, it checks the SHA256 digest of the uploaded files.
 ## [0.1.1] - 2021-07-27
 
 Initial release.
+
+[0.18.1]: https://github.com/orhun/rustypaste/compare/v0.18.0...v0.18.1
+[0.18.0]: https://github.com/orhun/rustypaste/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/orhun/rustypaste/compare/v0.16.1...v0.17.0
+[0.16.1]: https://github.com/orhun/rustypaste/compare/v0.16.0...v0.16.1
+[0.16.0]: https://github.com/orhun/rustypaste/compare/v0.15.1...v0.16.0
+[0.15.1]: https://github.com/orhun/rustypaste/compare/v0.15.0...v0.15.1
+[0.15.0]: https://github.com/orhun/rustypaste/compare/v0.14.4...v0.15.0
+[0.14.4]: https://github.com/orhun/rustypaste/compare/v0.14.3...v0.14.4
+[0.14.3]: https://github.com/orhun/rustypaste/compare/v0.14.2...v0.14.3
+[0.14.2]: https://github.com/orhun/rustypaste/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/orhun/rustypaste/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/orhun/rustypaste/compare/v0.12.1...v0.14.0
+[0.12.1]: https://github.com/orhun/rustypaste/compare/v0.12.0...v0.12.1
+[0.12.0]: https://github.com/orhun/rustypaste/compare/v0.11.1...v0.12.0
+[0.11.1]: https://github.com/orhun/rustypaste/compare/v0.11.0...v0.11.1
+[0.11.0]: https://github.com/orhun/rustypaste/compare/v0.10.1...v0.11.0
+[0.10.1]: https://github.com/orhun/rustypaste/compare/v0.10.0...v0.10.1
+[0.10.0]: https://github.com/orhun/rustypaste/compare/v0.9.1...v0.10.0
+[0.9.1]: https://github.com/orhun/rustypaste/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/orhun/rustypaste/compare/v0.8.4...v0.9.0
+[0.8.4]: https://github.com/orhun/rustypaste/compare/v0.8.3...v0.8.4
+[0.8.3]: https://github.com/orhun/rustypaste/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/orhun/rustypaste/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/orhun/rustypaste/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/orhun/rustypaste/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/orhun/rustypaste/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/orhun/rustypaste/compare/v0.6.5...v0.7.0
+[0.6.5]: https://github.com/orhun/rustypaste/compare/v0.6.4...v0.6.5
+[0.6.4]: https://github.com/orhun/rustypaste/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/orhun/rustypaste/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/orhun/rustypaste/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/orhun/rustypaste/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/orhun/rustypaste/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/orhun/rustypaste/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/orhun/rustypaste/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/orhun/rustypaste/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/orhun/rustypaste/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/orhun/rustypaste/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/orhun/rustypaste/compare/v0.1.3...v0.2.0
+[0.1.3]: https://github.com/orhun/rustypaste/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/orhun/rustypaste/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/orhun/rustypaste/compare/v0.1.0...v0.1.1

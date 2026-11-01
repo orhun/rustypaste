@@ -66,7 +66,7 @@ mod tests {
                     .join("img")
                     .as_path()
             )?
-            .get_file("2073f6f567dcba3b468c568d29cf8ed2e9d3f0f7305b9ab1b5a22861f5922e61")
+            .get_file("78b946a10d7c2893eb76833adfe9aaff7bd8f59712653914be669928e88312cd")
             .expect("cannot get file with checksum")
             .path
             .file_name()

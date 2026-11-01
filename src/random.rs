@@ -1,5 +1,4 @@
-use petname::Generator;
-use rand::{distributions::Alphanumeric, Rng};
+use rand::distr::{Alphanumeric, SampleString};
 
 /// Random URL configuration.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -18,25 +17,42 @@ pub struct RandomURLConfig {
     pub type_: RandomURLType,
     /// Append a random string to the original filename.
     pub suffix_mode: Option<bool>,
+    /// Do not add or keep an extension.
+    pub no_extension: Option<bool>,
+    /// Number of attempts to make when the generated name collides with an existing file.
+    pub retry_count: Option<usize>,
 }
+
+/// Default number of attempts made to find a non-colliding random name.
+const DEFAULT_RETRY_COUNT: usize = 5;
 
 #[allow(deprecated)]
 impl RandomURLConfig {
+    /// Returns the number of attempts to make when the generated name collides with an
+    /// existing file, clamped to a minimum of 1.
+    pub fn retry_count(&self) -> usize {
+        self.retry_count.unwrap_or(DEFAULT_RETRY_COUNT).max(1)
+    }
+
     /// Generates and returns a random URL (if `enabled`).
     pub fn generate(&self) -> Option<String> {
         if !self.enabled.unwrap_or(true) {
             return None;
         }
         Some(match self.type_ {
-            RandomURLType::PetName => petname::Petnames::large().generate_one(
-                self.words.unwrap_or(2),
-                self.separator.as_deref().unwrap_or("-"),
-            )?,
-            RandomURLType::Alphanumeric => rand::thread_rng()
-                .sample_iter(&Alphanumeric)
-                .take(self.length.unwrap_or(8))
-                .map(char::from)
-                .collect::<String>(),
+            RandomURLType::PetName => {
+                let mut buf = String::new();
+                petname::Petnames::large()
+                    .namer(
+                        self.words.unwrap_or(2),
+                        self.separator.as_deref().unwrap_or("-"),
+                    )
+                    .generate_into(&mut buf, &mut rand::rng());
+                buf
+            }
+            RandomURLType::Alphanumeric => {
+                Alphanumeric.sample_string(&mut rand::rng(), self.length.unwrap_or(8))
+            }
         })
     }
 }
@@ -44,17 +60,13 @@ impl RandomURLConfig {
 /// Type of the random URL.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum RandomURLType {
     /// Generate a random pet name.
+    #[default]
     PetName,
     /// Generate a random alphanumeric string.
     Alphanumeric,
-}
-
-impl Default for RandomURLType {
-    fn default() -> Self {
-        Self::PetName
-    }
 }
 
 #[cfg(test)]
@@ -91,5 +103,23 @@ mod tests {
             ..RandomURLConfig::default()
         };
         assert!(random_config.generate().is_none());
+    }
+
+    #[test]
+    fn test_retry_count() {
+        let random_config = RandomURLConfig::default();
+        assert_eq!(DEFAULT_RETRY_COUNT, random_config.retry_count());
+
+        let random_config = RandomURLConfig {
+            retry_count: Some(10),
+            ..RandomURLConfig::default()
+        };
+        assert_eq!(10, random_config.retry_count());
+
+        let random_config = RandomURLConfig {
+            retry_count: Some(0),
+            ..RandomURLConfig::default()
+        };
+        assert_eq!(1, random_config.retry_count());
     }
 }
