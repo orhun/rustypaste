@@ -1,11 +1,15 @@
+use actix_multipart::form::MultipartFormConfig;
+use actix_multipart::MultipartError;
 use actix_web::middleware::Logger;
 use actix_web::web::Data;
+use actix_web::Error;
+use actix_web::HttpRequest;
 use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
+use byte_unit::Byte;
 use hotwatch::notify::event::ModifyKind;
 use hotwatch::{Event, EventKind, Hotwatch};
 use rustypaste::config::{Config, ServerConfig};
-use rustypaste::middleware::ContentLengthLimiter;
 use rustypaste::paste::PasteType;
 use rustypaste::server;
 use rustypaste::util;
@@ -24,6 +28,11 @@ use tracing_subscriber::{
 // Use macros from tracing crate.
 #[macro_use]
 extern crate tracing;
+
+fn handle_multipart_error(err: MultipartError, _req: &HttpRequest) -> Error {
+    error!("Multipart error: {}", err);
+    Error::from(err)
+}
 
 /// Sets up the application.
 ///
@@ -241,6 +250,18 @@ async fn main() -> IoResult<()> {
 
     // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
+        let mut multipart_config = MultipartFormConfig::default()
+            .memory_limit(10 * 1024 * 1024)
+            .error_handler(handle_multipart_error);
+        if server_config.max_content_length.as_u64() > 0 {
+            multipart_config = multipart_config.total_limit(
+                server_config
+                    .max_content_length
+                    .as_u64()
+                    .try_into()
+                    .expect("max_content_length exceeds supported limit"),
+            );
+        }
         let http_client = ClientBuilder::new()
             .timeout(
                 server_config
@@ -252,10 +273,10 @@ async fn main() -> IoResult<()> {
         App::new()
             .app_data(Data::clone(&config))
             .app_data(Data::new(http_client))
+            .app_data(multipart_config)
             .wrap(Logger::new(
                 "%{r}a \"%r\" %s %b \"%{Referer}i\" \"%{User-Agent}i\" %T",
             ))
-            .wrap(ContentLengthLimiter::new(server_config.max_content_length))
             .configure(server::configure_routes)
     })
     .bind(&server_config.address)?;
