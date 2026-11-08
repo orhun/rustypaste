@@ -5,15 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.2] - 2026-11-08
+
+> [!IMPORTANT]
+> This is a security release. Please upgrade immediately.
+
+### Added
+
+- Support Unix sockets by @tessus in [#654](https://github.com/orhun/rustypaste/pull/654)
+
+Configure a socket path under `[server]`:
+
+```toml
+[server]
+socket = "/run/rustypaste/rustypaste.sock"
+```
+
+The server listens on the Unix socket as well as the configured TCP address.
+
+### Changed
+
+- Retry random URL generation when a generated name already exists by @spignelon in [#633](https://github.com/orhun/rustypaste/pull/633)
+
+Set `random_url.retry_count` to control how many attempts are made.
+It defaults to `5`, helping uploads succeed when a generated name collides with an existing file.
+
+```toml
+[paste]
+random_url = { type = "petname", words = 2, separator = "-", retry_count = 5 }
+```
+
+### Fixed
+
+- Treat glob metacharacters in requested file names literally by @Vindex
+- Prevent uploads from writing outside the upload directory reported by @JCorners68
+- Reject encoded path separators when serving files reported by @lml20000827
+- Support URL-encoded filenames by @tessus in [#634](https://github.com/orhun/rustypaste/pull/634)
+- Create files atomically to prevent concurrent uploads from overwriting one another by @spignelon in [#633](https://github.com/orhun/rustypaste/pull/633)
+
+### New Contributors
+
+- @GideonBear made their first contribution in [#667](https://github.com/orhun/rustypaste/pull/667)
+- @spignelon made their first contribution in [#633](https://github.com/orhun/rustypaste/pull/633)
+
 ## [0.18.1] - 2026-09-07
 
 > [!IMPORTANT]
 > This is a security release. Please upgrade immediately. See [details](https://github.com/orhun/rustypaste/discussions/627).
 
 ### Fixed
+
 - Validate override filename by @carfeii in [#623](https://github.com/orhun/rustypaste/pull/623)
 
 ### New Contributors
+
 - @carfeii made their first contribution in [#623](https://github.com/orhun/rustypaste/pull/623)
 
 ## [0.18.0] - 2026-08-14
@@ -986,6 +1031,7 @@ Under the hood, it checks the SHA256 digest of the uploaded files.
 
 Initial release.
 
+[0.18.2]: https://github.com/orhun/rustypaste/compare/v0.18.1...v0.18.2
 [0.18.1]: https://github.com/orhun/rustypaste/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/orhun/rustypaste/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/orhun/rustypaste/compare/v0.16.1...v0.17.0
