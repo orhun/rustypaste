@@ -107,6 +107,13 @@ async fn serve(
     options: Option<web::Query<ServeOptions>>,
     config: web::Data<RwLock<Config>>,
 ) -> Result<HttpResponse, Error> {
+    // This route serves one filename at a time. Reject decoded separators so
+    // an encoded slash cannot route directly into a special paste directory
+    // while leaving `paste_type` classified as a regular file.
+    if file.contains('/') || file.contains('\\') {
+        return Err(error::ErrorNotFound("file is not found or expired :(\n"));
+    }
+
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
