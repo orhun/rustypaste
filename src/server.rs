@@ -22,11 +22,18 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use std::time::{Duration, UNIX_EPOCH};
 use urlencoding::encode;
 use uts2ts;
+
+/// Resolve a client supplied filename while keeping invalid paths indistinguishable from
+/// missing files.
+fn request_path_join(base: impl AsRef<Path>, file: impl AsRef<Path>) -> Result<PathBuf, Error> {
+    safe_path_join(base, file)
+        .map_err(|_| error::ErrorNotFound("file is not found or expired :(\n"))
+}
 
 /// Extract password from Authorization header.
 ///
@@ -117,7 +124,7 @@ async fn serve(
     let config = config
         .read()
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-    let mut path = util::glob_match_file(safe_path_join(&config.server.upload_path, &*file)?)?;
+    let mut path = util::glob_match_file(request_path_join(&config.server.upload_path, &*file)?)?;
     let mut paste_type = PasteType::File;
     if !path.exists() || path.is_dir() {
         for type_ in &[
@@ -126,7 +133,7 @@ async fn serve(
             PasteType::OneshotUrl,
             PasteType::ProtectedFile,
         ] {
-            let alt_path = safe_path_join(type_.get_path(&config.server.upload_path)?, &*file)?;
+            let alt_path = request_path_join(type_.get_path(&config.server.upload_path)?, &*file)?;
             let alt_path = util::glob_match_file(alt_path)?;
             if alt_path.exists()
                 || path.file_name().and_then(|v| v.to_str()) == Some(&type_.get_dir())
@@ -278,7 +285,7 @@ async fn delete(
         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
     let mut path = PathBuf::new();
     for variant in PASTE_VARIANTS_LIST {
-        path = util::glob_match_file(safe_path_join(
+        path = util::glob_match_file(request_path_join(
             variant.get_path(&config.server.upload_path)?,
             &*file,
         )?)?;
@@ -287,7 +294,7 @@ async fn delete(
         }
     }
     if !path.is_file() || !path.exists() {
-        let protected_path = safe_path_join(
+        let protected_path = request_path_join(
             PasteType::ProtectedFile.get_path(&config.server.upload_path)?,
             &*file,
         )?;
