@@ -193,7 +193,7 @@ pub fn safe_path_join<B: AsRef<Path>, P: AsRef<Path>>(base: B, part: P) -> IoRes
 
     let cleaned_base = base.as_ref().clean();
 
-    if !new_path.starts_with(cleaned_base) {
+    if new_path == cleaned_base || !new_path.starts_with(&cleaned_base) {
         error!(
             "{} is outside of {}",
             part.as_ref().display(),
