@@ -315,6 +315,18 @@ If the configuration file is not found in the current directory, specify it via 
 $ CONFIG="$HOME/.rustypaste.toml" rustypaste
 ```
 
+#### Unix sockets
+
+On Unix platforms, the server can also be bound to a Unix domain socket by setting `[server].socket`.
+If `[server].address` is omitted, the server only listens on that socket:
+
+```toml
+[server]
+socket = "/run/rustypaste/rustypaste.sock"
+```
+
+At least one of `[server].address` or `[server].socket` has to be set.
+
 #### Authentication
 
 To enable basic HTTP auth, set the `AUTH_TOKEN` environment variable (via `.env`):

@@ -239,6 +239,12 @@ async fn main() -> IoResult<()> {
     // Set up the application.
     let (config, server_config, _hotwatch) = setup(&PathBuf::new())?;
 
+    // The server needs at least one endpoint to bind to.
+    if !server_config.has_endpoint() {
+        error!("no server endpoint is configured, please set [server].address or [server].socket");
+        std::process::exit(1);
+    }
+
     // Create an HTTP server.
     let mut http_server = HttpServer::new(move || {
         let http_client = ClientBuilder::new()
@@ -257,8 +263,12 @@ async fn main() -> IoResult<()> {
             ))
             .wrap(ContentLengthLimiter::new(server_config.max_content_length))
             .configure(server::configure_routes)
-    })
-    .bind(&server_config.address)?;
+    });
+
+    // Bind to the TCP address (unless it is omitted).
+    if let Some(address) = server_config.address.as_deref() {
+        http_server = http_server.bind(address)?;
+    }
 
     // Set worker count for the server.
     if let Some(workers) = server_config.workers {
@@ -273,7 +283,9 @@ async fn main() -> IoResult<()> {
     }
 
     // Run the server.
-    info!("Server is running at {}", server_config.address);
+    if let Some(address) = server_config.address.as_deref() {
+        info!("Server is running at {}", address);
+    }
     #[cfg(unix)]
     if let Some(socket) = server_config.socket.as_deref() {
         info!("Server is listening on Unix socket {}", socket.display());
