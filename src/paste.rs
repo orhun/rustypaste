@@ -383,6 +383,14 @@ impl Paste {
         }
         let mut path =
             util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
+        let alt_path =
+            util::glob_match_file(path.clone()).map_err(|e| IoError::other(e.to_string()))?;
+        if alt_path.exists() {
+            return Err(IoError::new(
+                IoErrorKind::AlreadyExists,
+                "file already exists\n",
+            ));
+        }
         let file_name = path
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
