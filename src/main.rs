@@ -1,12 +1,8 @@
 use actix_multipart::form::MultipartFormConfig;
-use actix_multipart::MultipartError;
 use actix_web::middleware::Logger;
 use actix_web::web::Data;
-use actix_web::Error;
-use actix_web::HttpRequest;
 use actix_web::{App, HttpServer};
 use awc::ClientBuilder;
-use byte_unit::Byte;
 use hotwatch::notify::event::ModifyKind;
 use hotwatch::{Event, EventKind, Hotwatch};
 use rustypaste::config::{Config, ServerConfig};
@@ -28,11 +24,6 @@ use tracing_subscriber::{
 // Use macros from tracing crate.
 #[macro_use]
 extern crate tracing;
-
-fn handle_multipart_error(err: MultipartError, _req: &HttpRequest) -> Error {
-    error!("Multipart error: {}", err);
-    Error::from(err)
-}
 
 /// Sets up the application.
 ///
@@ -252,7 +243,7 @@ async fn main() -> IoResult<()> {
     let mut http_server = HttpServer::new(move || {
         let mut multipart_config = MultipartFormConfig::default()
             .memory_limit(10 * 1024 * 1024)
-            .error_handler(handle_multipart_error);
+            .error_handler(server::handle_multipart_error);
         if server_config.max_content_length.as_u64() > 0 {
             multipart_config = multipart_config.total_limit(
                 server_config

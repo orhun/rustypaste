@@ -10,6 +10,7 @@ use actix_multipart::{
     form::{tempfile::TempFile, FieldReader, Limits, MultipartCollect, MultipartForm, State},
     Field, MultipartError,
 };
+use actix_web::error::PayloadError;
 use actix_web::http::StatusCode;
 use actix_web::middleware::ErrorHandlers;
 use actix_web::{delete, error, get, post, route, web, Error, HttpRequest, HttpResponse};
@@ -89,6 +90,24 @@ impl MultipartCollect for OrderedUploadForm {
         };
 
         Ok(Self { parts })
+    }
+}
+
+/// Multipart error handler
+pub fn handle_multipart_error(err: MultipartError, _req: &HttpRequest) -> Error {
+    match err {
+        MultipartError::Payload(PayloadError::Overflow) => {
+            info!("Upload limit exceeded: {:?}", err);
+            actix_web::error::InternalError::from_response(
+                "upload limit exceeded",
+                HttpResponse::PayloadTooLarge().body("upload limit exceeded"),
+            )
+            .into()
+        }
+        err => {
+            error!("Upload error: {:?}", err);
+            Error::from(err)
+        }
     }
 }
 
@@ -679,6 +698,7 @@ mod tests {
     use super::*;
     use crate::config::LandingPageConfig;
     use crate::random::{RandomURLConfig, RandomURLType};
+    use actix_multipart::form::MultipartFormConfig;
     use actix_web::body::MessageBody;
     use actix_web::body::{BodySize, BoxBody};
     use actix_web::error::Error;
@@ -700,24 +720,27 @@ mod tests {
     fn get_multipart_request(data: &str, name: &str, filename: &str) -> TestRequest {
         let multipart_data = format!(
             "\r\n\
-             --multipart_bound\r\n\
-             Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n\
-             Content-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\n\r\n\
-             {}\r\n\
-             --multipart_bound--\r\n",
+            --multipart_bound\r\n\
+            Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n\
+            Content-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\n\r\n\
+            {}\r\n\
+            --multipart_bound--\r\n",
             name,
             filename,
             data.len(),
             data,
         );
+
         TestRequest::post()
             .insert_header((
                 header::CONTENT_TYPE,
-                header::HeaderValue::from_static("multipart/mixed; boundary=\"multipart_bound\""),
+                header::HeaderValue::from_static(
+                    "multipart/form-data; boundary=\"multipart_bound\"",
+                ),
             ))
             .insert_header((
                 header::CONTENT_LENGTH,
-                header::HeaderValue::from_str(&data.len().to_string())
+                header::HeaderValue::from_str(&multipart_data.len().to_string())
                     .expect("cannot create header value"),
             ))
             .set_payload(multipart_data)
@@ -1226,35 +1249,42 @@ mod tests {
         )
         .await;
 
-        let response =
-            test::call_service(&app, get_multipart_request("", "", "").to_request()).await;
+        let response = test::call_service(
+            &app,
+            get_multipart_request("", "file", "test.txt").to_request(),
+        )
+        .await;
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
         assert_body(response.into_body(), "unauthorized\n").await?;
 
         Ok(())
     }
 
-    // #[actix_web::test]
-    // async fn test_payload_limit() -> Result<(), Error> {
-    //     let app = test::init_service(
-    //         App::new()
-    //             .app_data(Data::new(RwLock::new(Config::default())))
-    //             .app_data(Data::new(Client::default()))
-    //             .wrap(ContentLengthLimiter::new(Byte::from_u64(1)))
-    //             .configure(configure_routes),
-    //     )
-    //     .await;
+    #[actix_web::test]
+    async fn test_payload_limit() -> Result<(), Error> {
+        let app = test::init_service(
+            App::new()
+                .app_data(Data::new(RwLock::new(Config::default())))
+                .app_data(Data::new(Client::default()))
+                .app_data(
+                    MultipartFormConfig::default()
+                        .total_limit(1)
+                        .error_handler(handle_multipart_error),
+                )
+                .configure(configure_routes),
+        )
+        .await;
 
-    //     let response = test::call_service(
-    //         &app,
-    //         get_multipart_request("test", "file", "test").to_request(),
-    //     )
-    //     .await;
-    //     assert_eq!(StatusCode::PAYLOAD_TOO_LARGE, response.status());
-    //     assert_body(response.into_body().boxed(), "upload limit exceeded").await?;
+        let response = test::call_service(
+            &app,
+            get_multipart_request("test", "file", "test").to_request(),
+        )
+        .await;
 
-    //     Ok(())
-    // }
+        assert_eq!(StatusCode::PAYLOAD_TOO_LARGE, response.status());
+
+        Ok(())
+    }
 
     #[actix_web::test]
     async fn test_delete_file() -> Result<(), Error> {
