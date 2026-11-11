@@ -22,7 +22,6 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
-use std::io::ErrorKind as IoErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use std::time::{Duration, UNIX_EPOCH};
@@ -444,15 +443,7 @@ async fn upload(
                     let config = config
                         .read()
                         .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?;
-                    paste
-                        .store_url(expiry_date, header_filename, &config)
-                        .map_err(|e| {
-                            if e.kind() == IoErrorKind::AlreadyExists {
-                                error::ErrorConflict(e.to_string())
-                            } else {
-                                error::ErrorInternalServerError(e)
-                            }
-                        })?
+                    paste.store_url(expiry_date, header_filename, &config)?
                 }
             };
 
