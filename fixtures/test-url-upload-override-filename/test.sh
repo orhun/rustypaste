@@ -12,7 +12,7 @@ run_test() {
   curl -s -F "url=$url" -H "filename: abc" localhost:8000 > /dev/null
   test "$url" = "$(cat upload/url/abc)"
 
-  result=$(curl -s -F "url=$url2" -H "filename: abc" --write-out "%{http_code}" localhost:8000)
+  result=$(curl -s -F "url=$url2" -H "filename: abc" --write-out "%{http_code}" -o /dev/null localhost:8000)
   test "409" = "$result"
 
   curl -s -F "url=$url2" -H "filename: what-a-great-link" localhost:8000 > /dev/null
