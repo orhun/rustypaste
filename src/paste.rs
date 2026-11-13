@@ -369,9 +369,9 @@ impl Paste {
         expiry_date: Option<u128>,
         header_filename: Option<String>,
         config: &Config,
-    ) -> IoResult<UploadResult> {
-        let data = str::from_utf8(&self.data).map_err(|e| IoError::other(e.to_string()))?;
-        let url = Url::parse(data).map_err(|e| IoError::other(e.to_string()))?;
+    ) -> Result<UploadResult, Error> {
+        let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
+        let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
         let mut file_name = self.type_.get_dir();
         if let Some(random_url) = &config.paste.random_url {
             if let Some(random_text) = random_url.generate() {
@@ -383,6 +383,11 @@ impl Paste {
         }
         let mut path =
             util::safe_path_join(self.type_.get_path(&config.server.upload_path)?, &file_name)?;
+        let alt_path = util::glob_match_file(path.clone())
+            .map_err(|_| IoError::other(String::from("path is not valid")))?;
+        if alt_path.exists() {
+            return Err(error::ErrorConflict("file already exists\n"));
+        }
         let file_name = path
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
