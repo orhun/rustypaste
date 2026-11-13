@@ -35,7 +35,9 @@ pub struct Settings {
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ServerConfig {
     /// The socket address to bind.
-    pub address: String,
+    ///
+    /// This can be omitted when `socket` is set.
+    pub address: Option<String>,
     /// The Unix Domain Socket the server should create and bind to.
     #[cfg(unix)]
     pub socket: Option<PathBuf>,
@@ -75,6 +77,22 @@ pub struct ServerConfig {
     pub hardening: Option<bool>,
     /// Enable URL encoding
     pub url_encode_filenames: Option<bool>,
+}
+
+impl ServerConfig {
+    /// Returns whether the server has at least one endpoint to bind to.
+    ///
+    /// The Unix domain socket is only available on Unix platforms.
+    pub fn has_endpoint(&self) -> bool {
+        #[cfg(unix)]
+        {
+            self.address.is_some() || self.socket.is_some()
+        }
+        #[cfg(not(unix))]
+        {
+            self.address.is_some()
+        }
+    }
 }
 
 /// Enum representing different strategies for handling spaces in filenames.
@@ -266,7 +284,7 @@ mod tests {
             env::set_var("SERVER__ADDRESS", "0.0.1.1");
         }
         let config = Config::parse(&config_path)?;
-        assert_eq!("0.0.1.1", config.server.address);
+        assert_eq!(Some("0.0.1.1".to_string()), config.server.address);
         Ok(())
     }
 
@@ -282,8 +300,47 @@ mod tests {
             enabled: Some(true),
             ..RandomURLConfig::default()
         });
-        assert_eq!("0.0.1.1", config.server.address);
+        assert_eq!(Some("0.0.1.1".to_string()), config.server.address);
         config.warn_deprecation();
+        Ok(())
+    }
+
+    #[test]
+    fn test_server_config_has_endpoint() {
+        let mut config = ServerConfig::default();
+        assert!(!config.has_endpoint());
+
+        config.address = Some(String::from("127.0.0.1:8000"));
+        assert!(config.has_endpoint());
+
+        #[cfg(unix)]
+        {
+            let config = ServerConfig {
+                address: None,
+                socket: Some(PathBuf::from("./rustypaste.sock")),
+                ..Default::default()
+            };
+            assert!(config.has_endpoint());
+        }
+    }
+
+    #[test]
+    fn test_deserialize_config_without_address() -> Result<(), ConfigError> {
+        let config: Config = config::Config::builder()
+            .add_source(config::File::from_str(
+                r#"
+[server]
+max_content_length = "10MB"
+upload_path = "./upload"
+
+[paste]
+default_extension = "txt"
+"#,
+                config::FileFormat::Toml,
+            ))
+            .build()?
+            .try_deserialize()?;
+        assert_eq!(None, config.server.address);
         Ok(())
     }
 
