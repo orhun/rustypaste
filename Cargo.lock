@@ -95,9 +95,9 @@ dependencies = [
 
 [[package]]
 name = "actix-multipart"
-version = "0.8.7"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5df22eb72a5e6c66649083fff2fcb96df9f1e999e4cc32a15d58f34cb0102c47"
+checksum = "1d3f6aae0cc2511f084b6d5c20f966fea999770b74bfc181d4ba9e2c82ac2017"
 dependencies = [
  "actix-multipart-derive",
  "actix-utils",
