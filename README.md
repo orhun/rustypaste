@@ -53,6 +53,7 @@ some text
   * [Server](#server)
     * [Authentication](#authentication)
     * [List endpoint](#list-endpoint)
+    * [Allow RFC1918 for remote URLs](#allow-rfc1918-for-remote-urls)
     * [HTML Form](#html-form)
     * [Docker](#docker)
     * [Nginx](#nginx)
@@ -346,15 +347,34 @@ text-like types as `text/plain; charset=utf-8` to avoid script execution.
 
 #### List endpoint
 
-Set `expose_list` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory. This will not include oneshot files, oneshot URLs, or URLs.
+Set `expose_list` to true in [config.toml](./config.toml) to be able to retrieve a JSON formatted list of files in your uploads directory.
 
 ```sh
-$ curl "http://<server_address>/list"
+$ curl -s "http://<server_address>/list" |jq
+```
 
-[{"file_name":"accepted-cicada.txt","file_size":241,"expires_at_utc":null}]
+```json
+[
+  {
+    "file_name": "accepted-cicada.txt",
+    "file_size": 241,
+    "item_type": "file",
+    "creation_date_utc": "2026-06-11 20:35:28",
+    "expires_at_utc": "2026-07-03 20:35:28"
+  }
+]
 ```
 
 This route will require an `AUTH_TOKEN` if one is set.
+
+#### Allow RFC1918 for remote URLs
+
+By default rustypaste blocks RFC1918 addresses for remote URLs, because it could lead to an attack vector for SSRF,
+if the server is configured incorrectly.
+However, if RFC1918 addresses are blocked, it is impossible to use rustypaste in a corporate network that uses
+RFC1918 IP ranges to fetch remote URLs within that network.
+Thus one can set `[paste].allow_remote_rfc1918 = true` in the config file.
+Do not use this option, if you make the rustypaste instance accessible from outside the corporate network.
 
 #### HTML Form
 

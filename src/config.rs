@@ -133,6 +133,8 @@ pub struct PasteConfig {
     pub default_expiry: Option<Duration>,
     /// Delete expired files.
     pub delete_expired_files: Option<CleanupConfig>,
+    /// Allow RFC1918 ranges to be fetched via a remote URL.
+    pub allow_remote_rfc1918: Option<bool>,
 }
 
 /// Cleanup configuration.
