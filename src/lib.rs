@@ -28,9 +28,6 @@ pub mod mime;
 /// Helper functions.
 pub mod util;
 
-/// Custom middleware implementation.
-pub mod middleware;
-
 /// Password hashing and verification.
 pub mod password;
 
