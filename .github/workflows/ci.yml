@@ -52,7 +52,7 @@ jobs:
           - name: Linux
             runner: ubuntu-latest
           - name: macOS
-            runner: macos-14
+            runner: macos-15
     name: Test fixtures [${{ matrix.os.name }}]
     runs-on: ${{ matrix.os.runner }}
     steps:
