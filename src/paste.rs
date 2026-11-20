@@ -303,7 +303,14 @@ impl Paste {
         let data = str::from_utf8(&self.data).map_err(error::ErrorBadRequest)?;
         let url = Url::parse(data).map_err(error::ErrorBadRequest)?;
         let url_clone = url.clone();
-        match web::block(move || util::validate_remote_url(&url_clone)).await {
+        let allow_remote_rfc1918 = config
+            .read()
+            .map_err(|_| error::ErrorInternalServerError("cannot acquire config"))?
+            .paste
+            .allow_remote_rfc1918
+            .unwrap_or(false);
+        match web::block(move || util::validate_remote_url(&url_clone, allow_remote_rfc1918)).await
+        {
             Ok(Ok(())) => {}
             Ok(Err(e)) => {
                 warn!("URL validation failed for {}: {}", url, e);
