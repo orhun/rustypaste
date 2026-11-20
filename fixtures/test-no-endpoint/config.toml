@@ -1,0 +1,7 @@
+[server]
+max_content_length = "10MB"
+upload_path = "./upload"
+
+[paste]
+default_extension = "txt"
+duplicate_files = true
