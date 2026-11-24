@@ -12,8 +12,10 @@ use rustypaste::util;
 use rustypaste::CONFIG_ENV;
 use std::env;
 use std::fs;
-use std::io::Result as IoResult;
+use std::io::{Read, Result as IoResult, Write};
+use std::net::TcpStream;
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 use std::sync::{mpsc, RwLock};
 use std::thread;
 use std::time::Duration;
@@ -234,8 +236,35 @@ fn remove_stale_unix_socket(path: &std::path::Path) -> std::io::Result<()> {
     fs::remove_file(path)
 }
 
+fn healthcheck(host: &str, port: u16) -> IoResult<bool> {
+    let mut stream = TcpStream::connect((host, port))?;
+    stream.set_read_timeout(Some(Duration::from_secs(5)))?;
+    stream.write_all(format!("GET /health HTTP/1.0\r\nHost: {host}:{port}\r\n\r\n").as_bytes())?;
+    // "HTTP/1.1 200"
+    let mut status = [0; 12];
+    stream.read_exact(&mut status)?;
+    Ok(status.starts_with(b"HTTP/1.") && status.ends_with(b" 200"))
+}
+
 #[actix_web::main]
-async fn main() -> IoResult<()> {
+async fn main() -> IoResult<ExitCode> {
+    let args: Vec<String> = env::args().collect();
+    if args.get(1).is_some_and(|arg| arg == "healthcheck") {
+        return Ok(
+            // Panicking on incorrect use is fine since there is no public CLI
+            if healthcheck(&args[2], args[3].parse().unwrap())
+                // Run `sudo docker exec -it rustypaste ./rustypaste healthcheck 127.0.0.1 8000`
+                //  on the command line to see why the healthcheck fails
+                .inspect_err(|err| println!("{err:?}"))
+                .unwrap_or(false)
+            {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            },
+        );
+    }
+
     // Set up the application.
     let (config, server_config, _hotwatch) = setup(&PathBuf::new())?;
 
@@ -278,5 +307,6 @@ async fn main() -> IoResult<()> {
     if let Some(socket) = server_config.socket.as_deref() {
         info!("Server is listening on Unix socket {}", socket.display());
     }
-    http_server.run().await
+    http_server.run().await?;
+    Ok(ExitCode::SUCCESS)
 }
