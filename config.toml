@@ -2,7 +2,9 @@
 refresh_rate = "1s"
 
 [server]
+# The TCP address to bind. Can be omitted if socket is set.
 address = "127.0.0.1:8000"
+# The Unix domain socket to bind (optional, Unix only).
 #socket = "/run/rustypaste/rustypaste.sock"
 #url = "https://paste.example.com"
 #workers=4
